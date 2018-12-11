@@ -4,6 +4,7 @@ import maya.cmds as cmds
 class Attribute(object):
     def __init__(self, instance, field):
         self.field = field
+        self.is_multi = field.create_attr_args.get('multi', False)
         self.attr_name = '.'.join([instance.name, field.name])
         if not cmds.attributeQuery(field.name, node=instance.name, exists=True):
             cmds.addAttr(
@@ -13,11 +14,47 @@ class Attribute(object):
             )
 
     def set(self, value):
+        if self.is_multi:
+            self._set_multi_attribute(value)
+        else:
+            self._set_single_attribute(value)
+
+    def get(self):
+        if self.is_multi:
+            return self._get_multi_attribute()
+        else:
+            return cmds.getAttr(self.attr_name)
+
+    def _get_multi_attribute(self):
+        indices = self._get_multi_indices()
+        if indices:
+            return [cmds.getAttr('{}[{}]'.format(self.attr_name, i)) for i in indices]
+        else:
+            return []
+
+    def _set_single_attribute(self, value):
         casted_value = self.field.cast(value)
         cmds.setAttr(self.attr_name, casted_value, **self.field.set_attr_args)
 
-    def get(self):
-        return cmds.getAttr(self.attr_name)
+    def _set_multi_attribute(self, value):
+        self._clear_multi_attribute()
+        if not isinstance(value, list):
+            value = [value]
+        for index, item in enumerate(value):
+            casted_item = self.field.cast(item)
+            attrName = '{}[{}]'.format(self.attr_name, index)
+            cmds.setAttr(attrName, casted_item)
+
+    def _clear_multi_attribute(self):
+        indices = self._get_multi_indices()
+        for index in indices:
+            cmds.removeMultiInstance('{}[{}]'.format(self.attr_name, index))
+
+    def _get_multi_indices(self):
+        indices = cmds.getAttr(self.attr_name, multiIndices=True)
+        if not indices:
+            indices = []
+        return indices
 
 
 class Field(object):
