@@ -94,6 +94,8 @@ class Field(object):
 
     def cast_from_attr(self, value):
         """Cast the received maya's attribute value to a type of your choice.
+
+        See DictField for an example.
         """
         return value
 
@@ -135,6 +137,13 @@ class StringField(Field):
 
     def cast_to_attr(self, value):
         return str(value)
+
+class DictField(StringField):
+    def cast_to_attr(self, value):
+        return json.dumps(value)
+
+    def cast_from_attr(self, value):
+        return json.loads(value)
 
 
 class ObjectField(StringField):
