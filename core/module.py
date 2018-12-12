@@ -1,8 +1,6 @@
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
-from icarus.core.fields import (
-    ObjectField,
-)
+from icarus.core.fields import ObjectField
 
 class RigModule(IcarusNode):
 
@@ -10,7 +8,7 @@ class RigModule(IcarusNode):
     parent_joint = ObjectField('parent_joint')
 
     # Joints of this module that will be part of the rig's skeleton.
-    deform_joints = ObjectField('deform_joints', as_list=True)
+    deform_joints = ObjectField('deform_joints', multi=True)
 
     def __init__(self, name, side='M', *args, **kwargs):
         self.name = name
