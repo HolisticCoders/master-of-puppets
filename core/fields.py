@@ -43,7 +43,7 @@ class Attribute(object):
         for index, item in enumerate(value):
             casted_item = self.field.cast(item)
             attrName = '{}[{}]'.format(self.attr_name, index)
-            cmds.setAttr(attrName, casted_item)
+            cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
     def _clear_multi_attribute(self):
         indices = self._get_multi_indices()
