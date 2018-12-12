@@ -1,4 +1,5 @@
 import maya.cmds as cmds
+import json
 
 
 class Attribute(object):
@@ -23,17 +24,22 @@ class Attribute(object):
         if self.is_multi:
             return self._get_multi_attribute()
         else:
-            return cmds.getAttr(self.attr_name)
+            return self.field.cast_from_attr(cmds.getAttr(self.attr_name))
 
     def _get_multi_attribute(self):
         indices = self._get_multi_indices()
         if indices:
-            return [cmds.getAttr('{}[{}]'.format(self.attr_name, i)) for i in indices]
+            values = []
+            for i in indices:
+                val = cmds.getAttr('{}[{}]'.format(self.attr_name, i))
+                val = self.field.cast_from_attr(val)
+                values.append(val)
+            return values
         else:
             return []
 
     def _set_single_attribute(self, value):
-        casted_value = self.field.cast(value)
+        casted_value = self.field.cast_to_attr(value)
         cmds.setAttr(self.attr_name, casted_value, **self.field.set_attr_args)
 
     def _set_multi_attribute(self, value):
@@ -41,7 +47,7 @@ class Attribute(object):
         if not isinstance(value, list):
             value = [value]
         for index, item in enumerate(value):
-            casted_item = self.field.cast(item)
+            casted_item = self.field.cast_to_attr(item)
             attrName = '{}[{}]'.format(self.attr_name, index)
             cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
@@ -81,13 +87,23 @@ class Field(object):
     def create_attr(self, instance):
         return Attribute(instance, self)
 
+    def cast_to_attr(self, value):
+        """Cast the received value to a type compatible with maya's attribute.
+        """
+        return value
+
+    def cast_from_attr(self, value):
+        """Cast the received maya's attribute value to a type of your choice.
+        """
+        return value
+
 
 class IntField(Field):
     create_attr_args = {
         'attributeType': 'long'
     }
 
-    def cast(self, value):
+    def cast_to_attr(self, value):
         return int(value)
 
 
@@ -96,7 +112,7 @@ class FloatField(Field):
         'attributeType': 'double'
     }
 
-    def cast(self, value):
+    def cast_to_attr(self, value):
         return float(value)
 
 
@@ -105,7 +121,7 @@ class BoolField(Field):
         'attributeType': 'bool'
     }
 
-    def cast(self, value):
+    def cast_to_attr(self, value):
         return bool(value)
 
 
@@ -117,13 +133,13 @@ class StringField(Field):
         'type': 'string'
     }
 
-    def cast(self, value):
+    def cast_to_attr(self, value):
         return str(value)
 
 
 class ObjectField(StringField):
-    def cast(self, value):
-        value = super(ObjectField, self).cast(value)
+    def cast_to_attr(self, value):
+        value = super(ObjectField, self).cast_to_attr(value)
         if cmds.objExists(value):
             return value
         else:
