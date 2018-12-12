@@ -82,6 +82,7 @@ class Field(object):
     def create_attr(self, instance):
         return Attribute(instance, self)
 
+
 class IntField(Field):
     create_attr_args = {
         'attributeType': 'long'
@@ -89,6 +90,7 @@ class IntField(Field):
 
     def cast(self, value):
         return int(value)
+
 
 class FloatField(Field):
     create_attr_args = {
@@ -98,6 +100,7 @@ class FloatField(Field):
     def cast(self, value):
         return float(value)
 
+
 class BoolField(Field):
     create_attr_args = {
         'attributeType': 'bool'
@@ -105,6 +108,7 @@ class BoolField(Field):
 
     def cast(self, value):
         return bool(value)
+
 
 class StringField(Field):
     create_attr_args = {
@@ -116,6 +120,7 @@ class StringField(Field):
 
     def cast(self, value):
         return str(value)
+
 
 class ObjectField(StringField):
     def cast(self, value):
