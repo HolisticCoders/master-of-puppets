@@ -51,7 +51,7 @@ class Rig(IcarusNode):
         if module_type not in all_rig_modules:
             raise Exception("Module Type {} is not valid".format(module_type))
 
-        # instantiate the new module from the pool of available modules.
+        # instantiate the new module from the list of possible modules.
         new_module = all_rig_modules[module_type](*args, **kwargs)
         cmds.parent(new_module.name, self.modules_group.get())
         new_module.initialize()
