@@ -64,11 +64,10 @@ class Field(object):
     def __init__(
         self,
         name=None,
-        as_list=False,
+        **kwargs
     ):
         self.name = name
-        if as_list:
-            self.create_attr_args['multi'] = True
+        self.create_attr_args.update(kwargs)
         self._attrs = {}
 
     def __get__(self, instance, instancetype=None):
