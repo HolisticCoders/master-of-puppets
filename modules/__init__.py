@@ -15,7 +15,4 @@ for mod in os.listdir(os.path.dirname(__file__)):
     # print "Current Mod", current_mod
     # print dir(current_mod)
     for rig_module in current_mod.exported_rig_modules:
-        print rig_module
         all_rig_modules[rig_module.__name__] = rig_module
-
-print "all_rig_modules", all_rig_modules
