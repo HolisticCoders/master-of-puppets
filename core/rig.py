@@ -53,7 +53,7 @@ class Rig(IcarusNode):
 
         # instantiate the new module from the list of possible modules.
         new_module = all_rig_modules[module_type](*args, **kwargs)
-        cmds.parent(new_module.name, self.modules_group.get())
+        cmds.parent(new_module.node_name, self.modules_group.get())
         new_module.initialize()
 
         # add the module's deform joints to the rig's skeleton
@@ -63,7 +63,7 @@ class Rig(IcarusNode):
             self.skeleton.set(skel)
 
         mods = self.rig_modules.get()
-        mods.append(new_module.name)
+        mods.append(new_module.node_name)
         self.rig_modules.set(mods)
 
         return new_module
