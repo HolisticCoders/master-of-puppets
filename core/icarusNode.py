@@ -4,7 +4,7 @@ import maya.cmds as cmds
 class IcarusNode(object):
     def __init__(self, name, node_type=None):
         """Create the node if it doesn't already exist."""
-        self.name = name
+        self.node_name = name
         if not cmds.objExists(name):
             if node_type is None:
                 node_type = 'transform'

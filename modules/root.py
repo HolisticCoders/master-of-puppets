@@ -1,12 +1,17 @@
 import maya.cmds as cmds
 
 from icarus.core.module import RigModule
-
+import icarus.utils
 
 class Root(RigModule):
 
     def initialize(self):
-        self.deform_joints.set([cmds.createNode('joint', name='root')])
+        joint_name = icarus.utils.name_from_metadata(
+            self.name,
+            self.side,
+            'driver',
+        )
+        self._add_driving_joint(name=joint_name)
 
     def update(self):
         pass

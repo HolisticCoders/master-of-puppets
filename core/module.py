@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
 from icarus.core.fields import ObjectField
+import icarus.utils
 
 class RigModule(IcarusNode):
 
@@ -11,6 +12,9 @@ class RigModule(IcarusNode):
     deform_joints = ObjectField('deform_joints', multi=True)
 
     def __init__(self, name, side='M', *args, **kwargs):
+        self.node_name = icarus.utils.name_from_metadata(name, side, 'mod')
+        super(RigModule, self).__init__(self.node_name)
+
         self.name = name
         self.side = side
         self.rig = kwargs.get('rig', None)

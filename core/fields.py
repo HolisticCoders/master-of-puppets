@@ -6,10 +6,10 @@ class Attribute(object):
     def __init__(self, instance, field):
         self.field = field
         self.is_multi = field.create_attr_args.get('multi', False)
-        self.attr_name = '.'.join([instance.name, field.name])
-        if not cmds.attributeQuery(field.name, node=instance.name, exists=True):
+        self.attr_name = '.'.join([instance.node_name, field.name])
+        if not cmds.attributeQuery(field.name, node=instance.node_name, exists=True):
             cmds.addAttr(
-                instance.name,
+                instance.node_name,
                 longName=field.name,
                 **field.create_attr_args
             )
