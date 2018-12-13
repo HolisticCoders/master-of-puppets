@@ -5,26 +5,43 @@ import icarus.utils
 
 class RigModule(IcarusNode):
 
-    # Joint of the rig skeleton under which the deform joints will be parented.
+    # Joint of the rig skeleton under which the driving joints will be parented.
     parent_joint = ObjectField('parent_joint')
 
-    # Joints of this module that will be part of the rig's skeleton.
-    deform_joints = ObjectField('deform_joints', multi=True)
+    # group holding all this module's driving joints
+    driving_group = ObjectField('driving_group')
 
-    def __init__(self, name, side='M', *args, **kwargs):
+
+    def __init__(self, name, side='M', parent_joint=None, *args, **kwargs):
         self.node_name = icarus.utils.name_from_metadata(name, side, 'mod')
         super(RigModule, self).__init__(self.node_name)
 
         self.name = name
         self.side = side
+        self.parent_joint = parent_joint
         self.rig = kwargs.get('rig', None)
-        node_name = '_'.join([name, side, 'mod'])
-        super(RigModule, self).__init__(node_name)
+
+        driving_group_name = icarus.utils.name_from_metadata(
+            name,
+            side,
+            'grp',
+            object_description='driving'
+        )
+        cmds.createNode('transform', name=driving_group_name, parent=self.node_name)
+        self.driving_group.set(driving_group_name)
+
+    @property
+    def driving_joints(self):
+        joints = cmds.listRelatives(self.driving_group.get(), type='joint', allDescendents=True)
+        if joints is None:
+            return []
+        else:
+            return list(reversed(joints)) # listRelative returns a reversed list.
 
     def initialize(self):
         """Creation of all the needed placement nodes.
 
-        This must at least include all the module's deformation joints.
+        This must at least include all the module's driving joints.
 
         Will be called automatically when creating the module.
         You need to overwrite this method in your subclasses.
@@ -41,7 +58,7 @@ class RigModule(IcarusNode):
     def build(self):
         """Actual rigging of the module.
 
-        The end result should _always_ drive your module's deform joints
+        The end result should _always_ drive your module's driving joints
         You need to overwrite this method in your subclasses.
         """
         raise NotImplementedError
@@ -55,3 +72,28 @@ class RigModule(IcarusNode):
         You need to overwrite this method in your subclasses.
         """
         raise NotImplementedError
+
+    def _add_driving_joint(self, name=None, parent=None):
+        """Creates a new driving joint for this module.
+
+        Args:
+            name (str): name of the joint, in case you don't want the default one.
+            parent (str): node under which the new joint will be parented
+        """
+        object_id=len(self.driving_joints)
+        if name is not None:
+            new_joint = name
+        else:
+            new_joint = icarus.utils.name_from_metadata(
+                self.name,
+                self.side,
+                'driver',
+                object_id=object_id
+            )
+        cmds.createNode('joint', name=new_joint)
+
+        if parent:
+            cmds.parent(new_joint, parent)
+        else:
+            cmds.parent(new_joint, self.driving_group.get())
+        return new_joint
