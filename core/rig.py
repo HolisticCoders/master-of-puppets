@@ -19,6 +19,9 @@ class Rig(IcarusNode):
 
     def __init__(self):
         super(Rig, self).__init__('RIG')
+        # stores the instances of the existing rig modules
+        self.rig_modules_instances = {}
+
         self._create_basic_hierarchy()
         self._add_default_modules()
 
@@ -56,7 +59,7 @@ class Rig(IcarusNode):
         cmds.parent(new_module.node_name, self.modules_group.get())
         new_module.initialize()
 
-        # add the module's deform joints to the rig's skeleton
+        self.rig_modules_instances[new_module.node_name] = new_module
         for joint in new_module.deform_joints.get():
             skel = self.skeleton.get()
             skel.append(joint)
