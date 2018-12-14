@@ -1,7 +1,14 @@
 import maya.cmds as cmds
 
+from icarus.core.fields import BoolField
+
 
 class IcarusNode(object):
+
+    is_initialized = BoolField('is_initialized', defaultValue=False)
+    is_built = BoolField('is_built', defaultValue=False)
+    is_published = BoolField('is_published', defaultValue=False)
+
     def __init__(self, name, node_type=None):
         """Create the node if it doesn't already exist."""
         self.node_name = name

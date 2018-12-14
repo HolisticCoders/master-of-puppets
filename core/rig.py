@@ -24,8 +24,11 @@ class Rig(IcarusNode):
         # stores the instances of the existing rig modules
         self.rig_modules_instances = {}
 
-        self._create_basic_hierarchy()
+        if not self.is_initialized.get():
+            self._create_basic_hierarchy()
+
         self._add_default_modules()
+
 
     def _create_basic_hierarchy(self):
         if not cmds.objExists('MODULES'):
@@ -60,6 +63,7 @@ class Rig(IcarusNode):
         new_module = all_rig_modules[module_type](*args, **kwargs)
         cmds.parent(new_module.node_name, self.modules_group.get())
         new_module.initialize()
+        new_module.is_initialized.set(True)
 
         self.rig_modules_instances[new_module.node_name] = new_module
         mods = self.rig_modules.get()
