@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
-from icarus.core.fields import ObjectField
+from icarus.core.fields import ObjectField, StringField
 import icarus.utils
 
 class RigModule(IcarusNode):
@@ -11,6 +11,7 @@ class RigModule(IcarusNode):
     # group holding all this module's driving joints
     driving_group = ObjectField('driving_group')
 
+    module_type = StringField('modupe_type')
 
     def __init__(self, name, side='M', parent_joint=None, *args, **kwargs):
         self.node_name = icarus.utils.name_from_metadata(name, side, 'mod')
@@ -21,6 +22,7 @@ class RigModule(IcarusNode):
         if parent_joint:
             self.parent_joint.set(parent_joint)
         self.rig = kwargs.get('rig', None)
+        self.module_type.set(self.__class__.__name__)
 
         driving_group_name = icarus.utils.name_from_metadata(
             name,
