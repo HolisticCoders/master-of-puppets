@@ -15,7 +15,6 @@ class Rig(IcarusNode):
     extras_group = ObjectField('extras_group')
     skeleton_group = ObjectField('skeleton_group')
     rig_modules = ObjectField('rig_modules', multi=True)
-    skeleton = ObjectField('skeleton', multi=True)
 
     def __init__(self):
         super(Rig, self).__init__('RIG')
@@ -60,13 +59,55 @@ class Rig(IcarusNode):
         new_module.initialize()
 
         self.rig_modules_instances[new_module.node_name] = new_module
-        for joint in new_module.deform_joints.get():
-            skel = self.skeleton.get()
-            skel.append(joint)
-            self.skeleton.set(skel)
-
         mods = self.rig_modules.get()
         mods.append(new_module.node_name)
         self.rig_modules.set(mods)
 
+        self.create_skeleton_from_module(new_module)
         return new_module
+
+    def create_skeleton(self):
+        # remove the existing rig before re-creating it.
+        cmds.delete(cmds.listRelatives(self.skeleton_group.get()))
+
+        for module in self.rig_modules.get():
+            if module not in self.rig_modules_instances:
+                # TODO: re-instance the module
+                pass
+        for module in self.rig_modules_instances.values():
+            self.create_skeleton_from_module(module)
+
+    def create_skeleton_from_module(self, module):
+        # decide if the joints will be parented to an existing joint
+        # or at the root of the skeleton
+        parent = module.parent_joint.get()
+        if not parent:
+            parent = self.skeleton_group.get()
+
+        # duplicate the driving joints and parent them in the rig's skeleton
+        # based on the module's parent_joint
+        top_driving_joints = cmds.listRelatives(module.driving_group.get())
+        all_driving_joints = list(reversed(cmds.listRelatives(
+            module.driving_group.get(),
+            allDescendents=True
+        )))
+        deform_joints = []
+        for joint in top_driving_joints:
+            dupli = cmds.duplicate(
+                joint,
+                renameChildren=True,
+            )
+            print "dupli:", dupli
+            deform_joints += dupli
+            cmds.parent(dupli[0], parent)
+
+        # rename and drive the new deform joints
+        for deform, driving, in zip(deform_joints, all_driving_joints):
+            deform = cmds.rename(deform, deform.replace('driver1', 'deform'))
+            for attr in ['translate', 'rotate', 'scale']:
+                for axis in 'XYZ':
+                    attr_name = attr + axis
+                    deform_attr = '.'.join([deform, attr_name])
+                    driving_attr = '.'.join([driving, attr_name])
+                    cmds.connectAttr(driving_attr, deform_attr)
+

@@ -18,7 +18,8 @@ class RigModule(IcarusNode):
 
         self.name = name
         self.side = side
-        self.parent_joint = parent_joint
+        if parent_joint:
+            self.parent_joint.set(parent_joint)
         self.rig = kwargs.get('rig', None)
 
         driving_group_name = icarus.utils.name_from_metadata(
