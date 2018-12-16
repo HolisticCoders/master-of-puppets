@@ -17,7 +17,7 @@ class Rig(IcarusNode):
 
     # store the name of all the rig modules
     # TODO: make this a @property that lists the children of modules_group
-    rig_modules = ObjectField('rig_modules', multi=True)
+    # rig_modules = ObjectField('rig_modules', multi=True)
 
     def __init__(self):
         super(Rig, self).__init__('RIG')
@@ -29,6 +29,9 @@ class Rig(IcarusNode):
 
         self._add_default_modules()
 
+    @property
+    def rig_modules(self):
+        return cmds.listRelatives(self.modules_group)
 
     def _create_basic_hierarchy(self):
         if not cmds.objExists('MODULES'):
@@ -66,9 +69,6 @@ class Rig(IcarusNode):
         new_module.is_initialized.set(True)
 
         self.rig_modules_instances[new_module.node_name] = new_module
-        mods = self.rig_modules.get()
-        mods.append(new_module.node_name)
-        self.rig_modules.set(mods)
 
         self.create_skeleton_from_module(new_module)
         return new_module
@@ -77,7 +77,7 @@ class Rig(IcarusNode):
         # remove the existing rig before re-creating it.
         cmds.delete(cmds.listRelatives(self.skeleton_group.get()))
 
-        for module in self.rig_modules.get():
+        for module in self.rig_modules:
             if module not in self.rig_modules_instances:
                 # TODO: re-instance the module
                 pass
