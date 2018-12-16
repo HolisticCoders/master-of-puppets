@@ -73,7 +73,11 @@ class Field(object):
         **kwargs
     ):
         self.name = name
+
+        # copy the class attribute to the instance
+        self.create_attr_args = self.create_attr_args.copy()
         self.create_attr_args.update(kwargs)
+
         self._attrs = {}
 
     def __get__(self, instance, instancetype=None):
