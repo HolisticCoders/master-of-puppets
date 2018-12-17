@@ -2,6 +2,7 @@ import maya.cmds as cmds
 
 from icarus.core.module import RigModule
 from icarus.core.fields import IntField
+import icarus.dag
 
 
 class Chain(RigModule):
@@ -21,7 +22,24 @@ class Chain(RigModule):
         self._update_chain_length()
 
     def build(self):
-        pass
+        parent = self.controls_group.get()
+        for joint in self.driving_joints:
+            ctl = cmds.circle(name=joint + '_ctl')[0]
+
+            joint_mat = cmds.xform(
+                joint,
+                query=True,
+                matrix=True,
+                worldSpace=True
+            )
+
+            cmds.xform(ctl, matrix=joint_mat, worldSpace=True)
+
+            cmds.parent(ctl, parent)
+            parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
+            icarus.dag.matrix_constraint(ctl, joint)
+
+            parent = ctl
 
     def publish(self):
         pass

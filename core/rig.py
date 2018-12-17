@@ -111,3 +111,6 @@ class Rig(IcarusNode):
                     driving_attr = '.'.join([driving, attr_name])
                     cmds.connectAttr(driving_attr, deform_attr)
 
+    def build(self):
+        for module in self.rig_modules:
+            module.build()
