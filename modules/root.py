@@ -1,12 +1,12 @@
 import maya.cmds as cmds
 
 from icarus.core.module import RigModule
-import icarus.utils
+import icarus.metadata
 
 class Root(RigModule):
 
     def initialize(self):
-        joint_name = icarus.utils.name_from_metadata(
+        joint_name = icarus.metadata.name_from_metadata(
             self.name,
             self.side,
             'driver',

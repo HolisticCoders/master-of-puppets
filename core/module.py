@@ -1,7 +1,7 @@
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
 from icarus.core.fields import ObjectField, StringField
-import icarus.utils
+import icarus.metadata
 
 class RigModule(IcarusNode):
 
@@ -14,7 +14,10 @@ class RigModule(IcarusNode):
     module_type = StringField('modupe_type')
 
     def __init__(self, name, side='M', parent_joint=None, *args, **kwargs):
-        self.node_name = icarus.utils.name_from_metadata(name, side, 'mod')
+        if cmds.objExists(name):
+            self.node_name = name
+        else:
+            self.node_name = icarus.metadata.name_from_metadata(name, side, 'mod')
         super(RigModule, self).__init__(self.node_name)
 
         self.name = name
@@ -24,14 +27,17 @@ class RigModule(IcarusNode):
         self.rig = kwargs.get('rig', None)
         self.module_type.set(self.__class__.__name__)
 
-        driving_group_name = icarus.utils.name_from_metadata(
-            name,
-            side,
-            'grp',
-            object_description='driving'
-        )
-        cmds.createNode('transform', name=driving_group_name, parent=self.node_name)
-        self.driving_group.set(driving_group_name)
+            driving_group_name = icarus.metadata.name_from_metadata(
+                name,
+                side,
+                'grp',
+                object_description='driving'
+            )
+            self.driving_group.set(cmds.createNode(
+                'transform',
+                name=driving_group_name,
+                parent=self.node_name
+            ))
 
     @property
     def driving_joints(self):
@@ -87,7 +93,7 @@ class RigModule(IcarusNode):
         if name is not None:
             new_joint = name
         else:
-            new_joint = icarus.utils.name_from_metadata(
+            new_joint = icarus.metadata.name_from_metadata(
                 self.name,
                 self.side,
                 'driver',
