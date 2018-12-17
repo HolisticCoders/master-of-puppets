@@ -17,6 +17,7 @@ class RigModule(IcarusNode):
 
     module_type = StringField('modupe_type')
 
+
     def __init__(self, name, side='M', parent_joint=None, *args, **kwargs):
         if cmds.objExists(name):
             self.node_name = name
@@ -24,12 +25,14 @@ class RigModule(IcarusNode):
             self.node_name = icarus.metadata.name_from_metadata(name, side, 'mod')
         super(RigModule, self).__init__(self.node_name)
 
-        self.name = name
-        self.side = side
-        if parent_joint:
-            self.parent_joint.set(parent_joint)
+        if not self.is_initialized.get():
+            self.name.set(name)
+            self.side.set(side)
+            self.module_type.set(self.__class__.__name__)
+
+            if parent_joint:
+                self.parent_joint.set(parent_joint)
         self.rig = kwargs.get('rig', None)
-        self.module_type.set(self.__class__.__name__)
 
             driving_group_name = icarus.metadata.name_from_metadata(
                 name,
@@ -42,6 +45,10 @@ class RigModule(IcarusNode):
                 name=driving_group_name,
                 parent=self.node_name
             ))
+
+
+            self.initialize()
+            self.is_initialized.set(True)
 
     @property
     def driving_joints(self):
@@ -98,8 +105,8 @@ class RigModule(IcarusNode):
             new_joint = name
         else:
             new_joint = icarus.metadata.name_from_metadata(
-                self.name,
-                self.side,
+                self.name.get(),
+                self.side.get(),
                 'driver',
                 object_id=object_id
             )

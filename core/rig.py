@@ -17,17 +17,21 @@ class Rig(IcarusNode):
 
     def __init__(self):
         super(Rig, self).__init__('RIG')
-        # stores the instances of the existing rig modules
-        self.rig_modules_instances = {}
 
         if not self.is_initialized.get():
             self._create_basic_hierarchy()
-
-        self._add_default_modules()
+            self._add_default_modules()
+            self.is_initialized.set(True)
 
     @property
     def rig_modules(self):
-        return cmds.listRelatives(self.modules_group)
+        modules = []
+        for node in cmds.listRelatives(self.modules_group.get()) or []:
+            module_type = cmds.getAttr(node + '.module_type')
+            module = all_rig_modules[module_type](node)
+            modules.append(module)
+
+        return modules
 
     def _create_basic_hierarchy(self):
         if not cmds.objExists('MODULES'):
@@ -60,11 +64,9 @@ class Rig(IcarusNode):
 
         # instantiate the new module from the list of possible modules.
         new_module = all_rig_modules[module_type](*args, **kwargs)
-        cmds.parent(new_module.node_name, self.modules_group.get())
-        new_module.initialize()
-        new_module.is_initialized.set(True)
-
-        self.rig_modules_instances[new_module.node_name] = new_module
+        parent = cmds.listRelatives(new_module.node_name, parent=True)
+        if not parent or parent[0] != self.modules_group.get():
+            cmds.parent(new_module.node_name, self.modules_group.get())
 
         self.create_skeleton_from_module(new_module)
         return new_module
@@ -72,12 +74,7 @@ class Rig(IcarusNode):
     def create_skeleton(self):
         # remove the existing rig before re-creating it.
         cmds.delete(cmds.listRelatives(self.skeleton_group.get()))
-
         for module in self.rig_modules:
-            if module not in self.rig_modules_instances:
-                # TODO: re-instance the module
-                pass
-        for module in self.rig_modules_instances.values():
             self.create_skeleton_from_module(module)
 
     def create_skeleton_from_module(self, module):

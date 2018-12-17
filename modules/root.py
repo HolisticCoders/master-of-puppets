@@ -7,8 +7,8 @@ class Root(RigModule):
 
     def initialize(self):
         joint_name = icarus.metadata.name_from_metadata(
-            self.name,
-            self.side,
+            self.name.get(),
+            self.side.get(),
             'driver',
         )
         self._add_driving_joint(name=joint_name)
