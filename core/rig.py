@@ -85,20 +85,21 @@ class Rig(IcarusNode):
 
         # duplicate the driving joints and parent them in the rig's skeleton
         # based on the module's parent_joint
-        top_driving_joints = cmds.listRelatives(module.driving_group.get())
-        all_driving_joints = list(reversed(cmds.listRelatives(
+        top_driving_joints = cmds.listRelatives(module.driving_group.get(), type='joint')
+        all_driving_joints = cmds.listRelatives(
             module.driving_group.get(),
-            allDescendents=True
-        )))
+            allDescendents=True,
+            type='joint'
+        )
+        all_driving_joints = list(reversed(all_driving_joints))
         deform_joints = []
         for joint in top_driving_joints:
-            dupli = cmds.duplicate(
+            duplicate = cmds.duplicate(
                 joint,
                 renameChildren=True,
             )
-            print "dupli:", dupli
-            deform_joints += dupli
-            cmds.parent(dupli[0], parent)
+            deform_joints += duplicate
+            cmds.parent(duplicate[0], parent)
 
         # rename and drive the new deform joints
         for deform, driving, in zip(deform_joints, all_driving_joints):
