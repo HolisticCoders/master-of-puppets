@@ -15,7 +15,8 @@ class RigModule(IcarusNode):
     # group holding all this module's driving joints
     driving_group = ObjectField()
 
-    module_type = StringField('modupe_type')
+    # group holding all this module's controls
+    controls_group = ObjectField()
 
 
     def __init__(self, name, side='M', parent_joint=None, *args, **kwargs):
@@ -42,6 +43,18 @@ class RigModule(IcarusNode):
             self.driving_group.set(cmds.createNode(
                 'transform',
                 name=driving_group_name,
+                parent=self.node_name
+            ))
+
+            controls_group_name = icarus.metadata.name_from_metadata(
+                name,
+                side,
+                'grp',
+                object_description='controls'
+            )
+            self.controls_group.set(cmds.createNode(
+                'transform',
+                name=controls_group_name,
                 parent=self.node_name
             ))
 
