@@ -58,7 +58,6 @@ class Rig(IcarusNode):
             self.add_module(module_type, **data)
 
     def add_module(self, module_type, *args, **kwargs):
-        kwargs['rig'] = self
         if module_type not in all_rig_modules:
             raise Exception("Module Type {} is not valid".format(module_type))
 
