@@ -1,13 +1,15 @@
 import maya.cmds as cmds
 
-from icarus.core.fields import BoolField
+from icarus.core.fields import FieldContainerMeta, BoolField
 
 
 class IcarusNode(object):
 
-    is_initialized = BoolField('is_initialized', defaultValue=False)
-    is_built = BoolField('is_built', defaultValue=False)
-    is_published = BoolField('is_published', defaultValue=False)
+    __metaclass__ = FieldContainerMeta
+
+    is_initialized = BoolField(defaultValue=False)
+    is_built = BoolField(defaultValue=False)
+    is_published = BoolField(defaultValue=False)
 
     def __init__(self, name, node_type=None):
         """Create the node if it doesn't already exist."""
@@ -19,4 +21,3 @@ class IcarusNode(object):
                 raise Exception("Specified `{}` node_type is not a valid maya node.".format(node_type))
                 return
             cmds.createNode(node_type, name=name)
-

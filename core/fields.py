@@ -63,16 +63,35 @@ class Attribute(object):
         return indices
 
 
+class FieldContainerMeta(type):
+    """Meta class allowing fields to be automatically named.
+
+    Fields class attribute names are collected and assigned to
+    the fields as name.
+    """
+
+    def __new__(cls, cls_name, bases, attrs):
+        fields = []
+
+        for name, attr in attrs.iteritems():
+            if isinstance(attr, Field) and attr.name is None:
+                attr.name = name
+                fields.append(attr)
+
+        attrs['_fields'] = fields
+        attrs['_fields_dict'] = {p.name: p for p in fields}
+        return type.__new__(cls, cls_name, bases, attrs)
+
+
 class Field(object):
     create_attr_args = {}
     set_attr_args = {}
 
     def __init__(
         self,
-        name=None,
         **kwargs
     ):
-        self.name = name
+        self.name = None
 
         # copy the class attribute to the instance
         self.create_attr_args = self.create_attr_args.copy()

@@ -11,13 +11,9 @@ from icarus.core.fields import ObjectField
 
 class Rig(IcarusNode):
 
-    modules_group = ObjectField('modules_group')
-    extras_group = ObjectField('extras_group')
-    skeleton_group = ObjectField('skeleton_group')
-
-    # store the name of all the rig modules
-    # TODO: make this a @property that lists the children of modules_group
-    # rig_modules = ObjectField('rig_modules', multi=True)
+    modules_group = ObjectField()
+    extras_group = ObjectField()
+    skeleton_group = ObjectField()
 
     def __init__(self):
         super(Rig, self).__init__('RIG')

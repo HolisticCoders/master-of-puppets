@@ -7,7 +7,6 @@ from icarus.core.fields import IntField
 class Chain(RigModule):
 
     chain_length = IntField(
-        'chain_length',
         defaultValue=1,
         hasMinValue=True,
         minValue=1

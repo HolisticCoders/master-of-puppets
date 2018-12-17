@@ -5,11 +5,15 @@ import icarus.metadata
 
 class RigModule(IcarusNode):
 
+    name = StringField()
+    side = StringField()
+    module_type = StringField()
+
     # Joint of the rig skeleton under which the driving joints will be parented.
-    parent_joint = ObjectField('parent_joint')
+    parent_joint = ObjectField()
 
     # group holding all this module's driving joints
-    driving_group = ObjectField('driving_group')
+    driving_group = ObjectField()
 
     module_type = StringField('modupe_type')
 
