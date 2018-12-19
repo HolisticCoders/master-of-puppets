@@ -114,4 +114,4 @@ class Rig(IcarusNode):
 
     def build(self):
         for module in self.rig_modules:
-            module.build()
+            module._build()

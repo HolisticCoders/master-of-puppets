@@ -16,11 +16,11 @@ class RigModule(IcarusNode):
     # group holding all this module's controls
     controls_group = ObjectField()
 
+    # group holding all this module's driving joints
+    driving_group = ObjectField()
+
     # list of all of this module's deform joints
     deform_joints_list = JSONField()
-
-    # dict representing this module's deform joints hierarchy
-    deform_joints_dict = JSONField()
 
     def __init__(self, name, side='M', parent_joint=None, rig=None):
         if cmds.objExists(name):
@@ -30,7 +30,6 @@ class RigModule(IcarusNode):
         super(RigModule, self).__init__(self.node_name)
 
         self.rig = rig
-
         if not self.is_initialized.get():
             self.name.set(name)
             self.side.set(side)
@@ -39,21 +38,16 @@ class RigModule(IcarusNode):
             if parent_joint:
                 self.parent_joint.set(parent_joint)
 
-            controls_group_name = icarus.metadata.name_from_metadata(
-                name,
-                side,
-                'grp',
-                object_description='controls'
-            )
-            self.controls_group.set(cmds.createNode(
-                'transform',
-                name=controls_group_name,
-                parent=self.node_name
-            ))
-
-
             self.initialize()
             self.is_initialized.set(True)
+
+    @property
+    def driving_joints(self):
+        joints = cmds.listRelatives(self.driving_group.get(), type='joint', allDescendents=True)
+        if joints is None:
+            return []
+        else:
+            return list(reversed(joints)) # listRelative returns a reversed list.
 
     def initialize(self):
         """Creation of all the needed placement nodes.
@@ -71,6 +65,46 @@ class RigModule(IcarusNode):
         You need to overwrite this method in your subclasses.
         """
         raise NotImplementedError
+
+    def _build(self):
+        """Setup some stuff before actually building the module.
+
+        Call this method instead of `build()` to make sure
+        everything is setup properly
+        """
+        if self.is_built.get():
+            raise RuntimeError(
+                "Module {} is already built!".format(self.node_name)
+            )
+
+        controls_group_name = icarus.metadata.name_from_metadata(
+            self.name.get(),
+            self.side.get(),
+            'grp',
+            object_description='controls'
+        )
+        self.controls_group.set(cmds.createNode(
+            'transform',
+            name=controls_group_name,
+            parent=self.node_name
+        ))
+
+        driving_group_name = icarus.metadata.name_from_metadata(
+            self.name.get(),
+            self.side.get(),
+            'grp',
+            object_description='driving'
+        )
+        self.driving_group.set(cmds.createNode(
+            'transform',
+            name=driving_group_name,
+            parent=self.node_name
+        ))
+
+        self.create_driving_joints()
+        self.build()
+        self.is_built.set(True)
+
 
     def build(self):
         """Actual rigging of the module.
@@ -125,13 +159,34 @@ class RigModule(IcarusNode):
         self.deform_joints_list.set(
             deform_joints
         )
-
-        tree = {}
-        hierachy_parent = self.parent_joint.get()
-        if not hierachy_parent:
-            hierachy_parent = self.rig.skeleton_group.get()
-
-        for joint in cmds.listRelatives(hierachy_parent):
-            icarus.dag.hierarchy_to_dict(hierachy_parent, tree, deform_joints)
-        self.deform_joints_dict.set(tree)
         return new_joint
+
+    def create_driving_joints(self):
+        deform_joints = self.deform_joints_list.get()
+        for deform in deform_joints:
+            driving = cmds.createNode(
+                'joint',
+                name=deform.replace('deform', 'driving')
+            )
+            # Locking the JO to avoid having different values
+            # than on the deform joints when snapping/parenting
+            cmds.setAttr(driving + ".jointOrient", lock=True)
+
+            # Find out who the father is.
+            deform_parent = cmds.listRelatives(deform, parent=True)
+            if deform_parent:
+                deform_parent = deform_parent[0]
+            if (
+                deform_parent == self.parent_joint.get() or
+                deform_parent == self.rig.skeleton_group.get()
+            ):
+                parent = self.driving_group.get()
+            else:
+                # deform_parent should be one of the module's deform joints.
+                parent = deform_parent.replace('deform', 'driving')
+            # Reunite the family.
+            cmds.parent(driving, parent)
+
+            icarus.dag.snap_first_to_last(driving, deform)
+            icarus.dag.matrix_constraint(driving, deform)
+            cmds.setAttr(driving + ".jointOrient", lock=False)
