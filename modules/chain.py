@@ -62,11 +62,15 @@ class Chain(RigModule):
         if diff > 0:
             for index in range(diff):
                 new_joint = self._add_deform_joint()
+                deform_joints.append(new_joint)
                 cmds.setAttr(new_joint + '.translateX', 5)
         elif diff < 0:
             joints = deform_joints
             joints_to_delete = joints[diff:]
             joints_to_keep = joints[:len(joints) + diff]
+            deform_joints = joints_to_keep
+            cmds.delete(joints_to_delete)
+        self.deform_joints_list.set(deform_joints)
 
             cmds.delete(joints_to_delete)
 
