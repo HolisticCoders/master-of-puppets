@@ -166,6 +166,8 @@ class JSONField(StringField):
         return json.dumps(value)
 
     def cast_from_attr(self, value):
+        if value is None:
+            return None
         return json.loads(value)
 
 
