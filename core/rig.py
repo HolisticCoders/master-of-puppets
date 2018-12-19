@@ -28,7 +28,7 @@ class Rig(IcarusNode):
         modules = []
         for node in cmds.listRelatives(self.modules_group.get()) or []:
             module_type = cmds.getAttr(node + '.module_type')
-            module = all_rig_modules[module_type](node)
+            module = all_rig_modules[module_type](node, rig=self)
             modules.append(module)
 
         return modules
