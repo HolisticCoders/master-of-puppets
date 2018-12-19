@@ -79,3 +79,16 @@ def add_parent_group(dag_node, suffix='grp'):
 
     cmds.parent(dag_node, grp)
     return grp
+
+def snap_first_to_last(source, target):
+    targ_mat = cmds.xform(
+        target,
+        query=True,
+        matrix=True,
+        worldSpace=True
+    )
+    cmds.xform(
+        source,
+        matrix=targ_mat,
+        worldSpace=True
+    )
