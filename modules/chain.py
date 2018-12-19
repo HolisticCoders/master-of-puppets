@@ -16,7 +16,7 @@ class Chain(RigModule):
     def initialize(self,*args, **kwargs):
         joints = []
         for i in range(self.chain_length.get()):
-            self._add_driving_joint()
+            self._add_deform_joint()
 
     def update(self):
         self._update_chain_length()
@@ -44,22 +44,27 @@ class Chain(RigModule):
     def publish(self):
         pass
 
-    def _add_driving_joint(self):
-        """Add a new driving joint, child of the last one.
+    def _add_deform_joint(self):
+        """Add a new deform joint, child of the last one.
         """
         parent = None
-        if self.driving_joints:
-            parent = self.driving_joints[-1]
-        return super(Chain, self)._add_driving_joint(parent=parent)
+        deform_joints = self.deform_joints_list.get()
+        if deform_joints:
+            parent = deform_joints[-1]
+        return super(Chain, self)._add_deform_joint(parent=parent)
 
     def _update_chain_length(self):
-        diff = self.chain_length.get() - len(self.driving_joints)
+        deform_joints = self.deform_joints_list.get()
+        if deform_joints is None:
+             deform_joints = []
+
+        diff = self.chain_length.get() - len(deform_joints)
         if diff > 0:
             for index in range(diff):
-                new_joint = self._add_driving_joint()
+                new_joint = self._add_deform_joint()
                 cmds.setAttr(new_joint + '.translateX', 5)
         elif diff < 0:
-            joints = self.driving_joints
+            joints = deform_joints
             joints_to_delete = joints[diff:]
             joints_to_keep = joints[:len(joints) + diff]
 
