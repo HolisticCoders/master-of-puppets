@@ -26,16 +26,9 @@ class Chain(RigModule):
         for joint in self.driving_joints:
             ctl = cmds.circle(name=joint + '_ctl')[0]
 
-            joint_mat = cmds.xform(
-                joint,
-                query=True,
-                matrix=True,
-                worldSpace=True
-            )
-
-            cmds.xform(ctl, matrix=joint_mat, worldSpace=True)
-
+            icarus.dag.snap_first_to_last(ctl, joint)
             cmds.parent(ctl, parent)
+
             parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
             icarus.dag.matrix_constraint(ctl, joint)
 
