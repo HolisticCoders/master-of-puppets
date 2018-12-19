@@ -65,6 +65,5 @@ class Chain(RigModule):
             cmds.delete(joints_to_delete)
         self.deform_joints_list.set(deform_joints)
 
-            cmds.delete(joints_to_delete)
 
 exported_rig_modules = [Chain]
