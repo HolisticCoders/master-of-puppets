@@ -1,0 +1,172 @@
+import maya.cmds as cmds
+
+from icarus.core.module import RigModule
+from icarus.core.fields import IntField, JSONField, ObjectField
+import icarus.dag
+import icarus.metadata
+
+
+class Arm(RigModule):
+
+    chain_length = IntField(
+        defaultValue=3,
+        hasMinValue=True,
+        hasMaxValue=True,
+        minValue=3,
+        maxValue=3,
+    )
+
+    # list containing the FK joints in the same order as the hierarchy
+    fk_chain = JSONField()
+
+    # list containing the IK joints in the same order as the hierarchy
+    ik_chain = JSONField()
+
+    # settings control of the arm.
+    settings_ctl = ObjectField()
+
+    def initialize(self, *args, **kwargs):
+        for i in range(self.chain_length.get()):
+            self._add_deform_joint()
+
+    def _add_deform_joint(self):
+        """Add a new deform joint, child of the last one.
+        """
+        parent = None
+        deform_joints = self.deform_joints_list.get()
+        if deform_joints:
+            parent = deform_joints[-1]
+        return super(Arm, self)._add_deform_joint(parent=parent)
+
+    def build(self):
+        self._create_ik_fk_chains()
+        self._create_settings_control()
+        self._setup_ik_fk_blend()
+
+    def _create_ik_fk_chains(self):
+        driving_chain = self.driving_joints
+
+        # create the fk chain
+        fk_chain = cmds.duplicate(
+            driving_chain[0],
+            renameChildren=True,
+        )
+        for i, fk in enumerate(fk_chain):
+            fk_chain[i] = cmds.rename(
+                fk,
+                fk.replace('driving1', 'fk')
+            )
+        cmds.parent(fk_chain[0], self.extras_group.get())
+        self.fk_chain.set(fk_chain)
+
+        # create the fk chain
+        ik_chain = cmds.duplicate(
+            driving_chain[0],
+            renameChildren=True,
+        )
+        for i, ik in enumerate(ik_chain):
+            ik_chain[i] = cmds.rename(
+                ik,
+                ik.replace('driving1', 'ik')
+            )
+        cmds.parent(ik_chain[0], self.extras_group.get())
+        self.ik_chain.set(ik_chain)
+
+    def _create_settings_control(self):
+        ctl = cmds.circle()[0]
+        ctl = cmds.rename(ctl, icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='ctl',
+            object_description='settings'
+        ))
+        icarus.dag.snap_first_to_last(
+            ctl,
+            self.driving_joints[-1]
+        )
+        self.settings_ctl.set(ctl)
+        buffer_grp = icarus.dag.add_parent_group(ctl, 'buffer')
+        cmds.parent(buffer_grp, self.controls_group.get())
+
+        for attr in ['translate', 'rotate', 'scale']:
+            for axis in 'XYZ':
+                attrName = ctl + '.' + attr + axis
+                cmds.setAttr(
+                    attrName,
+                    lock=True,
+                    keyable=False,
+                    channelBox=False
+                )
+        cmds.setAttr(
+            ctl + '.visibility',
+            lock=True,
+            keyable=False,
+            channelBox=False
+        )
+
+        cmds.addAttr(
+            ctl,
+            longName="IK_FK_Switch",
+            niceName="IK/FK",
+            attributeType="enum",
+            enumName="IK:FK:"
+        )
+        cmds.setAttr(ctl + ".IK_FK_Switch", keyable=True)
+
+    def _setup_ik_fk_blend(self):
+        """Create the necessary nodes to blend between the ik and fk chains
+        """
+        driving_chain = self.driving_joints
+        fk_chain = self.fk_chain.get()
+        ik_chain = self.ik_chain.get()
+
+        for i in xrange(len(driving_chain)):
+            driving = driving_chain[i]
+            fk = fk_chain[i]
+            ik = ik_chain[i]
+            settings_ctl = self.settings_ctl.get()
+            wt_add_mat = cmds.createNode('wtAddMatrix')
+            mult_mat = cmds.createNode('multMatrix')
+            decompose_mat = cmds.createNode('decomposeMatrix')
+            reverse_switch = cmds.createNode('reverse')
+            cmds.connectAttr(
+                fk + ".worldMatrix[0]",
+                wt_add_mat + ".wtMatrix[0].matrixIn"
+            )
+            cmds.connectAttr(
+                ik + ".worldMatrix[0]",
+                wt_add_mat + ".wtMatrix[1].matrixIn"
+            )
+            cmds.connectAttr(
+                settings_ctl + ".IK_FK_Switch",
+                wt_add_mat + ".wtMatrix[0].weightIn"
+            )
+            cmds.connectAttr(
+                settings_ctl + ".IK_FK_Switch",
+                reverse_switch + ".inputX"
+            )
+            cmds.connectAttr(
+                reverse_switch + ".outputX",
+                wt_add_mat + ".wtMatrix[1].weightIn"
+            )
+            cmds.connectAttr(
+                wt_add_mat + ".matrixSum",
+                mult_mat + '.matrixIn[0]',
+            )
+            cmds.connectAttr(
+                driving + '.parentInverseMatrix[0]',
+                mult_mat + '.matrixIn[1]',
+            )
+            cmds.connectAttr(
+                mult_mat + ".matrixSum",
+                decompose_mat + ".inputMatrix"
+            )
+            for attr in ['translate', 'rotate', 'scale']:
+                cmds.connectAttr(
+                    decompose_mat + '.output' + attr.title(),
+                    driving + '.' + attr,
+                )
+
+
+exported_rig_modules = [Arm]
+
