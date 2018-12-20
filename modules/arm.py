@@ -28,6 +28,12 @@ class Arm(RigModule):
     # list containing the IK controls.
     ik_controls = JSONField()
 
+    # group containing all the FK controls
+    fk_controls_group = ObjectField()
+
+    # group containing all the IK controls
+    ik_controls_group = ObjectField()
+
     # settings control of the arm.
     settings_ctl = ObjectField()
 
@@ -96,6 +102,7 @@ class Arm(RigModule):
         )
         self.settings_ctl.set(ctl)
         buffer_grp = icarus.dag.add_parent_group(ctl, 'buffer')
+        cmds.setAttr(buffer_grp + '.translateZ', 1)
         cmds.parent(buffer_grp, self.controls_group.get())
 
         for attr in ['translate', 'rotate', 'scale']:
@@ -170,25 +177,71 @@ class Arm(RigModule):
                 mult_mat + ".matrixSum",
                 decompose_mat + ".inputMatrix"
             )
-            for attr in ['translate', 'rotate', 'scale']:
-                cmds.connectAttr(
-                    decompose_mat + '.output' + attr.title(),
-                    driving + '.' + attr,
-                )
+
+            # substract the driven's joint orient from the rotation
+            euler_to_quat = cmds.createNode('eulerToQuat')
+            quat_invert = cmds.createNode('quatInvert')
+            quat_prod = cmds.createNode('quatProd')
+            quat_to_euler = cmds.createNode('quatToEuler')
+
+            cmds.connectAttr(
+                driving + '.jointOrient',
+                euler_to_quat + '.inputRotate',
+            )
+            cmds.connectAttr(
+                euler_to_quat + '.outputQuat',
+                quat_invert + '.inputQuat',
+            )
+            cmds.connectAttr(
+                decompose_mat + '.outputQuat',
+                quat_prod + '.input1Quat',
+            )
+            cmds.connectAttr(
+                quat_invert + '.outputQuat',
+                quat_prod + '.input2Quat',
+            )
+            cmds.connectAttr(
+                quat_prod + '.outputQuat',
+                quat_to_euler + '.inputQuat',
+            )
+
+            # connect the graph to the driving joint's transform attributes
+            cmds.connectAttr(
+                decompose_mat + '.outputTranslate',
+                driving + '.translate'
+            )
+            cmds.connectAttr(
+                quat_to_euler + '.outputRotate',
+                driving + '.rotate',
+            )
+            cmds.connectAttr(
+                decompose_mat + '.outputScale',
+                driving + '.scale'
+            )
 
     def _setup_fk(self):
         fk_controls = self.fk_controls.get()
+        fk_controls_group_name = icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='grp',
+            object_description='FK_controls',
+        )
+        self.fk_controls_group.set(
+             cmds.createNode('transform', name=fk_controls_group_name)
+        )
+        cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
         if fk_controls is None:
             fk_controls = []
-        parent = self.controls_group.get()
+        parent = self.fk_controls_group.get()
         for i, fk in enumerate(self.fk_chain.get()):
             ctl = cmds.circle()[0]
             ctl = cmds.rename(ctl, icarus.metadata.name_from_metadata(
                 object_base_name=self.name.get(),
                 object_side=self.side.get(),
                 object_type='ctl',
+                object_description='FK',
                 object_id=i,
-
             ))
             icarus.dag.snap_first_to_last(ctl, fk)
             parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
@@ -198,6 +251,16 @@ class Arm(RigModule):
 
     def _setup_ik(self):
         ik_chain = self.ik_chain.get()
+        ik_controls_group_name = icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='grp',
+            object_description='IK_controls',
+        )
+        self.ik_controls_group.set(
+             cmds.createNode('transform', name=ik_controls_group_name)
+        )
+        cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
 
         wrist_ctl = cmds.circle()[0]
         wrist_ctl = cmds.rename(wrist_ctl, icarus.metadata.name_from_metadata(
@@ -209,7 +272,7 @@ class Arm(RigModule):
         icarus.dag.snap_first_to_last(wrist_ctl, ik_chain[-1])
         cmds.setAttr(wrist_ctl + '.rotate', 0, 0, 0)
         parent_group = icarus.dag.add_parent_group(wrist_ctl, 'buffer')
-        cmds.parent(parent_group, self.controls_group.get())
+        cmds.parent(parent_group, self.ik_controls_group.get())
 
         shoulder_ctl = cmds.circle()[0]
         shoulder_ctl = cmds.rename(shoulder_ctl, icarus.metadata.name_from_metadata(
@@ -218,10 +281,10 @@ class Arm(RigModule):
             object_type='ctl',
             object_description='IK_shoulder'
         ))
-        icarus.dag.snap_first_to_last(shoulder_ctl, ik_chain[-1])
+        icarus.dag.snap_first_to_last(shoulder_ctl, ik_chain[0])
         cmds.setAttr(shoulder_ctl + '.rotate', 0, 0, 0)
         parent_group = icarus.dag.add_parent_group(shoulder_ctl, 'buffer')
-        cmds.parent(parent_group, self.controls_group.get())
+        cmds.parent(parent_group, self.ik_controls_group.get())
 
         pole_vector_ctl = cmds.circle()[0]
         pole_vector_ctl = cmds.rename(pole_vector_ctl, icarus.metadata.name_from_metadata(
@@ -234,14 +297,14 @@ class Arm(RigModule):
         cmds.setAttr(pole_vector_ctl + '.rotate', 0, 0, 0)
         cmds.setAttr(pole_vector_ctl + '.translateZ', -5)
         parent_group = icarus.dag.add_parent_group(pole_vector_ctl, 'buffer')
-        cmds.parent(parent_group, self.controls_group.get())
+        cmds.parent(parent_group, self.ik_controls_group.get())
 
-        # ik_handle, effector = cmds.ikHandle(
-        #     startJoint=ik_chain[0],
-        #     endEffector=ik_chain[-1]
-        # )
-        # cmds.poleVectorConstraint(pole_vector_ctl, ik_handle)
-        # cmds.parent(ik_handle, wrist_ctl)
+        ik_handle, effector = cmds.ikHandle(
+            startJoint=ik_chain[0],
+            endEffector=ik_chain[-1]
+        )
+        cmds.poleVectorConstraint(pole_vector_ctl, ik_handle)
+        cmds.parent(ik_handle, wrist_ctl)
 
 
 exported_rig_modules = [Arm]
