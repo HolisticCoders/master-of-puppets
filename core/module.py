@@ -50,7 +50,8 @@ class RigModule(IcarusNode):
         if joints is None:
             return []
         else:
-            return list(reversed(joints)) # listRelative returns a reversed list.
+            # listRelative returns a reversed list (children first)
+            return list(reversed(joints))
 
     def initialize(self):
         """Creation of all the needed placement nodes.

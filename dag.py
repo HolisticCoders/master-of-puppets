@@ -63,6 +63,7 @@ def matrix_constraint(driver, driven, maintain_offset=False, translate=True, rot
     if scale:
         cmds.connectAttr(decompose_mat + ".outputScale", driven + ".scale")
 
+
 def add_parent_group(dag_node, suffix='grp'):
     dag_node_mat = cmds.xform(
         dag_node,
@@ -79,6 +80,7 @@ def add_parent_group(dag_node, suffix='grp'):
 
     cmds.parent(dag_node, grp)
     return grp
+
 
 def snap_first_to_last(source, target):
     targ_mat = cmds.xform(

@@ -42,6 +42,7 @@ def metadata_from_name(name):
             data['description'] = '_'.join(split_name)
         else:
             if split_name:
-                # since we removed the id, the description is the last component.
+                # since we removed the id,
+                # the description is the last component.
                 data['description'] = '_'.join(split_name)
     return data
