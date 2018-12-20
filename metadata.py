@@ -1,5 +1,5 @@
 def name_from_metadata(
-    owner_base_name,
+    object_base_name,
     object_side,
     object_type,
     object_id=None,
@@ -10,7 +10,7 @@ def name_from_metadata(
     This function should be used EVERYTIME a node is named.
     """
     name_components = [
-        owner_base_name,
+        object_base_name,
         object_side,
         object_type,
     ]
@@ -28,7 +28,7 @@ def metadata_from_name(name):
     split_name = name.split('_')
 
     # every name should at least contain these 3 components.
-    data['owner'] = split_name.pop(0)
+    data['base_name'] = split_name.pop(0)
     data['side'] = split_name.pop(0)
     data['type'] = split_name.pop(-1)
 
@@ -46,3 +46,4 @@ def metadata_from_name(name):
                 # the description is the last component.
                 data['description'] = '_'.join(split_name)
     return data
+
