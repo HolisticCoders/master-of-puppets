@@ -31,6 +31,9 @@ class Arm(RigModule):
     # settings control of the arm.
     settings_ctl = ObjectField()
 
+    ik_handle = ObjectField()
+    effector = ObjectField()
+
     def initialize(self, *args, **kwargs):
         for i in range(self.chain_length.get()):
             self._add_deform_joint()
@@ -46,8 +49,9 @@ class Arm(RigModule):
     def build(self):
         self._create_ik_fk_chains()
         self._create_settings_control()
-        self._setup_ik_fk_blend()
+        self._setup_ik_fk_switch()
         self._setup_fk()
+        self._setup_ik()
 
     def _create_ik_fk_chains(self):
         driving_chain = self.driving_joints
@@ -119,8 +123,8 @@ class Arm(RigModule):
         )
         cmds.setAttr(ctl + ".IK_FK_Switch", keyable=True)
 
-    def _setup_ik_fk_blend(self):
-        """Create the necessary nodes to blend between the ik and fk chains """
+    def _setup_ik_fk_switch(self):
+        """Create the necessary nodes to switch between the ik and fk chains """
         driving_chain = self.driving_joints
         fk_chain = self.fk_chain.get()
         ik_chain = self.ik_chain.get()
@@ -191,6 +195,53 @@ class Arm(RigModule):
             cmds.parent(parent_group, parent)
             icarus.dag.matrix_constraint(ctl, fk)
             parent = ctl
+
+    def _setup_ik(self):
+        ik_chain = self.ik_chain.get()
+
+        wrist_ctl = cmds.circle()[0]
+        wrist_ctl = cmds.rename(wrist_ctl, icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='ctl',
+            object_description='IK_wrist'
+        ))
+        icarus.dag.snap_first_to_last(wrist_ctl, ik_chain[-1])
+        cmds.setAttr(wrist_ctl + '.rotate', 0, 0, 0)
+        parent_group = icarus.dag.add_parent_group(wrist_ctl, 'buffer')
+        cmds.parent(parent_group, self.controls_group.get())
+
+        shoulder_ctl = cmds.circle()[0]
+        shoulder_ctl = cmds.rename(shoulder_ctl, icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='ctl',
+            object_description='IK_shoulder'
+        ))
+        icarus.dag.snap_first_to_last(shoulder_ctl, ik_chain[-1])
+        cmds.setAttr(shoulder_ctl + '.rotate', 0, 0, 0)
+        parent_group = icarus.dag.add_parent_group(shoulder_ctl, 'buffer')
+        cmds.parent(parent_group, self.controls_group.get())
+
+        pole_vector_ctl = cmds.circle()[0]
+        pole_vector_ctl = cmds.rename(pole_vector_ctl, icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='ctl',
+            object_description='IK_pole_vector'
+        ))
+        icarus.dag.snap_first_to_last(pole_vector_ctl, ik_chain[1])
+        cmds.setAttr(pole_vector_ctl + '.rotate', 0, 0, 0)
+        cmds.setAttr(pole_vector_ctl + '.translateZ', -5)
+        parent_group = icarus.dag.add_parent_group(pole_vector_ctl, 'buffer')
+        cmds.parent(parent_group, self.controls_group.get())
+
+        # ik_handle, effector = cmds.ikHandle(
+        #     startJoint=ik_chain[0],
+        #     endEffector=ik_chain[-1]
+        # )
+        # cmds.poleVectorConstraint(pole_vector_ctl, ik_handle)
+        # cmds.parent(ik_handle, wrist_ctl)
 
 
 exported_rig_modules = [Arm]
