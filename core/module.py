@@ -184,9 +184,6 @@ class RigModule(IcarusNode):
                 'joint',
                 name=deform.replace('deform', 'driving')
             )
-            # Locking the JO to avoid having different values
-            # than on the deform joints when snapping/parenting
-            cmds.setAttr(driving + ".jointOrient", lock=True)
 
             # Find out who the father is.
             deform_parent = cmds.listRelatives(deform, parent=True)
@@ -203,6 +200,15 @@ class RigModule(IcarusNode):
             # Reunite the family.
             cmds.parent(driving, parent)
 
-            icarus.dag.snap_first_to_last(driving, deform)
+            # icarus.dag.snap_first_to_last(driving, deform)
+            deform_pos = cmds.xform(
+                deform,
+                query=True,
+                translation=True,
+                worldSpace=True
+            )
+            deform_orient = cmds.joint(deform, query=True, orientation=True)
+            cmds.xform(driving, translation=deform_pos, worldSpace=True)
+            cmds.joint(driving, edit=True, orientation=deform_orient)
             icarus.dag.matrix_constraint(driving, deform)
-            cmds.setAttr(driving + ".jointOrient", lock=False)
+
