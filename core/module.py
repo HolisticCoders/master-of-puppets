@@ -19,6 +19,9 @@ class RigModule(IcarusNode):
     # group holding all this module's driving joints
     driving_group = ObjectField()
 
+    # group holding all this module's driving joints
+    extras_group = ObjectField()
+
     # list of all of this module's deform joints
     deform_joints_list = JSONField()
 
@@ -98,6 +101,18 @@ class RigModule(IcarusNode):
         self.driving_group.set(cmds.createNode(
             'transform',
             name=driving_group_name,
+            parent=self.node_name
+        ))
+
+        extras_group_name = icarus.metadata.name_from_metadata(
+            self.name.get(),
+            self.side.get(),
+            'grp',
+            object_description='extras'
+        )
+        self.extras_group.set(cmds.createNode(
+            'transform',
+            name=extras_group_name,
             parent=self.node_name
         ))
 
