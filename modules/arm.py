@@ -22,6 +22,12 @@ class Arm(RigModule):
     # list containing the IK joints in the same order as the hierarchy
     ik_chain = JSONField()
 
+    # list containing the FK controls in the same order as the hierarchy.
+    fk_controls = JSONField()
+
+    # list containing the IK controls.
+    ik_controls = JSONField()
+
     # settings control of the arm.
     settings_ctl = ObjectField()
 
@@ -30,8 +36,7 @@ class Arm(RigModule):
             self._add_deform_joint()
 
     def _add_deform_joint(self):
-        """Add a new deform joint, child of the last one.
-        """
+        """Add a new deform joint, child of the last one."""
         parent = None
         deform_joints = self.deform_joints_list.get()
         if deform_joints:
@@ -42,6 +47,7 @@ class Arm(RigModule):
         self._create_ik_fk_chains()
         self._create_settings_control()
         self._setup_ik_fk_blend()
+        self._setup_fk()
 
     def _create_ik_fk_chains(self):
         driving_chain = self.driving_joints
@@ -114,8 +120,7 @@ class Arm(RigModule):
         cmds.setAttr(ctl + ".IK_FK_Switch", keyable=True)
 
     def _setup_ik_fk_blend(self):
-        """Create the necessary nodes to blend between the ik and fk chains
-        """
+        """Create the necessary nodes to blend between the ik and fk chains """
         driving_chain = self.driving_joints
         fk_chain = self.fk_chain.get()
         ik_chain = self.ik_chain.get()
@@ -166,6 +171,26 @@ class Arm(RigModule):
                     decompose_mat + '.output' + attr.title(),
                     driving + '.' + attr,
                 )
+
+    def _setup_fk(self):
+        fk_controls = self.fk_controls.get()
+        if fk_controls is None:
+            fk_controls = []
+        parent = self.controls_group.get()
+        for i, fk in enumerate(self.fk_chain.get()):
+            ctl = cmds.circle()[0]
+            ctl = cmds.rename(ctl, icarus.metadata.name_from_metadata(
+                object_base_name=self.name.get(),
+                object_side=self.side.get(),
+                object_type='ctl',
+                object_id=i,
+
+            ))
+            icarus.dag.snap_first_to_last(ctl, fk)
+            parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
+            cmds.parent(parent_group, parent)
+            icarus.dag.matrix_constraint(ctl, fk)
+            parent = ctl
 
 
 exported_rig_modules = [Arm]
