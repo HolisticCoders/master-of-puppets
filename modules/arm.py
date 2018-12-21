@@ -55,9 +55,9 @@ class Arm(RigModule):
     def build(self):
         self._create_ik_fk_chains()
         self._create_settings_control()
-        self._setup_ik_fk_switch()
         self._setup_fk()
         self._setup_ik()
+        self._setup_ik_fk_switch()
 
     def _create_ik_fk_chains(self):
         driving_chain = self.driving_joints
@@ -102,8 +102,8 @@ class Arm(RigModule):
         )
         self.settings_ctl.set(ctl)
         buffer_grp = icarus.dag.add_parent_group(ctl, 'buffer')
-        cmds.setAttr(buffer_grp + '.translateZ', 1)
         cmds.parent(buffer_grp, self.controls_group.get())
+        icarus.dag.matrix_constraint(self.driving_joints[-1], buffer_grp)
 
         for attr in ['translate', 'rotate', 'scale']:
             for axis in 'XYZ':
@@ -135,16 +135,30 @@ class Arm(RigModule):
         driving_chain = self.driving_joints
         fk_chain = self.fk_chain.get()
         ik_chain = self.ik_chain.get()
+        settings_ctl = self.settings_ctl.get()
+
+        # Show the IK or FK controls based on the settings
+        cmds.connectAttr(
+            settings_ctl + '.IK_FK_Switch',
+            self.fk_controls_group.get() + '.visibility'
+        )
+        reverse_switch = cmds.createNode('reverse')
+        cmds.connectAttr(
+            settings_ctl + ".IK_FK_Switch",
+            reverse_switch + ".inputX"
+        )
+        cmds.connectAttr(
+            reverse_switch + '.outputX',
+            self.ik_controls_group.get() + '.visibility'
+        )
 
         for i in xrange(len(driving_chain)):
             driving = driving_chain[i]
             fk = fk_chain[i]
             ik = ik_chain[i]
-            settings_ctl = self.settings_ctl.get()
             wt_add_mat = cmds.createNode('wtAddMatrix')
             mult_mat = cmds.createNode('multMatrix')
             decompose_mat = cmds.createNode('decomposeMatrix')
-            reverse_switch = cmds.createNode('reverse')
             cmds.connectAttr(
                 fk + ".worldMatrix[0]",
                 wt_add_mat + ".wtMatrix[0].matrixIn"
@@ -156,10 +170,6 @@ class Arm(RigModule):
             cmds.connectAttr(
                 settings_ctl + ".IK_FK_Switch",
                 wt_add_mat + ".wtMatrix[0].weightIn"
-            )
-            cmds.connectAttr(
-                settings_ctl + ".IK_FK_Switch",
-                reverse_switch + ".inputX"
             )
             cmds.connectAttr(
                 reverse_switch + ".outputX",
