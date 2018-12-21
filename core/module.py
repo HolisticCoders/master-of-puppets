@@ -4,6 +4,7 @@ from icarus.core.fields import ObjectField, StringField, JSONField
 import icarus.metadata
 import icarus.dag
 
+
 class RigModule(IcarusNode):
 
     name = StringField()
@@ -121,7 +122,6 @@ class RigModule(IcarusNode):
         self.build()
         self.is_built.set(True)
 
-
     def build(self):
         """Actual rigging of the module.
 
@@ -179,12 +179,19 @@ class RigModule(IcarusNode):
 
     def create_driving_joints(self):
         deform_joints = self.deform_joints_list.get()
-        for deform in deform_joints:
-            driving = cmds.createNode(
-                'joint',
-                name=deform.replace('deform', 'driving')
-            )
+        duplicate = cmds.duplicate(
+            deform_joints,
+            parentOnly=True,
+            renameChildren=True
+        )
+        driving_joints = []
+        for j in duplicate:
+            driving_joints.append(cmds.rename(
+                j,
+                j.replace('deform1', 'driving')
+            ))
 
+        for deform, driving in zip(deform_joints, driving_joints):
             # Find out who the father is.
             deform_parent = cmds.listRelatives(deform, parent=True)
             if deform_parent:
@@ -198,17 +205,8 @@ class RigModule(IcarusNode):
                 # deform_parent should be one of the module's deform joints.
                 parent = deform_parent.replace('deform', 'driving')
             # Reunite the family.
-            cmds.parent(driving, parent)
+            if parent != cmds.listRelatives(driving, parent=True)[0]:
+                cmds.parent(driving, parent)
 
-            # icarus.dag.snap_first_to_last(driving, deform)
-            deform_pos = cmds.xform(
-                deform,
-                query=True,
-                translation=True,
-                worldSpace=True
-            )
-            deform_orient = cmds.joint(deform, query=True, orientation=True)
-            cmds.xform(driving, translation=deform_pos, worldSpace=True)
-            cmds.joint(driving, edit=True, orientation=deform_orient)
             icarus.dag.matrix_constraint(driving, deform)
 
