@@ -41,6 +41,7 @@ class RigModule(IcarusNode):
 
             if parent_joint:
                 self.parent_joint.set(parent_joint)
+                icarus.dag.matrix_constraint(parent_joint, self.node_name)
 
             self.initialize()
             self.is_initialized.set(True)
