@@ -41,16 +41,23 @@ class Arm(RigModule):
     effector = ObjectField()
 
     def initialize(self, *args, **kwargs):
-        for i in range(self.chain_length.get()):
-            self._add_deform_joint()
+        name_list = ['shoulder', 'elbow', 'wrist']
+        for name in name_list:
+            joint_name = icarus.metadata.name_from_metadata(
+                    object_base_name = self.name.get(),
+                    object_side = self.side.get(),
+                    object_type = 'deform',
+                    object_description = name
+            )
+            self._add_deform_joint(name=joint_name)
 
-    def _add_deform_joint(self):
+    def _add_deform_joint(self, name):
         """Add a new deform joint, child of the last one."""
         parent = None
         deform_joints = self.deform_joints_list.get()
         if deform_joints:
             parent = deform_joints[-1]
-        return super(Arm, self)._add_deform_joint(parent=parent)
+        return super(Arm, self)._add_deform_joint(parent=parent, name=name)
 
     def build(self):
         self._create_ik_fk_chains()
@@ -244,14 +251,14 @@ class Arm(RigModule):
         if fk_controls is None:
             fk_controls = []
         parent = self.fk_controls_group.get()
+        names = ['shoulder', 'elbow', 'wrist']
         for i, fk in enumerate(self.fk_chain.get()):
             ctl = cmds.circle()[0]
             ctl = cmds.rename(ctl, icarus.metadata.name_from_metadata(
                 object_base_name=self.name.get(),
                 object_side=self.side.get(),
                 object_type='ctl',
-                object_description='FK',
-                object_id=i,
+                object_description='FK_' + names[i],
             ))
             icarus.dag.snap_first_to_last(ctl, fk)
             parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
