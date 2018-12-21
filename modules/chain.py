@@ -13,7 +13,7 @@ class Chain(RigModule):
         minValue=1
     )
 
-    def initialize(self,*args, **kwargs):
+    def initialize(self, *args, **kwargs):
         joints = []
         for i in range(self.chain_length.get()):
             self._add_deform_joint()
@@ -49,7 +49,7 @@ class Chain(RigModule):
     def _update_chain_length(self):
         deform_joints = self.deform_joints_list.get()
         if deform_joints is None:
-             deform_joints = []
+            deform_joints = []
 
         diff = self.chain_length.get() - len(deform_joints)
         if diff > 0:
