@@ -106,6 +106,7 @@ class RigModule(IcarusNode):
             name=driving_group_name,
             parent=self.node_name
         ))
+        cmds.setAttr(self.driving_group.get() + '.visibility', False)
 
         extras_group_name = icarus.metadata.name_from_metadata(
             self.name.get(),
@@ -118,6 +119,7 @@ class RigModule(IcarusNode):
             name=extras_group_name,
             parent=self.node_name
         ))
+        cmds.setAttr(self.extras_group.get() + '.visibility', False)
 
         self.create_driving_joints()
         self.build()
