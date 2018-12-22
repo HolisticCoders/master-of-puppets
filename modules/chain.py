@@ -10,7 +10,9 @@ class Chain(RigModule):
     chain_length = IntField(
         defaultValue=1,
         hasMinValue=True,
-        minValue=1
+        minValue=1,
+        displayable=True,
+        editable=True,
     )
 
     def initialize(self,*args, **kwargs):

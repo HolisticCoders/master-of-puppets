@@ -4,10 +4,17 @@ from icarus.core.fields import ObjectField, StringField, JSONField
 import icarus.metadata
 import icarus.dag
 
+
 class RigModule(IcarusNode):
 
-    name = StringField()
-    side = StringField()
+    name = StringField(
+        displayable=True,
+        editable=True,
+    )
+    side = StringField(
+        displayable=True,
+        editable=True,
+    )
     module_type = StringField()
 
     # Joint of the rig skeleton under which the deform joints will be parented.

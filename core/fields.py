@@ -73,13 +73,19 @@ class FieldContainerMeta(type):
     def __new__(cls, cls_name, bases, attrs):
         fields = []
 
+        for base in bases:
+            base_fields = getattr(base, 'fields', [])
+            fields += base_fields
+
         for name, attr in attrs.iteritems():
             if isinstance(attr, Field) and attr.name is None:
                 attr.name = name
+                if attr.display_name is None:
+                    attr.display_name = name
                 fields.append(attr)
 
-        attrs['_fields'] = fields
-        attrs['_fields_dict'] = {p.name: p for p in fields}
+        attrs['fields'] = fields
+        attrs['fields_dict'] = {p.name: p for p in fields}
         return type.__new__(cls, cls_name, bases, attrs)
 
 
@@ -92,6 +98,9 @@ class Field(object):
         **kwargs
     ):
         self.name = None
+        self.displayable = kwargs.get('displayable', False)
+        self.editable = kwargs.get('editable', False)
+        self.display_name = kwargs.get('display_name', None)
 
         # copy the class attribute to the instance
         self.create_attr_args = self.create_attr_args.copy()
