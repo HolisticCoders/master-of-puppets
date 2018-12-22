@@ -64,8 +64,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         form = QtWidgets.QFormLayout()
         layout.addLayout(form)
 
-
-        module = Chain('pelvis_M_mod')
+        module = Chain('chain_M_mod')
 
         for field in module.fields:
             if not field.displayable:
