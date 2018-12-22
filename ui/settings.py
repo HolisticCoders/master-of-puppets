@@ -4,24 +4,54 @@ from icarus.vendor.Qt import QtWidgets
 from icarus.modules.chain import Chain
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
+
+class ISpinBox(QtWidgets.QSpinBox):
+    def __init__(self, field, *args, **kwargs):
+        super(ISpinBox, self).__init__(*args, **kwargs)
+        self.field = field
+        minValue = field.min_value
+        maxValue = field.max_value
+        if minValue is not None:
+            self.setMinimum(minValue)
+        else:
+            self.setMinimum(-1000000)
+        if maxValue is not None:
+            self.setMaximum(maxValue)
+        else:
+            self.setMaximum(1000000)
+
+
+class ILineEdit(QtWidgets.QLineEdit):
+    def __init__(self, field, *args, **kwargs):
+        super(ILineEdit, self).__init__(*args, **kwargs)
+        self.field = field
+
+
+class ICheckBox(QtWidgets.QCheckBox):
+    def __init__(self, field, *args, **kwargs):
+        super(ICheckBox, self).__init__(*args, **kwargs)
+        self.field = field
+
+
 map_field_to_widget = {
     'BoolField': {
-        'widget': QtWidgets.QCheckBox,
+        'widget': ICheckBox,
         'setter': 'setChecked',
         'getter': 'isChecked',
     },
     'IntField': {
-        'widget': QtWidgets.QSpinBox,
+        'widget': ISpinBox,
         'setter': 'setValue',
         'getter': 'value',
         'signal': 'valueChanged',
     },
     'StringField': {
-        'widget': QtWidgets.QLineEdit,
+        'widget': ILineEdit,
         'setter': 'setText',
         'getter': 'text'
     },
 }
+
 
 class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
@@ -47,7 +77,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 map_field_to_widget['StringField']
             )
 
-            widget = widget_data['widget']()
+            widget = widget_data['widget'](field)
             value = getattr(module, field.name).get()
             getattr(widget, widget_data['setter'])(value)
 

@@ -137,6 +137,11 @@ class IntField(Field):
         'attributeType': 'long'
     }
 
+    def __init__(self, *args, **kwargs):
+        self.min_value = kwargs.get('minValue', None)
+        self.max_value = kwargs.get('maxValue', None)
+        super(IntField, self).__init__(*args, **kwargs)
+
     def cast_to_attr(self, value):
         return int(value)
 
