@@ -20,11 +20,29 @@ class ISpinBox(QtWidgets.QSpinBox):
         else:
             self.setMaximum(1000000)
 
+    def get(self):
+        self.value()
+
+    def set(self, value):
+        self.setValue(value)
+
+    def signal(self):
+        return self.valueChanged
+
 
 class ILineEdit(QtWidgets.QLineEdit):
     def __init__(self, field, *args, **kwargs):
         super(ILineEdit, self).__init__(*args, **kwargs)
         self.field = field
+
+    def set(self, value):
+        self.setText(value)
+
+    def get(self):
+        self.text()
+
+    def signal(self):
+        return self.textChanged
 
 
 class ICheckBox(QtWidgets.QCheckBox):
@@ -32,24 +50,21 @@ class ICheckBox(QtWidgets.QCheckBox):
         super(ICheckBox, self).__init__(*args, **kwargs)
         self.field = field
 
+    def set(self, value):
+        self.setChecked(value)
+
+    def get(self):
+        self.isChecked()
+
+    def signal(self):
+        return self.stateChanged
+
 
 map_field_to_widget = {
-    'BoolField': {
-        'widget': ICheckBox,
-        'setter': 'setChecked',
-        'getter': 'isChecked',
-    },
-    'IntField': {
-        'widget': ISpinBox,
-        'setter': 'setValue',
-        'getter': 'value',
-        'signal': 'valueChanged',
-    },
-    'StringField': {
-        'widget': ILineEdit,
-        'setter': 'setText',
-        'getter': 'text'
-    },
+    'BoolField': ICheckBox,
+    'IntField': ISpinBox,
+    'StringField': ILineEdit,
+    'ObjectField': ILineEdit,
 }
 
 
@@ -75,20 +90,18 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 class_name,
                 map_field_to_widget['StringField']
             )
-
-            widget = widget_data['widget'](field)
+            widget = widget_data(field)
             value = getattr(module, field.name).get()
-            getattr(widget, widget_data['setter'])(value)
+            widget.set(value)
 
-            if 'signal' in widget_data:
-                getattr(widget, widget_data['signal']).connect(
-                    partial(self._update_field, field, module)
-                )
+            widget.signal().connect(
+                partial(self._update_field, field, module)
+            )
 
             form.addRow(field.display_name, widget)
 
             if not field.editable:
-                widget.setEditable(False)
+                widget.setEnabled(False)
 
     def _update_field(self, field, module, value):
         getattr(module, field.name).set(value)
