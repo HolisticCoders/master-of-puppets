@@ -98,9 +98,9 @@ class Field(object):
         **kwargs
     ):
         self.name = None
-        self.displayable = kwargs.get('displayable', False)
-        self.editable = kwargs.get('editable', False)
-        self.display_name = kwargs.get('display_name', None)
+        self.displayable = kwargs.pop('displayable', False)
+        self.editable = kwargs.pop('editable', False)
+        self.display_name = kwargs.pop('display_name', None)
 
         # copy the class attribute to the instance
         self.create_attr_args = self.create_attr_args.copy()
