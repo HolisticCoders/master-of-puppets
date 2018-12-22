@@ -91,13 +91,9 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             if not field.editable:
                 widget.setEditable(False)
 
-        update_button = QtWidgets.QPushButton('Apply')
-        layout.addWidget(update_button)
-        update_button.released.connect(self._update)
-
-    def _update(self):
-        module = Chain('pelvis_M_mod')
-        module.update()
-
     def _update_field(self, field, module, value):
         getattr(module, field.name).set(value)
+
+        module = Chain('chain_M_mod')
+        module.update()
+
