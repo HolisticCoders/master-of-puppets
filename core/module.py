@@ -173,6 +173,15 @@ class RigModule(IcarusNode):
             parent = self.rig.skeleton_group.get()
 
         cmds.parent(new_joint, parent)
+        
+        for transform in ['translate', 'rotate', 'scale', 'jointOrient']:
+            if transform == 'scale':
+                value = 1
+            else:
+                value = 0
+            for axis in 'XYZ':
+                attr = transform + axis
+                cmds.setAttr(new_joint + '.' + attr, value)
 
         deform_joints.append(new_joint)
         self.deform_joints_list.set(
