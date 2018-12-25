@@ -419,6 +419,7 @@ class Arm(RigModule):
         cmds.setAttr(wrist_ctl + '.rotate', 0, 0, 0)
         parent_group = icarus.dag.add_parent_group(wrist_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
+        cmds.orientConstraint(wrist_ctl, ik_chain[-1], maintainOffset=True)
 
         shoulder_ctl = cmds.circle()[0]
         shoulder_ctl = cmds.rename(shoulder_ctl, icarus.metadata.name_from_metadata(
