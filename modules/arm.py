@@ -8,12 +8,16 @@ import icarus.metadata
 
 class Arm(RigModule):
 
-    chain_length = IntField(
-        defaultValue=3,
+    upper_twist_joint_count = IntField(
+        defaultValue=0,
         hasMinValue=True,
-        hasMaxValue=True,
-        minValue=3,
-        maxValue=3,
+        minValue=0,
+    )
+
+    lower_twist_joint_count = IntField(
+        defaultValue=0,
+        hasMinValue=True,
+        minValue=0,
     )
 
     # list containing the FK joints in the same order as the hierarchy
@@ -40,16 +44,79 @@ class Arm(RigModule):
     ik_handle = ObjectField()
     effector = ObjectField()
 
+    # bunch of properties that filter the driving and 
+    # deform joints to get either the twist or arm joints
+    @property
+    def arm_driving_joints(self):
+        driving_joints = self.driving_joints
+        return [j for j in driving_joints if 'twist' not in j]
+
+    @property
+    def arm_deform_joints(self):
+        deform_joints = self.deform_joints_list.get()
+        return [j for j in deform_joints if 'twist' not in j]
+
+    @property
+    def upper_twist_driving_joints(self):
+        driving_joints = self.driving_joints
+        return [j for j in driving_joints if 'twist_upper' in j]
+
+    @property
+    def upper_twist_deform_joints(self):
+        deform_joints = self.deform_joints_list.get()
+        return [j for j in deform_joints if 'twist_upper' in j]
+
+    @property
+    def lower_twist_driving_joints(self):
+        driving_joints = self.driving_joints
+        return [j for j in driving_joints if 'twist_lower' in j]
+
+    @property
+    def lower_twist_deform_joints(self):
+        deform_joints = self.deform_joints_list.get()
+        return [j for j in deform_joints if 'twist_lower' in j]
+
     def initialize(self, *args, **kwargs):
         name_list = ['shoulder', 'elbow', 'wrist']
-        for name in name_list:
+
+        for i, name in enumerate(name_list):
             joint_name = icarus.metadata.name_from_metadata(
                     object_base_name = self.name.get(),
                     object_side = self.side.get(),
                     object_type = 'deform',
                     object_description = name
             )
-            self._add_deform_joint(name=joint_name)
+            joint = self._add_deform_joint(name=joint_name)
+
+            # Move the elbow and wrist joints only
+            if i > 0:
+                cmds.setAttr(joint + '.translateX', 10)
+
+        for i in xrange(self.upper_twist_joint_count.get()):
+            name = icarus.metadata.name_from_metadata(
+                object_base_name=self.name.get(),
+                object_side=self.side.get(),
+                object_type='deform',
+                object_description='twist_upper',
+                object_id=i
+            )
+            self._add_twist_joint(
+                name=name,
+                parent = self.deform_joints_list.get()[0]
+            )
+
+        for i in xrange(self.lower_twist_joint_count.get()):
+            name = icarus.metadata.name_from_metadata(
+                object_base_name=self.name.get(),
+                object_side=self.side.get(),
+                object_type='deform',
+                object_description='twist_lower',
+                object_id=i
+            )
+            self._add_twist_joint(
+                name=name,
+                parent = self.deform_joints_list.get()[1]
+            )
 
     def _add_deform_joint(self, name):
         """Add a new deform joint, child of the last one."""
@@ -59,19 +126,80 @@ class Arm(RigModule):
             parent = deform_joints[-1]
         return super(Arm, self)._add_deform_joint(parent=parent, name=name)
 
+    def _add_twist_joint(self, name, parent):
+        return super(Arm, self)._add_deform_joint(name=name, parent=parent)
+
+    def update(self):
+        self._update_upper_twists()
+        self._update_lower_twists()
+
+    def _update_upper_twists(self):
+        current_upper_twists = len(self.upper_twist_deform_joints)
+        target_upper_twists = self.upper_twist_joint_count.get()
+        joint_diff = target_upper_twists - current_upper_twists
+        if joint_diff > 0:
+            # add twist joints
+            for i in xrange(current_upper_twists, target_upper_twists):
+                name = icarus.metadata.name_from_metadata(
+                    object_base_name=self.name.get(),
+                    object_side=self.side.get(),
+                    object_type='deform',
+                    object_description='twist_upper',
+                    object_id=i
+                )
+                self._add_twist_joint(
+                    name=name,
+                    parent=self.deform_joints_list.get()[0]
+                )
+        elif joint_diff < 0:
+            all_deform = self.deform_joints_list.get()
+            joints_to_remove = self.upper_twist_deform_joints[joint_diff:]
+            self.deform_joints_list.set(
+                [j for j in all_deform if j not in joints_to_remove]
+            )
+            cmds.delete(joints_to_remove)
+
+    def _update_lower_twists(self):
+        current_lower_twists = len(self.lower_twist_deform_joints)
+        target_lower_twists = self.lower_twist_joint_count.get()
+        joint_diff = target_lower_twists - current_lower_twists
+        if joint_diff > 0:
+            # add twist joints
+            for i in xrange(current_lower_twists, target_lower_twists):
+                name = icarus.metadata.name_from_metadata(
+                    object_base_name=self.name.get(),
+                    object_side=self.side.get(),
+                    object_type='deform',
+                    object_description='twist_lower',
+                    object_id=i
+                )
+                self._add_twist_joint(
+                    name=name,
+                    parent=self.deform_joints_list.get()[1]
+                )
+        elif joint_diff < 0:
+            all_deform = self.deform_joints_list.get()
+            joints_to_remove = self.lower_twist_deform_joints[joint_diff:]
+            self.deform_joints_list.set(
+                [j for j in all_deform if j not in joints_to_remove]
+            )
+            cmds.delete(joints_to_remove)
+
     def build(self):
         self._create_ik_fk_chains()
         self._create_settings_control()
         self._setup_fk()
         self._setup_ik()
         self._setup_ik_fk_switch()
+        self._setup_lower_twist()
 
     def _create_ik_fk_chains(self):
-        driving_chain = self.driving_joints
+        driving_chain = self.arm_driving_joints
 
         # create the fk chain
         fk_chain = cmds.duplicate(
-            driving_chain[0],
+            driving_chain,
+            parentOnly=True,
             renameChildren=True,
         )
         for i, fk in enumerate(fk_chain):
@@ -84,7 +212,8 @@ class Arm(RigModule):
 
         # create the fk chain
         ik_chain = cmds.duplicate(
-            driving_chain[0],
+            driving_chain,
+            parentOnly=True,
             renameChildren=True,
         )
         for i, ik in enumerate(ik_chain):
@@ -105,12 +234,12 @@ class Arm(RigModule):
         ))
         icarus.dag.snap_first_to_last(
             ctl,
-            self.driving_joints[-1]
+            self.arm_driving_joints[2]
         )
         self.settings_ctl.set(ctl)
         buffer_grp = icarus.dag.add_parent_group(ctl, 'buffer')
         cmds.parent(buffer_grp, self.controls_group.get())
-        icarus.dag.matrix_constraint(self.driving_joints[-1], buffer_grp)
+        icarus.dag.matrix_constraint(self.arm_driving_joints[2], buffer_grp)
 
         for attr in ['translate', 'rotate', 'scale']:
             for axis in 'XYZ':
@@ -139,7 +268,7 @@ class Arm(RigModule):
 
     def _setup_ik_fk_switch(self):
         """Create the necessary nodes to switch between the ik and fk chains """
-        driving_chain = self.driving_joints
+        driving_chain = self.arm_driving_joints
         fk_chain = self.fk_chain.get()
         ik_chain = self.ik_chain.get()
         settings_ctl = self.settings_ctl.get()
@@ -286,7 +415,7 @@ class Arm(RigModule):
             object_type='ctl',
             object_description='IK_wrist'
         ))
-        icarus.dag.snap_first_to_last(wrist_ctl, ik_chain[-1])
+        icarus.dag.snap_first_to_last(wrist_ctl, ik_chain[2])
         cmds.setAttr(wrist_ctl + '.rotate', 0, 0, 0)
         parent_group = icarus.dag.add_parent_group(wrist_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
@@ -318,11 +447,22 @@ class Arm(RigModule):
 
         ik_handle, effector = cmds.ikHandle(
             startJoint=ik_chain[0],
-            endEffector=ik_chain[-1]
+            endEffector=ik_chain[2]
         )
         cmds.poleVectorConstraint(pole_vector_ctl, ik_handle)
         cmds.parent(ik_handle, wrist_ctl)
 
+    def _setup_lower_twist(self):
+        wrist_driving = self.arm_driving_joints[-1]
+        twists = self.lower_twist_driving_joints
+        twists_count = len(twists)
+        multiplier = 1.0 / (twists_count + 1)
+        for i, twist in enumerate(twists):
+            current_mult = 1 - (i + 1) * multiplier
+            mult_double_linear = cmds.createNode('multDoubleLinear')
+            cmds.connectAttr(wrist_driving + '.rotateX', mult_double_linear + '.input1')
+            cmds.setAttr(mult_double_linear + '.input2', current_mult)
+            cmds.connectAttr(mult_double_linear + '.output', twist + '.rotateX')
 
 exported_rig_modules = [Arm]
 
