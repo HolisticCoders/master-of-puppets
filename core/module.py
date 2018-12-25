@@ -4,6 +4,7 @@ from icarus.core.fields import ObjectField, StringField, JSONField
 import icarus.metadata
 import icarus.dag
 
+
 class RigModule(IcarusNode):
 
     name = StringField()
@@ -18,6 +19,9 @@ class RigModule(IcarusNode):
 
     # group holding all this module's driving joints
     driving_group = ObjectField()
+
+    # group holding all this module's driving joints
+    extras_group = ObjectField()
 
     # list of all of this module's deform joints
     deform_joints_list = JSONField()
@@ -37,6 +41,7 @@ class RigModule(IcarusNode):
 
             if parent_joint:
                 self.parent_joint.set(parent_joint)
+                icarus.dag.matrix_constraint(parent_joint, self.node_name)
 
             self.initialize()
             self.is_initialized.set(True)
@@ -47,7 +52,8 @@ class RigModule(IcarusNode):
         if joints is None:
             return []
         else:
-            return list(reversed(joints)) # listRelative returns a reversed list.
+            # listRelative returns a reversed list (children first)
+            return list(reversed(joints))
 
     def initialize(self):
         """Creation of all the needed placement nodes.
@@ -100,11 +106,24 @@ class RigModule(IcarusNode):
             name=driving_group_name,
             parent=self.node_name
         ))
+        cmds.setAttr(self.driving_group.get() + '.visibility', False)
+
+        extras_group_name = icarus.metadata.name_from_metadata(
+            self.name.get(),
+            self.side.get(),
+            'grp',
+            object_description='extras'
+        )
+        self.extras_group.set(cmds.createNode(
+            'transform',
+            name=extras_group_name,
+            parent=self.node_name
+        ))
+        cmds.setAttr(self.extras_group.get() + '.visibility', False)
 
         self.create_driving_joints()
         self.build()
         self.is_built.set(True)
-
 
     def build(self):
         """Actual rigging of the module.
@@ -154,6 +173,15 @@ class RigModule(IcarusNode):
             parent = self.rig.skeleton_group.get()
 
         cmds.parent(new_joint, parent)
+        
+        for transform in ['translate', 'rotate', 'scale', 'jointOrient']:
+            if transform == 'scale':
+                value = 1
+            else:
+                value = 0
+            for axis in 'XYZ':
+                attr = transform + axis
+                cmds.setAttr(new_joint + '.' + attr, value)
 
         deform_joints.append(new_joint)
         self.deform_joints_list.set(
@@ -163,15 +191,19 @@ class RigModule(IcarusNode):
 
     def create_driving_joints(self):
         deform_joints = self.deform_joints_list.get()
-        for deform in deform_joints:
-            driving = cmds.createNode(
-                'joint',
-                name=deform.replace('deform', 'driving')
-            )
-            # Locking the JO to avoid having different values
-            # than on the deform joints when snapping/parenting
-            cmds.setAttr(driving + ".jointOrient", lock=True)
+        duplicate = cmds.duplicate(
+            deform_joints,
+            parentOnly=True,
+            renameChildren=True
+        )
+        driving_joints = []
+        for j in duplicate:
+            driving_joints.append(cmds.rename(
+                j,
+                j.replace('deform1', 'driving')
+            ))
 
+        for deform, driving in zip(deform_joints, driving_joints):
             # Find out who the father is.
             deform_parent = cmds.listRelatives(deform, parent=True)
             if deform_parent:
@@ -185,8 +217,8 @@ class RigModule(IcarusNode):
                 # deform_parent should be one of the module's deform joints.
                 parent = deform_parent.replace('deform', 'driving')
             # Reunite the family.
-            cmds.parent(driving, parent)
+            if parent != cmds.listRelatives(driving, parent=True)[0]:
+                cmds.parent(driving, parent)
 
-            icarus.dag.snap_first_to_last(driving, deform)
             icarus.dag.matrix_constraint(driving, deform)
-            cmds.setAttr(driving + ".jointOrient", lock=False)
+
