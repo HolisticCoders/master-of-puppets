@@ -33,6 +33,19 @@ class Rig(IcarusNode):
 
         return modules
 
+    @property
+    def skeleton(self):
+        return cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)
+
+    @property
+    def build_nodes(self):
+        all_nodes = cmds.ls('*')
+        build_nodes = []
+        for node in all_nodes:
+            if cmds.attributeQuery('is_build_node', node=node, exists=True):
+                build_nodes.append(node)
+        return build_nodes
+
     def _create_basic_hierarchy(self):
         if not cmds.objExists('MODULES'):
             self.modules_group.set(cmds.createNode(
@@ -72,6 +85,36 @@ class Rig(IcarusNode):
         return new_module
 
     def build(self):
+        nodes_before_build = set(cmds.ls('*'))
         for module in self.rig_modules:
             module._build()
+        nodes_after_build = set(cmds.ls('*'))
+        build_nodes = list(nodes_after_build - nodes_before_build)
+        self._tag_nodes_for_unbuild(build_nodes)
+
+    def unbuild(self):
+        for node in self.skeleton:
+            for attribute in ['.translate', '.rotate', '.scale']:
+                attr = node + attribute
+                input_attr = cmds.connectionInfo(attr, sourceFromDestination=True)
+                cmds.disconnectAttr(input_attr, attr)
+        cmds.delete(self.build_nodes)
+        for module in self.rig_modules:
+            module.is_built.set(False)
+
+    def _tag_nodes_for_unbuild(self, nodes):
+        """Tag the nodes created during the build.
+
+        this will allow to delete them easily later on.
+        """
+        for node in nodes:
+            cmds.addAttr(
+                node,
+                longName='is_build_node',
+                attributeType='bool',
+                defaultValue=True
+            )
+
+
+
 
