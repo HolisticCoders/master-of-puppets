@@ -8,6 +8,7 @@ from icarus.modules import all_rig_modules
 from icarus.config import default_modules
 from icarus.core.fields import ObjectField
 import icarus.dag
+import icarus.postscript
 
 
 class Rig(IcarusNode):
@@ -86,14 +87,21 @@ class Rig(IcarusNode):
         return new_module
 
     def build(self):
+        icarus.postscript.run_scripts('pre_build')
+
         nodes_before_build = set(cmds.ls('*'))
         for module in self.rig_modules:
             module._build()
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
+
+        icarus.postscript.run_scripts('post_build')
+
         self._tag_nodes_for_unbuild(build_nodes)
 
     def unbuild(self):
+        icarus.postscript.run_scripts('pre_unbuild')
+
         self.reset_pose()
         for node in self.skeleton:
             for attribute in ['.translate', '.rotate', '.scale']:
@@ -103,6 +111,8 @@ class Rig(IcarusNode):
         cmds.delete(self.build_nodes)
         for module in self.rig_modules:
             module.is_built.set(False)
+
+        icarus.postscript.run_scripts('post_unbuild')
 
     def reset_pose(self):
         for control in cmds.ls('*_ctl'):
@@ -120,7 +130,4 @@ class Rig(IcarusNode):
                 attributeType='bool',
                 defaultValue=True
             )
-
-
-
 
