@@ -7,6 +7,7 @@ from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
 from icarus.config import default_modules
 from icarus.core.fields import ObjectField
+import icarus.dag
 
 
 class Rig(IcarusNode):
@@ -93,6 +94,7 @@ class Rig(IcarusNode):
         self._tag_nodes_for_unbuild(build_nodes)
 
     def unbuild(self):
+        self.reset_pose()
         for node in self.skeleton:
             for attribute in ['.translate', '.rotate', '.scale']:
                 attr = node + attribute
@@ -101,6 +103,10 @@ class Rig(IcarusNode):
         cmds.delete(self.build_nodes)
         for module in self.rig_modules:
             module.is_built.set(False)
+
+    def reset_pose(self):
+        for control in cmds.ls('*_ctl'):
+            icarus.dag.reset_node(control)
 
     def _tag_nodes_for_unbuild(self, nodes):
         """Tag the nodes created during the build.

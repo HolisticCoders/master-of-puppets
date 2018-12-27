@@ -129,3 +129,24 @@ def snap_first_to_last(source, target):
         matrix=targ_mat,
         worldSpace=True
     )
+
+def reset_node(node):
+    for attribute in ['translate', 'rotate', 'scale']:
+        for axis in 'XYZ':
+            attr = node + '.' + attribute + axis
+            if attribute == 'scale':
+                value = 1
+            else:
+                value = 0
+            try:
+                cmds.setAttr(attr, value)
+            except:
+                pass
+    attrs_to_reset = cmds.listAttr(node, category='should_reset')
+    if attrs_to_reset:
+        for attribute in attrs_to_reset:
+            defaultValue = cmds.addAttr(node + '.' + attribute, query=True, defaultValue=True)
+            try:
+                cmds.setAttr(node + '.' + attribute, defaultValue)
+            except:
+                pass
