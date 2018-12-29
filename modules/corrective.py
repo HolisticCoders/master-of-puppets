@@ -45,11 +45,92 @@ class Corrective(RigModule):
 
     def build(self):
         self.create_locators()
-        node_mult_angle = self._build_angle_reader()
+        value_range = self._build_angle_reader()
         for joint in self.driving_joints:
             ctl = self._add_control(joint, name=joint + '_ctl')
+            condition_nodes = []
+            for angleAxis in 'YZ':
+                positive_offset = cmds.createNode('multiplyDivide')
+                negative_offset = cmds.createNode('multiplyDivide')
+                value_opposite = cmds.createNode('multDoubleLinear')
+                cmds.connectAttr(
+                    value_range + '.output' + angleAxis,
+                    value_opposite + '.input1'
+                )
+                cmds.setAttr(value_opposite + '.input2', -1)
+                for axis in 'XYZ':
+                    cmds.connectAttr(
+                        value_range + '.output' + angleAxis,
+                        positive_offset + '.input1' + axis
+                    )
+                    cmds.connectAttr(
+                        ctl + '.offsetPositive' + axis,
+                        positive_offset + '.input2' + axis
+                    )
+                    cmds.connectAttr(
+                        value_opposite + '.output',
+                        negative_offset + '.input1' + axis
+                    )
+                    cmds.connectAttr(
+                        ctl + '.offsetNegative' + axis,
+                        negative_offset + '.input2' + axis
+                    )
+                condition = cmds.createNode('condition')
+                cmds.setAttr(condition + '.operation', 3)  # 3 is >=
+                condition_nodes.append(condition)
+                cmds.connectAttr(
+                    value_range + '.output' + angleAxis,
+                    condition + '.firstTerm'
+                )
+                cmds.connectAttr(
+                    positive_offset + '.output',
+                    condition + '.colorIfTrue'
+                )
+                cmds.connectAttr(
+                    negative_offset + '.output',
+                    condition + '.colorIfFalse'
+                )
+            affected_by_cond = cmds.createNode('condition')
+            cmds.connectAttr(
+                ctl + '.affectedBy',
+                affected_by_cond + '.firstTerm'
+            )
+            cmds.connectAttr(
+                condition_nodes[0] + '.outColor',
+                affected_by_cond + '.colorIfTrue'
+            )
+            cmds.connectAttr(
+                condition_nodes[1] + '.outColor',
+                affected_by_cond + '.colorIfFalse'
+            )
+            cmds.connectAttr(
+                affected_by_cond + '.outColor',
+                ctl + '.translate',
+            )
+
+
+
 
     def create_locators(self):
+        locator_space_group = cmds.createNode('transform')
+        locator_space_group = cmds.rename(
+            locator_space_group,
+            icarus.metadata.name_from_metadata(
+                self.name.get(),
+                self.side.get(),
+                'vectorsLocalSpace'
+        ))
+        cmds.parent(locator_space_group, self.extras_group.get())
+        cmds.setAttr(locator_space_group + '.inheritsTransform', False)
+        icarus.dag.snap_first_to_last(
+            locator_space_group,
+            self.vector_base.get()
+        )
+        cmds.pointConstraint(
+            self.vector_base.get(),
+            locator_space_group
+        )
+
         vector_base = cmds.listRelatives(cmds.createNode(
             'locator',
         ), parent=True)[0]
@@ -57,7 +138,7 @@ class Corrective(RigModule):
             vector_base,
             self.vector_base.get() + '_vectorBase'
         )
-        cmds.parent(vector_base, self.extras_group.get())
+        cmds.parent(vector_base, locator_space_group)
         icarus.dag.snap_first_to_last(
             vector_base,
             self.vector_base.get()
@@ -72,7 +153,7 @@ class Corrective(RigModule):
             vector_tip,
             self.vector_base.get() + '_vectorTip'
         )
-        cmds.parent(vector_tip, self.extras_group.get())
+        cmds.parent(vector_tip, locator_space_group)
         icarus.dag.snap_first_to_last(
             vector_tip,
             self.vector_tip.get()
@@ -87,7 +168,7 @@ class Corrective(RigModule):
             orig_pose_vector_tip,
             self.vector_base.get() + '_vectorTipOrig'
         )
-        cmds.parent(orig_pose_vector_tip, self.extras_group.get())
+        cmds.parent(orig_pose_vector_tip, locator_space_group)
         icarus.dag.snap_first_to_last(
             orig_pose_vector_tip,
             self.vector_tip.get()
@@ -128,20 +209,6 @@ class Corrective(RigModule):
             angle_between + '.vector2',
         )
 
-        # # the axis angle value of the angleBetween node don't evaluate
-        # # in realtime
-        # # pipe the angleBetween euler angles to some quaternion stuff
-        # # to get realtime axis angle.
-        # euler_to_quat = cmds.createNode('eulerToQuat')
-        # quat_to_axis_angle = cmds.createNode('quatToAxisAngle')
-        # cmds.connectAttr(
-        #     angle_between + '.euler',
-        #     euler_to_quat + '.inputRotate',
-        # )
-        # cmds.connectAttr(
-        #     euler_to_quat + '.outputQuat',
-        #     quat_to_axis_angle + '.inputQuat',
-        # )
         node_mult = cmds.createNode('multiplyDivide')
         cmds.connectAttr(
             angle_between + '.axis',
@@ -152,7 +219,18 @@ class Corrective(RigModule):
                 angle_between + '.angle',
                 node_mult + '.input2' + axis,
             )
-        return node_mult
+        m1_to_p1_range = cmds.createNode('multiplyDivide')
+        cmds.setAttr(m1_to_p1_range + '.operation', 2)  # 2 is division
+        cmds.connectAttr(
+            node_mult + '.output',
+            m1_to_p1_range + '.input1',
+        )
+        for axis in 'XYZ':
+            cmds.setAttr(
+                m1_to_p1_range + '.input2' + axis,
+                180
+            )
+        return m1_to_p1_range
 
     def _add_control(self, joint, name):
         ctl = cmds.circle(name=name)[0]
@@ -166,18 +244,15 @@ class Corrective(RigModule):
 
         cmds.addAttr(
             ctl,
-            ln='activeValue',
-            attributeType='double',
+            ln='affectedBy',
+            attributeType='enum',
+            enumName='Y:Z:',
             keyable=True
         )
 
         for axis in 'XYZ':
             for transform in ['translate', 'rotate', 'scale']:
                 cmds.setAttr(ctl + '.' + transform + axis, lock=True)
-
-            if axis == 'X':  # there's no angle difference when twisting
-                continue
-
             cmds.addAttr(
                 ctl,
                 ln='offset' + 'Positive' + axis,
