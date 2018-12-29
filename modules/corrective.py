@@ -14,7 +14,6 @@ class Corrective(RigModule):
     )
 
     vector_base = ObjectField()  # should be provided by the user
-    vector_tip = ObjectField()  # should be provided by the user
 
     vector_base_loc = ObjectField()
     vector_tip_loc = ObjectField()
@@ -108,9 +107,6 @@ class Corrective(RigModule):
                 ctl + '.translate',
             )
 
-
-
-
     def create_locators(self):
         locator_space_group = cmds.createNode('transform')
         locator_space_group = cmds.rename(
@@ -119,7 +115,8 @@ class Corrective(RigModule):
                 self.name.get(),
                 self.side.get(),
                 'vectorsLocalSpace'
-        ))
+            )
+        )
         cmds.parent(locator_space_group, self.extras_group.get())
         cmds.setAttr(locator_space_group + '.inheritsTransform', False)
         icarus.dag.snap_first_to_last(
@@ -143,7 +140,8 @@ class Corrective(RigModule):
             vector_base,
             self.vector_base.get()
         )
-        icarus.dag.matrix_constraint(self.vector_base.get(), vector_base)
+        # icarus.dag.matrix_constraint(self.vector_base.get(), vector_base)
+        cmds.parentConstraint(self.vector_base.get(), vector_base)
         self.vector_base_loc.set(vector_base)
 
         vector_tip = cmds.listRelatives(cmds.createNode(
@@ -153,12 +151,14 @@ class Corrective(RigModule):
             vector_tip,
             self.vector_base.get() + '_vectorTip'
         )
+
+        # give a magnitude to the vector
+        cmds.parent(vector_tip, vector_base)
+        icarus.dag.reset_node(vector_tip)
+        cmds.setAttr(vector_tip + '.translateX', 1)
+
         cmds.parent(vector_tip, locator_space_group)
-        icarus.dag.snap_first_to_last(
-            vector_tip,
-            self.vector_tip.get()
-        )
-        icarus.dag.matrix_constraint(self.vector_tip.get(), vector_tip)
+        cmds.parentConstraint(vector_base, vector_tip, maintainOffset=True)
         self.vector_tip_loc.set(vector_tip)
 
         orig_pose_vector_tip = cmds.listRelatives(cmds.createNode(
@@ -168,11 +168,13 @@ class Corrective(RigModule):
             orig_pose_vector_tip,
             self.vector_base.get() + '_vectorTipOrig'
         )
+
+        # give a magnitude to the vector
+        cmds.parent(orig_pose_vector_tip, vector_base)
+        icarus.dag.reset_node(orig_pose_vector_tip)
+        cmds.setAttr(orig_pose_vector_tip + '.translateX', 1)
+
         cmds.parent(orig_pose_vector_tip, locator_space_group)
-        icarus.dag.snap_first_to_last(
-            orig_pose_vector_tip,
-            self.vector_tip.get()
-        )
         self.orig_pose_vector_tip_loc.set(orig_pose_vector_tip)
 
     def _build_angle_reader(self):
@@ -268,4 +270,6 @@ class Corrective(RigModule):
 
         return ctl
 
+
 exported_rig_modules = [Corrective]
+
