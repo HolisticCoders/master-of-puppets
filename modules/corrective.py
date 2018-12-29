@@ -13,8 +13,12 @@ class Corrective(RigModule):
         minValue=1
     )
 
-    vector_base = ObjectField()
-    vector_tip = ObjectField()
+    vector_base = ObjectField()  # should be provided by the user
+    vector_tip = ObjectField()  # should be provided by the user
+
+    vector_base_loc = ObjectField()
+    vector_tip_loc = ObjectField()
+    orig_pose_vector_tip_loc = ObjectField()
 
     def initialize(self):
         for i in xrange(self.joint_count.get()):
@@ -40,114 +44,193 @@ class Corrective(RigModule):
         self.deform_joints_list.set(deform_joints)
 
     def build(self):
+        self.create_locators()
+        value_range = self._build_angle_reader()
         for joint in self.driving_joints:
             ctl = self._add_control(joint, name=joint + '_ctl')
-            target_vector_tip = cmds.listRelatives(cmds.createNode(
-                'locator',
-            ), parent=True)[0]
-            target_vector_tip = cmds.rename(
-                target_vector_tip,
-                joint + '_targetPose'
-            )
-            cmds.parent(target_vector_tip, self.extras_group.get())
-            target_vector_tip_group = icarus.dag.add_parent_group(
-                target_vector_tip
-            )
-            icarus.dag.matrix_constraint(
-                cmds.listRelatives(self.vector_base.get(), parent=True)[0],
-                target_vector_tip_group
-            )
-            # get the world coordinates of the transform
-            # to create vectors later
-            decompose_vector_base = cmds.createNode('decomposeMatrix')
-            decompose_vector_tip = cmds.createNode('decomposeMatrix')
-            decompose_vector_target_tip = cmds.createNode('decomposeMatrix')
-            cmds.connectAttr(
-                self.vector_base.get() + '.worldMatrix',
-                decompose_vector_base + '.inputMatrix'
-            )
-            cmds.connectAttr(
-                self.vector_tip.get() + '.worldMatrix',
-                decompose_vector_tip + '.inputMatrix'
-            )
-            cmds.connectAttr(
-                target_vector_tip + '.worldMatrix',
-                decompose_vector_target_tip + '.inputMatrix'
-            )
-
-            # get the two vectors
-            source_vector = cmds.createNode('plusMinusAverage')
-            cmds.setAttr(source_vector + '.operation', 2)
-            target_vector = cmds.createNode('plusMinusAverage')
-            cmds.setAttr(target_vector + '.operation', 2)
-            cmds.connectAttr(
-                decompose_vector_tip + '.outputTranslate',
-                source_vector + '.input3D[0]'
-            )
-            cmds.connectAttr(
-                decompose_vector_base + '.outputTranslate',
-                source_vector + '.input3D[1]'
-            )
-            cmds.connectAttr(
-                decompose_vector_target_tip + '.outputTranslate',
-                target_vector + '.input3D[0]'
-            )
-            cmds.connectAttr(
-                decompose_vector_base + '.outputTranslate',
-                target_vector + '.input3D[1]'
-            )
-
-            # get the angle between the two vectors
-            angle_between = cmds.createNode('angleBetween')
-            cmds.connectAttr(
-                source_vector + '.output3D',
-                angle_between + '.vector1',
-            )
-            cmds.connectAttr(
-                target_vector + '.output3D',
-                angle_between + '.vector2',
-            )
-
-            # remap the output angle to a 0-1 value
-            # if it sits inside the cone angle
-            half_cone_angle = cmds.createNode('multDoubleLinear')
-            cmds.connectAttr(
-                ctl + '.coneAngle',
-                half_cone_angle + '.input1',
-            )
-            cmds.setAttr(half_cone_angle + '.input2', 0.5)
-            remap_value = cmds.createNode('remapValue')
-            cmds.connectAttr(
-                half_cone_angle + '.output',
-                remap_value + '.inputMax',
-            )
-            cmds.connectAttr(
-                angle_between + '.axisAngle.angle',
-                remap_value + '.inputValue',
-            )
-            cmds.setAttr(remap_value + '.outputMin', 1)
-            cmds.setAttr(remap_value + '.outputMax', 0)
-            cmds.connectAttr(
-                remap_value + '.outValue',
-                ctl + '.activeValue',
-            )
-
-            # compute the offset when the pose is reached
-            corrective_offset = cmds.createNode('multiplyDivide')
-            offset_group = cmds.listRelatives(ctl, parent=True)[0]
-            for axis in 'XYZ':
+            condition_nodes = []
+            for angleAxis in 'YZ':
+                positive_offset = cmds.createNode('multiplyDivide')
+                negative_offset = cmds.createNode('multiplyDivide')
+                value_opposite = cmds.createNode('multDoubleLinear')
                 cmds.connectAttr(
-                    ctl + '.offset' + axis,
-                    corrective_offset + '.input1' + axis,
+                    value_range + '.output' + angleAxis,
+                    value_opposite + '.input1'
+                )
+                cmds.setAttr(value_opposite + '.input2', -1)
+                for axis in 'XYZ':
+                    cmds.connectAttr(
+                        value_range + '.output' + angleAxis,
+                        positive_offset + '.input1' + axis
+                    )
+                    cmds.connectAttr(
+                        ctl + '.offsetPositive' + axis,
+                        positive_offset + '.input2' + axis
+                    )
+                    cmds.connectAttr(
+                        value_opposite + '.output',
+                        negative_offset + '.input1' + axis
+                    )
+                    cmds.connectAttr(
+                        ctl + '.offsetNegative' + axis,
+                        negative_offset + '.input2' + axis
+                    )
+                condition = cmds.createNode('condition')
+                cmds.setAttr(condition + '.operation', 3)  # 3 is >=
+                condition_nodes.append(condition)
+                cmds.connectAttr(
+                    value_range + '.output' + angleAxis,
+                    condition + '.firstTerm'
                 )
                 cmds.connectAttr(
-                    remap_value + '.outValue',
-                    corrective_offset + '.input2' + axis,
+                    positive_offset + '.output',
+                    condition + '.colorIfTrue'
                 )
                 cmds.connectAttr(
-                    corrective_offset + '.output' + axis,
-                    offset_group + '.translate' + axis,
+                    negative_offset + '.output',
+                    condition + '.colorIfFalse'
                 )
+            affected_by_cond = cmds.createNode('condition')
+            cmds.connectAttr(
+                ctl + '.affectedBy',
+                affected_by_cond + '.firstTerm'
+            )
+            cmds.connectAttr(
+                condition_nodes[0] + '.outColor',
+                affected_by_cond + '.colorIfTrue'
+            )
+            cmds.connectAttr(
+                condition_nodes[1] + '.outColor',
+                affected_by_cond + '.colorIfFalse'
+            )
+            cmds.connectAttr(
+                affected_by_cond + '.outColor',
+                ctl + '.translate',
+            )
+
+
+
+
+    def create_locators(self):
+        locator_space_group = cmds.createNode('transform')
+        locator_space_group = cmds.rename(
+            locator_space_group,
+            icarus.metadata.name_from_metadata(
+                self.name.get(),
+                self.side.get(),
+                'vectorsLocalSpace'
+        ))
+        cmds.parent(locator_space_group, self.extras_group.get())
+        cmds.setAttr(locator_space_group + '.inheritsTransform', False)
+        icarus.dag.snap_first_to_last(
+            locator_space_group,
+            self.vector_base.get()
+        )
+        cmds.pointConstraint(
+            self.vector_base.get(),
+            locator_space_group
+        )
+
+        vector_base = cmds.listRelatives(cmds.createNode(
+            'locator',
+        ), parent=True)[0]
+        vector_base = cmds.rename(
+            vector_base,
+            self.vector_base.get() + '_vectorBase'
+        )
+        cmds.parent(vector_base, locator_space_group)
+        icarus.dag.snap_first_to_last(
+            vector_base,
+            self.vector_base.get()
+        )
+        icarus.dag.matrix_constraint(self.vector_base.get(), vector_base)
+        self.vector_base_loc.set(vector_base)
+
+        vector_tip = cmds.listRelatives(cmds.createNode(
+            'locator',
+        ), parent=True)[0]
+        vector_tip = cmds.rename(
+            vector_tip,
+            self.vector_base.get() + '_vectorTip'
+        )
+        cmds.parent(vector_tip, locator_space_group)
+        icarus.dag.snap_first_to_last(
+            vector_tip,
+            self.vector_tip.get()
+        )
+        icarus.dag.matrix_constraint(self.vector_tip.get(), vector_tip)
+        self.vector_tip_loc.set(vector_tip)
+
+        orig_pose_vector_tip = cmds.listRelatives(cmds.createNode(
+            'locator',
+        ), parent=True)[0]
+        orig_pose_vector_tip = cmds.rename(
+            orig_pose_vector_tip,
+            self.vector_base.get() + '_vectorTipOrig'
+        )
+        cmds.parent(orig_pose_vector_tip, locator_space_group)
+        icarus.dag.snap_first_to_last(
+            orig_pose_vector_tip,
+            self.vector_tip.get()
+        )
+        self.orig_pose_vector_tip_loc.set(orig_pose_vector_tip)
+
+    def _build_angle_reader(self):
+        # get the two vectors
+        source_vector = cmds.createNode('plusMinusAverage')
+        cmds.setAttr(source_vector + '.operation', 2)
+        target_vector = cmds.createNode('plusMinusAverage')
+        cmds.setAttr(target_vector + '.operation', 2)
+        cmds.connectAttr(
+            self.vector_tip_loc.get() + '.translate',
+            source_vector + '.input3D[0]'
+        )
+        cmds.connectAttr(
+            self.vector_base_loc.get() + '.translate',
+            source_vector + '.input3D[1]'
+        )
+        cmds.connectAttr(
+            self.orig_pose_vector_tip_loc.get() + '.translate',
+            target_vector + '.input3D[0]'
+        )
+        cmds.connectAttr(
+            self.vector_base_loc.get() + '.translate',
+            target_vector + '.input3D[1]'
+        )
+
+        # get the angle between the two vectors
+        angle_between = cmds.createNode('angleBetween')
+        cmds.connectAttr(
+            source_vector + '.output3D',
+            angle_between + '.vector1',
+        )
+        cmds.connectAttr(
+            target_vector + '.output3D',
+            angle_between + '.vector2',
+        )
+
+        node_mult = cmds.createNode('multiplyDivide')
+        cmds.connectAttr(
+            angle_between + '.axis',
+            node_mult + '.input1',
+        )
+        for axis in 'XYZ':
+            cmds.connectAttr(
+                angle_between + '.angle',
+                node_mult + '.input2' + axis,
+            )
+        m1_to_p1_range = cmds.createNode('multiplyDivide')
+        cmds.setAttr(m1_to_p1_range + '.operation', 2)  # 2 is division
+        cmds.connectAttr(
+            node_mult + '.output',
+            m1_to_p1_range + '.input1',
+        )
+        for axis in 'XYZ':
+            cmds.setAttr(
+                m1_to_p1_range + '.input2' + axis,
+                180
+            )
+        return m1_to_p1_range
 
     def _add_control(self, joint, name):
         ctl = cmds.circle(name=name)[0]
@@ -159,28 +242,30 @@ class Corrective(RigModule):
         icarus.dag.add_parent_group(ctl, 'buffer')
         icarus.dag.matrix_constraint(ctl, joint)
 
+        cmds.addAttr(
+            ctl,
+            ln='affectedBy',
+            attributeType='enum',
+            enumName='Y:Z:',
+            keyable=True
+        )
+
         for axis in 'XYZ':
             for transform in ['translate', 'rotate', 'scale']:
                 cmds.setAttr(ctl + '.' + transform + axis, lock=True)
             cmds.addAttr(
                 ctl,
-                ln='offset' + axis,
+                ln='offset' + 'Positive' + axis,
                 attributeType='long',
                 keyable=True
             )
-        cmds.addAttr(
-            ctl,
-            ln='coneAngle',
-            attributeType='long',
-            keyable=True,
-        )
-        cmds.setAttr(ctl + '.coneAngle', 90)
-        cmds.addAttr(
-            ctl,
-            ln='activeValue',
-            attributeType='double',
-            keyable=True
-        )
+            cmds.addAttr(
+                ctl,
+                ln='offset' + 'Negative' + axis,
+                attributeType='long',
+                keyable=True
+            )
+
         return ctl
 
 exported_rig_modules = [Corrective]
