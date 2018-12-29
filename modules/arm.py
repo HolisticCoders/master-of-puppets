@@ -442,7 +442,7 @@ class Arm(RigModule):
         ))
         icarus.dag.snap_first_to_last(pole_vector_ctl, ik_chain[1])
         cmds.setAttr(pole_vector_ctl + '.rotate', 0, 0, 0)
-        cmds.setAttr(pole_vector_ctl + '.translateZ', -5)
+        cmds.setAttr(pole_vector_ctl + '.translateZ', -10)
         parent_group = icarus.dag.add_parent_group(pole_vector_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
 
