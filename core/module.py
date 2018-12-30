@@ -15,13 +15,14 @@ class RigModule(IcarusNode):
         displayable=True,
         # editable=True,
     )
-    module_type = StringField()
 
     # Joint of the rig skeleton under which the deform joints will be parented.
     parent_joint = ObjectField(
             displayable=True,
-            # editable=True,
+            editable=True,
     )
+
+    module_type = StringField()
 
     # group holding all this module's controls
     controls_group = ObjectField()
