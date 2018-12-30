@@ -244,8 +244,9 @@ class Corrective(RigModule):
         icarus.dag.add_parent_group(ctl, 'buffer')
         icarus.dag.matrix_constraint(ctl, joint)
 
-        cmds.addAttr(
+        icarus.metadata.create_persistent_attribute(
             ctl,
+            self.node_name,
             ln='affectedBy',
             attributeType='enum',
             enumName='Y:Z:',
@@ -255,14 +256,16 @@ class Corrective(RigModule):
         for axis in 'XYZ':
             for transform in ['translate', 'rotate', 'scale']:
                 cmds.setAttr(ctl + '.' + transform + axis, lock=True)
-            cmds.addAttr(
+            icarus.metadata.create_persistent_attribute(
                 ctl,
+                self.node_name,
                 ln='offset' + 'Positive' + axis,
                 attributeType='long',
                 keyable=True
             )
-            cmds.addAttr(
+            icarus.metadata.create_persistent_attribute(
                 ctl,
+                self.node_name,
                 ln='offset' + 'Negative' + axis,
                 attributeType='long',
                 keyable=True
