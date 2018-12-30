@@ -1,4 +1,5 @@
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
 
 from icarus.core.module import RigModule
 from icarus.core.fields import IntField, JSONField, ObjectField
@@ -44,7 +45,7 @@ class Arm(RigModule):
     ik_handle = ObjectField()
     effector = ObjectField()
 
-    # bunch of properties that filter the driving and 
+    # bunch of properties that filter the driving and
     # deform joints to get either the twist or arm joints
     @property
     def arm_driving_joints(self):
@@ -81,10 +82,10 @@ class Arm(RigModule):
 
         for i, name in enumerate(name_list):
             joint_name = icarus.metadata.name_from_metadata(
-                    object_base_name = self.name.get(),
-                    object_side = self.side.get(),
-                    object_type = 'deform',
-                    object_description = name
+                    object_base_name=self.name.get(),
+                    object_side=self.side.get(),
+                    object_type='deform',
+                    object_description=name
             )
             joint = self._add_deform_joint(name=joint_name)
 
@@ -102,7 +103,7 @@ class Arm(RigModule):
             )
             self._add_twist_joint(
                 name=name,
-                parent = self.deform_joints_list.get()[0]
+                parent=self.deform_joints_list.get()[0]
             )
 
         for i in xrange(self.lower_twist_joint_count.get()):
@@ -115,7 +116,7 @@ class Arm(RigModule):
             )
             self._add_twist_joint(
                 name=name,
-                parent = self.deform_joints_list.get()[1]
+                parent=self.deform_joints_list.get()[1]
             )
 
     def _add_deform_joint(self, name):
@@ -267,7 +268,7 @@ class Arm(RigModule):
         cmds.setAttr(ctl + ".IK_FK_Switch", keyable=True)
 
     def _setup_ik_fk_switch(self):
-        """Create the necessary nodes to switch between the ik and fk chains """
+        """Create the necessary nodes to switch between the ik and fk chains"""
         driving_chain = self.arm_driving_joints
         fk_chain = self.fk_chain.get()
         ik_chain = self.ik_chain.get()
@@ -377,6 +378,7 @@ class Arm(RigModule):
              cmds.createNode('transform', name=fk_controls_group_name)
         )
         cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
+        icarus.dag.reset_node(self.fk_controls_group.get())
         if fk_controls is None:
             fk_controls = []
         parent = self.fk_controls_group.get()
@@ -407,6 +409,7 @@ class Arm(RigModule):
              cmds.createNode('transform', name=ik_controls_group_name)
         )
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
+        icarus.dag.reset_node(self.ik_controls_group.get())
 
         wrist_ctl = cmds.circle()[0]
         wrist_ctl = cmds.rename(wrist_ctl, icarus.metadata.name_from_metadata(
@@ -422,27 +425,31 @@ class Arm(RigModule):
         cmds.orientConstraint(wrist_ctl, ik_chain[-1], maintainOffset=True)
 
         shoulder_ctl = cmds.circle()[0]
-        shoulder_ctl = cmds.rename(shoulder_ctl, icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='ctl',
-            object_description='IK_shoulder'
-        ))
+        shoulder_ctl = cmds.rename(
+            shoulder_ctl,
+            icarus.metadata.name_from_metadata(
+                object_base_name=self.name.get(),
+                object_side=self.side.get(),
+                object_type='ctl',
+                object_description='IK_shoulder'
+            )
+        )
         icarus.dag.snap_first_to_last(shoulder_ctl, ik_chain[0])
         cmds.setAttr(shoulder_ctl + '.rotate', 0, 0, 0)
         parent_group = icarus.dag.add_parent_group(shoulder_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
 
         pole_vector_ctl = cmds.circle()[0]
-        pole_vector_ctl = cmds.rename(pole_vector_ctl, icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='ctl',
-            object_description='IK_pole_vector'
-        ))
-        icarus.dag.snap_first_to_last(pole_vector_ctl, ik_chain[1])
-        cmds.setAttr(pole_vector_ctl + '.rotate', 0, 0, 0)
-        cmds.setAttr(pole_vector_ctl + '.translateZ', -10)
+        pole_vector_ctl = cmds.rename(
+            pole_vector_ctl,
+            icarus.metadata.name_from_metadata(
+                object_base_name=self.name.get(),
+                object_side=self.side.get(),
+                object_type='ctl',
+                object_description='IK_pole_vector'
+            )
+        )
+        self._place_pole_vector(pole_vector_ctl)
         parent_group = icarus.dag.add_parent_group(pole_vector_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
 
@@ -453,6 +460,44 @@ class Arm(RigModule):
         cmds.poleVectorConstraint(pole_vector_ctl, ik_handle)
         cmds.parent(ik_handle, wrist_ctl)
 
+    def _place_pole_vector(self, ctl):
+        ik_chain = self.ik_chain.get()
+        shoulder_pos = cmds.xform(
+            ik_chain[0],
+            query=True,
+            worldSpace=True,
+            translation=True
+        )
+        elbow_pos = cmds.xform(
+            ik_chain[1],
+            query=True,
+            worldSpace=True,
+            translation=True
+        )
+        wrist_pos = cmds.xform(
+            ik_chain[2],
+            query=True,
+            worldSpace=True,
+            translation=True
+        )
+
+        shoulder_vec = om2.MVector(*shoulder_pos)
+        elbow_vec = om2.MVector(*elbow_pos)
+        wrist_vec = om2.MVector(*wrist_pos)
+
+        shoulder_wrist_vec = wrist_vec - shoulder_vec
+        shouler_elbow_vec = elbow_vec - shoulder_vec
+
+        dot_product = shouler_elbow_vec * shoulder_wrist_vec
+        proj = float(dot_product) / float(shoulder_wrist_vec.length())
+        shoulder_wrist_vec_norm = shoulder_wrist_vec.normal()
+        projection_vec = shoulder_wrist_vec_norm * proj
+
+        pole_vec = shouler_elbow_vec - projection_vec
+        pole_vec *= 10
+        pv_control_vec = pole_vec + elbow_vec
+        cmds.xform(ctl, worldSpace=1, translation=pv_control_vec)
+
     def _setup_lower_twist(self):
         wrist_driving = self.arm_driving_joints[-1]
         twists = self.lower_twist_driving_joints
@@ -461,9 +506,16 @@ class Arm(RigModule):
         for i, twist in enumerate(twists):
             current_mult = 1 - (i + 1) * multiplier
             mult_double_linear = cmds.createNode('multDoubleLinear')
-            cmds.connectAttr(wrist_driving + '.rotateX', mult_double_linear + '.input1')
+            cmds.connectAttr(
+                wrist_driving + '.rotateX',
+                mult_double_linear + '.input1'
+            )
             cmds.setAttr(mult_double_linear + '.input2', current_mult)
-            cmds.connectAttr(mult_double_linear + '.output', twist + '.rotateX')
+            cmds.connectAttr(
+                mult_double_linear + '.output',
+                twist + '.rotateX'
+            )
+
 
 exported_rig_modules = [Arm]
 
