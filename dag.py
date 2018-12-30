@@ -55,7 +55,6 @@ def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True):
 
     cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
 
-
     if translate:
         cmds.connectAttr(
             decompose_mat + ".outputTranslate",
@@ -94,7 +93,10 @@ def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True):
                 driven + '.rotate',
             )
         else:
-            cmds.connectAttr(decompose_mat + ".outputRotate", driven + ".rotate")
+            cmds.connectAttr(
+                decompose_mat + ".outputRotate",
+                driven + ".rotate"
+            )
     if scale:
         cmds.connectAttr(decompose_mat + ".outputScale", driven + ".scale")
 
@@ -130,6 +132,7 @@ def snap_first_to_last(source, target):
         worldSpace=True
     )
 
+
 def reset_node(node):
     for attribute in ['translate', 'rotate', 'scale']:
         for axis in 'XYZ':
@@ -145,8 +148,13 @@ def reset_node(node):
     attrs_to_reset = cmds.listAttr(node, category='should_reset')
     if attrs_to_reset:
         for attribute in attrs_to_reset:
-            defaultValue = cmds.addAttr(node + '.' + attribute, query=True, defaultValue=True)
+            defaultValue = cmds.addAttr(
+                node + '.' + attribute,
+                query=True,
+                defaultValue=True
+            )
             try:
                 cmds.setAttr(node + '.' + attribute, defaultValue)
             except:
                 pass
+
