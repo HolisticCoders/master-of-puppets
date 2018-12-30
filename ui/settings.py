@@ -1,7 +1,7 @@
 from functools import partial
 
 from icarus.vendor.Qt import QtWidgets
-from icarus.modules.chain import Chain
+from icarus.core.rig import Rig
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
@@ -79,9 +79,10 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         form = QtWidgets.QFormLayout()
         layout.addLayout(form)
 
-        module = Chain('chain_M_mod')
+        rig = Rig()
+        self.module = rig.rig_modules[-1]
 
-        for field in module.fields:
+        for field in self.module.fields:
             if not field.displayable:
                 continue
 
@@ -91,11 +92,11 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 map_field_to_widget['StringField']
             )
             widget = widget_data(field)
-            value = getattr(module, field.name).get()
+            value = getattr(self.module, field.name).get()
             widget.set(value)
 
             widget.signal().connect(
-                partial(self._update_field, field, module)
+                partial(self._update_field, field)
             )
 
             form.addRow(field.display_name, widget)
@@ -103,9 +104,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             if not field.editable:
                 widget.setEnabled(False)
 
-    def _update_field(self, field, module, value):
-        getattr(module, field.name).set(value)
-
-        module = Chain('chain_M_mod')
-        module.update()
+    def _update_field(self, field, value):
+        getattr(self.module, field.name).set(value)
+        self.module.update()
 
