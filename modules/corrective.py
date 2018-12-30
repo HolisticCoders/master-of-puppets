@@ -8,12 +8,17 @@ import icarus.dag
 class Corrective(RigModule):
 
     joint_count = IntField(
+        displayable=True,
+        editable=True,
         defaultValue=1,
         hasMinValue=True,
         minValue=1
     )
 
-    vector_base = ObjectField()  # should be provided by the user
+    vector_base = ObjectField(
+        displayable=True,
+        editable=True,
+    ) 
 
     vector_base_loc = ObjectField()
     vector_tip_loc = ObjectField()
