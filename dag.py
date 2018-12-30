@@ -38,30 +38,68 @@ def dict_to_hierarchy(tree):
                 dict_to_hierarchy(child_tree)
 
 
-def matrix_constraint(driver, driven, maintain_offset=False, translate=True, rotate=True, scale=True):
+def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True):
     if not cmds.objExists(driver):
         raise ValueError("{} driver does not exist".format(driver))
     if not cmds.objExists(driven):
         raise ValueError("{} driven does not exist".format(driven))
 
-    # if maintain_offset:
-    #     if translate:
-    #         translate_offset = cmds.createNode('plusMinusAverage')
-
     mult_mat = cmds.createNode('multMatrix')
     decompose_mat = cmds.createNode('decomposeMatrix')
 
     cmds.connectAttr(driver + ".worldMatrix[0]", mult_mat + ".matrixIn[0]")
-    cmds.connectAttr(driven + ".parentInverseMatrix[0]", mult_mat + ".matrixIn[1]")
+    cmds.connectAttr(
+        driven + ".parentInverseMatrix[0]",
+        mult_mat + ".matrixIn[1]"
+    )
 
     cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
 
     if translate:
-        cmds.connectAttr(decompose_mat + ".outputTranslate", driven + ".translate")
+        cmds.connectAttr(
+            decompose_mat + ".outputTranslate",
+            driven + ".translate"
+        )
     if rotate:
-        cmds.connectAttr(decompose_mat + ".outputRotate", driven + ".rotate")
+        if cmds.nodeType(driven) == 'joint':
+            # substract the driven's joint orient from the rotation
+            euler_to_quat = cmds.createNode('eulerToQuat')
+            quat_invert = cmds.createNode('quatInvert')
+            quat_prod = cmds.createNode('quatProd')
+            quat_to_euler = cmds.createNode('quatToEuler')
+
+            cmds.connectAttr(
+                driven + '.jointOrient',
+                euler_to_quat + '.inputRotate',
+            )
+            cmds.connectAttr(
+                euler_to_quat + '.outputQuat',
+                quat_invert + '.inputQuat',
+            )
+            cmds.connectAttr(
+                decompose_mat + '.outputQuat',
+                quat_prod + '.input1Quat',
+            )
+            cmds.connectAttr(
+                quat_invert + '.outputQuat',
+                quat_prod + '.input2Quat',
+            )
+            cmds.connectAttr(
+                quat_prod + '.outputQuat',
+                quat_to_euler + '.inputQuat',
+            )
+            cmds.connectAttr(
+                quat_to_euler + '.outputRotate',
+                driven + '.rotate',
+            )
+        else:
+            cmds.connectAttr(
+                decompose_mat + ".outputRotate",
+                driven + ".rotate"
+            )
     if scale:
         cmds.connectAttr(decompose_mat + ".outputScale", driven + ".scale")
+
 
 def add_parent_group(dag_node, suffix='grp'):
     dag_node_mat = cmds.xform(
@@ -80,6 +118,7 @@ def add_parent_group(dag_node, suffix='grp'):
     cmds.parent(dag_node, grp)
     return grp
 
+
 def snap_first_to_last(source, target):
     targ_mat = cmds.xform(
         target,
@@ -92,3 +131,30 @@ def snap_first_to_last(source, target):
         matrix=targ_mat,
         worldSpace=True
     )
+
+
+def reset_node(node):
+    for attribute in ['translate', 'rotate', 'scale']:
+        for axis in 'XYZ':
+            attr = node + '.' + attribute + axis
+            if attribute == 'scale':
+                value = 1
+            else:
+                value = 0
+            try:
+                cmds.setAttr(attr, value)
+            except:
+                pass
+    attrs_to_reset = cmds.listAttr(node, category='should_reset')
+    if attrs_to_reset:
+        for attribute in attrs_to_reset:
+            defaultValue = cmds.addAttr(
+                node + '.' + attribute,
+                query=True,
+                defaultValue=True
+            )
+            try:
+                cmds.setAttr(node + '.' + attribute, defaultValue)
+            except:
+                pass
+

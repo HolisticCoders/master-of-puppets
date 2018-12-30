@@ -7,6 +7,8 @@ from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
 from icarus.config import default_modules
 from icarus.core.fields import ObjectField
+import icarus.dag
+import icarus.postscript
 
 
 class Rig(IcarusNode):
@@ -32,6 +34,19 @@ class Rig(IcarusNode):
             modules.append(module)
 
         return modules
+
+    @property
+    def skeleton(self):
+        return cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)
+
+    @property
+    def build_nodes(self):
+        all_nodes = cmds.ls('*')
+        build_nodes = []
+        for node in all_nodes:
+            if cmds.attributeQuery('is_build_node', node=node, exists=True):
+                build_nodes.append(node)
+        return build_nodes
 
     def _create_basic_hierarchy(self):
         if not cmds.objExists('MODULES'):
@@ -71,47 +86,48 @@ class Rig(IcarusNode):
         # self.create_skeleton_from_module(new_module)
         return new_module
 
-    # def create_skeleton(self):
-    #     # remove the existing rig before re-creating it.
-    #     cmds.delete(cmds.listRelatives(self.skeleton_group.get()))
-    #     for module in self.rig_modules:
-    #         self.create_skeleton_from_module(module)
-
-    # def create_skeleton_from_module(self, module):
-    #     # decide if the joints will be parented to an existing joint
-    #     # or at the root of the skeleton
-    #     parent = module.parent_joint.get()
-    #     if not parent:
-    #         parent = self.skeleton_group.get()
-
-    #     # duplicate the driving joints and parent them in the rig's skeleton
-    #     # based on the module's parent_joint
-    #     top_driving_joints = cmds.listRelatives(module.driving_group.get(), type='joint')
-    #     all_driving_joints = cmds.listRelatives(
-    #         module.driving_group.get(),
-    #         allDescendents=True,
-    #         type='joint'
-    #     )
-    #     all_driving_joints = list(reversed(all_driving_joints))
-    #     deform_joints = []
-    #     for joint in top_driving_joints:
-    #         duplicate = cmds.duplicate(
-    #             joint,
-    #             renameChildren=True,
-    #         )
-    #         deform_joints += duplicate
-    #         cmds.parent(duplicate[0], parent)
-
-    #     # rename and drive the new deform joints
-    #     for deform, driving, in zip(deform_joints, all_driving_joints):
-    #         deform = cmds.rename(deform, deform.replace('driver1', 'deform'))
-    #         for attr in ['translate', 'rotate', 'scale']:
-    #             for axis in 'XYZ':
-    #                 attr_name = attr + axis
-    #                 deform_attr = '.'.join([deform, attr_name])
-    #                 driving_attr = '.'.join([driving, attr_name])
-    #                 cmds.connectAttr(driving_attr, deform_attr)
-
     def build(self):
+        icarus.postscript.run_scripts('pre_build')
+
+        nodes_before_build = set(cmds.ls('*'))
         for module in self.rig_modules:
             module._build()
+        nodes_after_build = set(cmds.ls('*'))
+        build_nodes = list(nodes_after_build - nodes_before_build)
+
+        icarus.postscript.run_scripts('post_build')
+
+        self._tag_nodes_for_unbuild(build_nodes)
+
+    def unbuild(self):
+        icarus.postscript.run_scripts('pre_unbuild')
+
+        self.reset_pose()
+        for node in self.skeleton:
+            for attribute in ['.translate', '.rotate', '.scale']:
+                attr = node + attribute
+                input_attr = cmds.connectionInfo(attr, sourceFromDestination=True)
+                cmds.disconnectAttr(input_attr, attr)
+        cmds.delete(self.build_nodes)
+        for module in self.rig_modules:
+            module.is_built.set(False)
+
+        icarus.postscript.run_scripts('post_unbuild')
+
+    def reset_pose(self):
+        for control in cmds.ls('*_ctl'):
+            icarus.dag.reset_node(control)
+
+    def _tag_nodes_for_unbuild(self, nodes):
+        """Tag the nodes created during the build.
+
+        this will allow to delete them easily later on.
+        """
+        for node in nodes:
+            cmds.addAttr(
+                node,
+                longName='is_build_node',
+                attributeType='bool',
+                defaultValue=True
+            )
+
