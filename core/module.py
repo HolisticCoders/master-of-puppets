@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
 from icarus.core.fields import ObjectField, StringField, JSONField
+from icarus.modules import all_rig_modules
 import icarus.metadata
 import icarus.dag
 
@@ -67,6 +68,19 @@ class RigModule(IcarusNode):
         else:
             # listRelative returns a reversed list (children first)
             return list(reversed(joints))
+
+    @property
+    def parent_module(self):
+        parent_joint = self.parent_joint.get()
+        if parent_joint:
+            parent_module = '_'.join([
+                parent_joint.split('_')[0],
+                parent_joint.split('_')[1],
+                'mod'
+            ])
+            module_type = cmds.getAttr(parent_module + '.module_type')
+            parent_module = all_rig_modules[module_type](parent_module, rig=self)
+            return parent_module
 
     def initialize(self):
         """Creation of all the needed placement nodes.
