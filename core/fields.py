@@ -101,6 +101,7 @@ class Field(object):
         self.displayable = kwargs.pop('displayable', False)
         self.editable = kwargs.pop('editable', False)
         self.display_name = kwargs.pop('display_name', None)
+        self.gui_order = kwargs.pop('gui_order', 1)
 
         # copy the class attribute to the instance
         self.create_attr_args = self.create_attr_args.copy()

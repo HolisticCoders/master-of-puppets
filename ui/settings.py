@@ -1,4 +1,5 @@
 from functools import partial
+from operator import attrgetter
 
 from icarus.vendor.Qt import QtWidgets
 from icarus.core.rig import Rig
@@ -82,7 +83,8 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         rig = Rig()
         self.module = rig.rig_modules[-1]
 
-        for field in self.module.fields:
+        ordered_fields = sorted(self.module.fields, key=attrgetter('gui_order'))
+        for field in ordered_fields:
             if not field.displayable:
                 continue
 

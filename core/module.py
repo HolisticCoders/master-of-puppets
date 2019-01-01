@@ -10,16 +10,19 @@ class RigModule(IcarusNode):
     name = StringField(
         displayable=True,
         # editable=True,
+        gui_order=-2  # make sure it's always on top
     )
     side = StringField(
         displayable=True,
         # editable=True,
+        gui_order=-2  # make sure it's always on top
     )
 
     # Joint of the rig skeleton under which the deform joints will be parented.
     parent_joint = ObjectField(
             displayable=True,
             editable=True,
+            gui_order=-1  # always on top but under the name and side
     )
 
     module_type = StringField()
