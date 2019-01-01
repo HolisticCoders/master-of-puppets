@@ -27,12 +27,12 @@ class IcarusNode(object):
         instance = object.__new__(cls, *args, **kwargs)
         cls.instances.add(instance)
         return instance
+
+    def __init__(self, name):
         """Create the node if it doesn't already exist."""
         self.node_name = name
         if not cmds.objExists(name):
-            if node_type is None:
-                node_type = 'transform'
-            elif node_type not in cmds.allNodeTypes():
-                raise Exception("Specified `{}` node_type is not a valid maya node.".format(node_type))
-                return
-            cmds.createNode(node_type, name=name)
+            cmds.createNode('transform', name=name)
+
+    def __repr__(self):
+        return "%s (%s)" % (self.__class__, self.node_name)
