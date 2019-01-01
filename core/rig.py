@@ -33,7 +33,28 @@ class Rig(IcarusNode):
             module = all_rig_modules[module_type](node, rig=self)
             modules.append(module)
 
-        return modules
+        sorted_modules = []
+        while modules:
+            module = modules.pop()
+            self.sort_parent_module(module, modules, sorted_modules)
+
+        return sorted_modules
+
+    def sort_parent_module(self, module, modules, sorted_modules):
+        parent_joint = module.parent_joint.get()
+        if parent_joint:
+            parent_module = '_'.join([
+                parent_joint.split('_')[0],
+                parent_joint.split('_')[1],
+                'mod'
+            ])
+            module_type = cmds.getAttr(parent_module + '.module_type')
+            parent_module = all_rig_modules[module_type](parent_module, rig=self)
+            if parent_module in modules:
+                modules.remove(parent_module)
+                self.sort_parent_module(parent_module, modules, sorted_modules)
+        
+        sorted_modules.append(module)
 
     @property
     def skeleton(self):
