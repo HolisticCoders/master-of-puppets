@@ -138,6 +138,62 @@ def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True, m
         )
 
 
+def point_constraint(driver, driven, maintain_offset=False):
+    if not cmds.objExists(driver):
+        raise ValueError("{} driver does not exist".format(driver))
+    if not cmds.objExists(driven):
+        raise ValueError("{} driven does not exist".format(driven))
+
+    driven_parent = cmds.listRelatives(driven, parent=True)[0]
+    mult_mat = cmds.createNode('multMatrix')
+    decompose_mat = cmds.createNode('decomposeMatrix')
+
+    cmds.connectAttr(
+        driver + ".worldMatrix[0]",
+        mult_mat + ".matrixIn[0]",
+    )
+
+    if maintain_offset:
+        mult_mat_offset = cmds.createNode('multMatrix')
+        cmds.connectAttr(
+            driver + ".worldInverseMatrix[0]",
+            mult_mat_offset + ".matrixIn[0]",
+        )
+        cmds.connectAttr(
+            driven + ".worldMatrix[0]",
+            mult_mat_offset + ".matrixIn[1]",
+        )
+        offset_mat = cmds.getAttr(mult_mat_offset + '.matrixSum') 
+        cmds.setAttr(
+            mult_mat + ".matrixIn[1]",
+            offset_mat,
+            type='matrix'
+        )
+        cmds.delete(mult_mat_offset)
+    else:
+        identity_mat = [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ]
+        cmds.setAttr(
+            mult_mat + ".matrixIn[1]",
+            identity_mat,
+            type='matrix'
+        )
+
+    cmds.connectAttr(
+        driven_parent + ".worldInverseMatrix[0]",
+        mult_mat + ".matrixIn[2]",
+    )
+    cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
+
+    cmds.connectAttr(
+        decompose_mat + ".outputTranslate",
+        driven + ".translate"
+    )
+
 
 def add_parent_group(dag_node, suffix='grp'):
     dag_node_mat = cmds.xform(
