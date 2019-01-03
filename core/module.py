@@ -83,7 +83,7 @@ class RigModule(IcarusNode):
                 'mod'
             ])
             module_type = cmds.getAttr(parent_module + '.module_type')
-            parent_module = all_rig_modules[module_type](parent_module, rig=self)
+            parent_module = all_rig_modules[module_type](parent_module, rig=self.rig)
             return parent_module
 
     def initialize(self):
