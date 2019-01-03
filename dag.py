@@ -38,28 +38,62 @@ def dict_to_hierarchy(tree):
                 dict_to_hierarchy(child_tree)
 
 
-def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True):
+def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True, maintain_offset=False):
     if not cmds.objExists(driver):
         raise ValueError("{} driver does not exist".format(driver))
     if not cmds.objExists(driven):
         raise ValueError("{} driven does not exist".format(driven))
 
+    driven_parent = cmds.listRelatives(driven, parent=True)[0]
     mult_mat = cmds.createNode('multMatrix')
     decompose_mat = cmds.createNode('decomposeMatrix')
 
-    cmds.connectAttr(driver + ".worldMatrix[0]", mult_mat + ".matrixIn[0]")
+    if maintain_offset:
+        mult_mat_offset = cmds.createNode('multMatrix')
+        cmds.connectAttr(
+            driver + ".worldInverseMatrix[0]",
+            mult_mat_offset + ".matrixIn[0]",
+        )
+        cmds.connectAttr(
+            driven + ".worldMatrix[0]",
+            mult_mat_offset + ".matrixIn[1]",
+        )
+        offset_mat = cmds.getAttr(mult_mat_offset + '.matrixSum') 
+        cmds.setAttr(
+            mult_mat + ".matrixIn[0]",
+            offset_mat,
+            type='matrix'
+        )
+        cmds.delete(mult_mat_offset)
+    else:
+        identity_mat = [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ]
+        cmds.setAttr(
+            mult_mat + ".matrixIn[0]",
+            identity_mat,
+            type='matrix'
+        )
+
     cmds.connectAttr(
-        driven + ".parentInverseMatrix[0]",
-        mult_mat + ".matrixIn[1]"
+        driver + ".worldMatrix[0]",
+        mult_mat + ".matrixIn[1]",
+    )
+    cmds.connectAttr(
+        driven_parent + ".worldInverseMatrix[0]",
+        mult_mat + ".matrixIn[2]",
     )
 
     cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
-
     if translate:
         cmds.connectAttr(
             decompose_mat + ".outputTranslate",
             driven + ".translate"
         )
+
     if rotate:
         if cmds.nodeType(driven) == 'joint':
             # substract the driven's joint orient from the rotation
@@ -77,7 +111,7 @@ def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True):
                 quat_invert + '.inputQuat',
             )
             cmds.connectAttr(
-                decompose_mat + '.outputQuat',
+                decompose_mat + ".outputRotate",
                 quat_prod + '.input1Quat',
             )
             cmds.connectAttr(
@@ -98,7 +132,67 @@ def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True):
                 driven + ".rotate"
             )
     if scale:
-        cmds.connectAttr(decompose_mat + ".outputScale", driven + ".scale")
+        cmds.connectAttr(
+            decompose_mat + ".outputScale",
+            driven + ".scale"
+        )
+
+
+def point_constraint(driver, driven, maintain_offset=False):
+    if not cmds.objExists(driver):
+        raise ValueError("{} driver does not exist".format(driver))
+    if not cmds.objExists(driven):
+        raise ValueError("{} driven does not exist".format(driven))
+
+    driven_parent = cmds.listRelatives(driven, parent=True)[0]
+    mult_mat = cmds.createNode('multMatrix')
+    decompose_mat = cmds.createNode('decomposeMatrix')
+
+    cmds.connectAttr(
+        driver + ".worldMatrix[0]",
+        mult_mat + ".matrixIn[0]",
+    )
+
+    if maintain_offset:
+        mult_mat_offset = cmds.createNode('multMatrix')
+        cmds.connectAttr(
+            driver + ".worldInverseMatrix[0]",
+            mult_mat_offset + ".matrixIn[0]",
+        )
+        cmds.connectAttr(
+            driven + ".worldMatrix[0]",
+            mult_mat_offset + ".matrixIn[1]",
+        )
+        offset_mat = cmds.getAttr(mult_mat_offset + '.matrixSum') 
+        cmds.setAttr(
+            mult_mat + ".matrixIn[1]",
+            offset_mat,
+            type='matrix'
+        )
+        cmds.delete(mult_mat_offset)
+    else:
+        identity_mat = [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ]
+        cmds.setAttr(
+            mult_mat + ".matrixIn[1]",
+            identity_mat,
+            type='matrix'
+        )
+
+    cmds.connectAttr(
+        driven_parent + ".worldInverseMatrix[0]",
+        mult_mat + ".matrixIn[2]",
+    )
+    cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
+
+    cmds.connectAttr(
+        decompose_mat + ".outputTranslate",
+        driven + ".translate"
+    )
 
 
 def add_parent_group(dag_node, suffix='grp'):
@@ -158,3 +252,177 @@ def reset_node(node):
             except:
                 pass
 
+
+def create_parent_space(driven, drivers, translate=True, rotate=True):
+    if translate and rotate:
+        short_name = 'Space'
+    elif not translate and rotate:
+        short_name = 'Orient_Space'
+    elif not translate and not rotate:
+        return
+
+    cmds.addAttr(
+        driven,
+        longName='space',
+        shortName=short_name,
+        attributeType="enum",
+        enumName=':'.join(drivers) + ':',
+        keyable=True
+    )
+
+    driven_parent = cmds.listRelatives(driven, parent=True)[0]
+    mult_mat = cmds.createNode('multMatrix')
+    decompose_mat = cmds.createNode('decomposeMatrix')
+    offset_choice = cmds.createNode('choice')
+    driver_choice = cmds.createNode('choice')
+    cmds.connectAttr(
+        driven + '.space',
+        offset_choice + '.selector'
+    )
+    cmds.connectAttr(
+        driven + '.space',
+        driver_choice + '.selector'
+    )
+
+    todel = []
+    for i, driver in enumerate(drivers):
+        cmds.addAttr(
+            driven_parent,
+            longName = driver + '_offset',
+            attributeType='matrix'
+        )
+        # get the offset between the driven and driver
+        mult_mat_offset = cmds.createNode('multMatrix')
+        todel.append(mult_mat_offset)
+        cmds.connectAttr(
+            driver + ".worldInverseMatrix[0]",
+            mult_mat_offset + ".matrixIn[0]",
+        )
+        cmds.connectAttr(
+            driven + ".worldMatrix[0]",
+            mult_mat_offset + ".matrixIn[1]",
+        )
+        offset_mat= cmds.getAttr(mult_mat_offset + '.matrixSum')
+
+        cmds.setAttr(
+            driven_parent + '.' + driver + '_offset',
+            offset_mat,
+            type='matrix'
+        )
+        cmds.connectAttr(
+            driven_parent + '.' + driver + '_offset',
+            offset_choice + ".input[{}]".format(i),
+        )
+
+        cmds.connectAttr(
+            driver + '.worldMatrix[0]',
+            driver_choice + ".input[{}]".format(i),
+        )
+
+    cmds.connectAttr(
+        offset_choice + ".output",
+        mult_mat + ".matrixIn[0]",
+    )
+    cmds.connectAttr(
+        driver_choice + ".output",
+        mult_mat + ".matrixIn[1]",
+    )
+    cmds.connectAttr(
+        driven_parent + ".worldInverseMatrix[0]",
+        mult_mat + ".matrixIn[2]",
+    )
+    cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
+
+    if translate:
+        cmds.connectAttr(
+            decompose_mat + ".outputTranslate",
+            driven + ".translate"
+        )
+    if rotate:
+        cmds.connectAttr(
+            decompose_mat + ".outputRotate",
+            driven + ".rotate"
+        )
+    cmds.delete(todel)
+
+def create_point_space(driven, drivers):
+    cmds.addAttr(
+        driven,
+        longName='space',
+        shortName='Point_Space',
+        attributeType="enum",
+        enumName=':'.join(drivers) + ':',
+        keyable=True
+    )
+
+    driven_parent = cmds.listRelatives(driven, parent=True)[0]
+    mult_mat = cmds.createNode('multMatrix')
+    decompose_mat = cmds.createNode('decomposeMatrix')
+    offset_choice = cmds.createNode('choice')
+    driver_choice = cmds.createNode('choice')
+    cmds.connectAttr(
+        driven + '.space',
+        offset_choice + '.selector'
+    )
+    cmds.connectAttr(
+        driven + '.space',
+        driver_choice + '.selector'
+    )
+
+    todel = []
+    for i, driver in enumerate(drivers):
+        cmds.addAttr(
+            driven_parent,
+            longName = driver + '_offset',
+            attributeType='matrix'
+        )
+        # get the offset between the driven and driver
+        mult_mat_offset = cmds.createNode('multMatrix')
+        todel.append(mult_mat_offset)
+        cmds.connectAttr(
+            driver + ".worldInverseMatrix[0]",
+            mult_mat_offset + ".matrixIn[0]",
+        )
+        cmds.connectAttr(
+            driven + ".worldMatrix[0]",
+            mult_mat_offset + ".matrixIn[1]",
+        )
+        offset_mat= cmds.getAttr(mult_mat_offset + '.matrixSum')
+
+        cmds.setAttr(
+            driven_parent + '.' + driver + '_offset',
+            offset_mat,
+            type='matrix'
+        )
+        cmds.connectAttr(
+            driven_parent + '.' + driver + '_offset',
+            offset_choice + ".input[{}]".format(i),
+        )
+
+        cmds.connectAttr(
+            driver + '.worldMatrix[0]',
+            driver_choice + ".input[{}]".format(i),
+        )
+
+    cmds.connectAttr(
+        offset_choice + ".output",
+        mult_mat + ".matrixIn[1]",
+    )
+    cmds.connectAttr(
+        driver_choice + ".output",
+        mult_mat + ".matrixIn[0]",
+    )
+    cmds.connectAttr(
+        driven_parent + ".worldInverseMatrix[0]",
+        mult_mat + ".matrixIn[2]",
+    )
+    cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
+
+    cmds.connectAttr(
+        decompose_mat + ".outputTranslate",
+        driven + ".translate"
+    )
+    cmds.delete(todel)
+
+def create_orient_space(driven, drivers):
+    create_parent_space(driven, drivers, translate=False, rotate=True)
