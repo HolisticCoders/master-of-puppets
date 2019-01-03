@@ -54,7 +54,7 @@ class Arm(RigModule):
 
     @property
     def arm_deform_joints(self):
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         return [j for j in deform_joints if 'twist' not in j]
 
     @property
@@ -64,7 +64,7 @@ class Arm(RigModule):
 
     @property
     def upper_twist_deform_joints(self):
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         return [j for j in deform_joints if 'twist_upper' in j]
 
     @property
@@ -74,7 +74,7 @@ class Arm(RigModule):
 
     @property
     def lower_twist_deform_joints(self):
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         return [j for j in deform_joints if 'twist_lower' in j]
 
     def initialize(self, *args, **kwargs):
@@ -103,7 +103,7 @@ class Arm(RigModule):
             )
             self._add_twist_joint(
                 name=name,
-                parent=self.deform_joints_list.get()[0]
+                parent=self.deform_joints.get()[0]
             )
 
         for i in xrange(self.lower_twist_joint_count.get()):
@@ -116,13 +116,13 @@ class Arm(RigModule):
             )
             self._add_twist_joint(
                 name=name,
-                parent=self.deform_joints_list.get()[1]
+                parent=self.deform_joints.get()[1]
             )
 
     def _add_deform_joint(self, name):
         """Add a new deform joint, child of the last one."""
         parent = None
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         if deform_joints:
             parent = deform_joints[-1]
         return super(Arm, self)._add_deform_joint(parent=parent, name=name)
@@ -150,12 +150,12 @@ class Arm(RigModule):
                 )
                 self._add_twist_joint(
                     name=name,
-                    parent=self.deform_joints_list.get()[0]
+                    parent=self.deform_joints.get()[0]
                 )
         elif joint_diff < 0:
-            all_deform = self.deform_joints_list.get()
+            all_deform = self.deform_joints.get()
             joints_to_remove = self.upper_twist_deform_joints[joint_diff:]
-            self.deform_joints_list.set(
+            self.deform_joints.set(
                 [j for j in all_deform if j not in joints_to_remove]
             )
             cmds.delete(joints_to_remove)
@@ -176,12 +176,12 @@ class Arm(RigModule):
                 )
                 self._add_twist_joint(
                     name=name,
-                    parent=self.deform_joints_list.get()[1]
+                    parent=self.deform_joints.get()[1]
                 )
         elif joint_diff < 0:
-            all_deform = self.deform_joints_list.get()
+            all_deform = self.deform_joints.get()
             joints_to_remove = self.lower_twist_deform_joints[joint_diff:]
-            self.deform_joints_list.set(
+            self.deform_joints.set(
                 [j for j in all_deform if j not in joints_to_remove]
             )
             cmds.delete(joints_to_remove)

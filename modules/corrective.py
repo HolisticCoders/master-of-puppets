@@ -25,7 +25,7 @@ class Corrective(RigModule):
         self.vector_base.set(self.parent_joint.get())
 
     def update(self):
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         if deform_joints is None:
             deform_joints = []
 
@@ -40,7 +40,7 @@ class Corrective(RigModule):
             joints_to_keep = joints[:len(joints) + diff]
             deform_joints = joints_to_keep
             cmds.delete(joints_to_delete)
-        self.deform_joints_list.set(deform_joints)
+        self.deform_joints.set(deform_joints)
 
     def build(self):
         self.create_locators()

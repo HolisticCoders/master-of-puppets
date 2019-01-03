@@ -24,7 +24,7 @@ class RigModule(IcarusNode):
     extras_group = ObjectField()
 
     # list of all of this module's deform joints
-    deform_joints_list = JSONField()
+    deform_joints = ObjectListField()
 
     def __init__(self, name, side='M', parent_joint=None, rig=None):
         if cmds.objExists(name):
@@ -150,7 +150,7 @@ class RigModule(IcarusNode):
             name (str): name of the joint, in case you don't want the default one.
             parent (str): node under which the new joint will be parented
         """
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
 
         if deform_joints is None:
             deform_joints = []
@@ -184,13 +184,13 @@ class RigModule(IcarusNode):
                 cmds.setAttr(new_joint + '.' + attr, value)
 
         deform_joints.append(new_joint)
-        self.deform_joints_list.set(
+        self.deform_joints.set(
             deform_joints
         )
         return new_joint
 
     def create_driving_joints(self):
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         duplicate = cmds.duplicate(
             deform_joints,
             parentOnly=True,

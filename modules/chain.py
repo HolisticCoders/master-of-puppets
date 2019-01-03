@@ -41,13 +41,13 @@ class Chain(RigModule):
         """Add a new deform joint, child of the last one.
         """
         parent = None
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         if deform_joints:
             parent = deform_joints[-1]
         return super(Chain, self)._add_deform_joint(parent=parent)
 
     def _update_joint_count(self):
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         if deform_joints is None:
             deform_joints = []
 
@@ -63,7 +63,7 @@ class Chain(RigModule):
             joints_to_keep = joints[:len(joints) + diff]
             deform_joints = joints_to_keep
             cmds.delete(joints_to_delete)
-        self.deform_joints_list.set(deform_joints)
+        self.deform_joints.set(deform_joints)
 
 
 exported_rig_modules = [Chain]
