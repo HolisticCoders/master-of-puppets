@@ -85,7 +85,7 @@ class FieldContainerMeta(type):
 
         for parent in parent_classes:
             for name, attr in parent.__dict__.iteritems():
-                if isinstance(attr, Field):
+                if isinstance(attr, Field) and attr not in fields:
                     fields.append(attr)
 
         for name, attr in attrs.iteritems():
@@ -93,7 +93,8 @@ class FieldContainerMeta(type):
                 attr.name = name
                 if attr.display_name is None:
                     attr.display_name = name
-                fields.append(attr)
+                if attr not in fields:
+                    fields.append(attr)
 
         attrs['fields'] = fields
         attrs['fields_dict'] = {p.name: p for p in fields}
