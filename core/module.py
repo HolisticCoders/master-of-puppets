@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
-from icarus.core.fields import ObjectField, StringField, JSONField
+from icarus.core.fields import ObjectField, StringField, ObjectListField
 import icarus.metadata
 import icarus.dag
 

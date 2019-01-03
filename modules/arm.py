@@ -2,7 +2,7 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
 from icarus.core.module import RigModule
-from icarus.core.fields import IntField, JSONField, ObjectField
+from icarus.core.fields import IntField, ObjectListField, ObjectField
 import icarus.dag
 import icarus.metadata
 
@@ -22,16 +22,16 @@ class Arm(RigModule):
     )
 
     # list containing the FK joints in the same order as the hierarchy
-    fk_chain = JSONField()
+    fk_chain = ObjectListField()
 
     # list containing the IK joints in the same order as the hierarchy
-    ik_chain = JSONField()
+    ik_chain = ObjectListField()
 
     # list containing the FK controls in the same order as the hierarchy.
-    fk_controls = JSONField()
+    fk_controls = ObjectListField()
 
     # list containing the IK controls.
-    ik_controls = JSONField()
+    ik_controls = ObjectListField()
 
     # group containing all the FK controls
     fk_controls_group = ObjectField()

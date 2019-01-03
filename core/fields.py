@@ -161,6 +161,7 @@ class StringField(Field):
     def cast_to_attr(self, value):
         return str(value)
 
+
 class JSONField(StringField):
     def cast_to_attr(self, value):
         return json.dumps(value)
@@ -178,3 +179,33 @@ class ObjectField(StringField):
             return value
         else:
             raise ValueError('node `{}` does not exist'.format(value))
+
+
+class ObjectListField(JSONField):
+    def cast_to_attr(self, value):
+        if not isinstance(value, (tuple, list)):
+            raise ValueError(
+                ("{} is an Object List Field and only accepts lists and tuples. "
+                 + "provided value was of type {}").format(
+                        self.name,
+                        type(value),
+                )
+            )
+        curated_objects = []
+        for item in value:
+            if cmds.objExists(item):
+                curated_objects.append(item)
+            else:
+                raise ValueError(
+                    "{} does not exist and can't be added to the field {}".format(
+                        item,
+                        self.name
+                    )
+                )
+        return json.dumps(curated_objects)
+
+    def cast_from_attr(self, value):
+        if value is None:
+            return []
+        return json.loads(value)
+
