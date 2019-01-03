@@ -77,6 +77,17 @@ class FieldContainerMeta(type):
     def __new__(cls, cls_name, bases, attrs):
         fields = []
 
+        parent_classes = []
+        for base in bases:
+            parent_classes.append(base)
+            for parent in base.__mro__:
+                parent_classes.append(parent)
+
+        for parent in parent_classes:
+            for name, attr in parent.__dict__.iteritems():
+                if isinstance(attr, Field):
+                    fields.append(attr)
+
         for name, attr in attrs.iteritems():
             if isinstance(attr, Field) and attr.name is None:
                 attr.name = name
