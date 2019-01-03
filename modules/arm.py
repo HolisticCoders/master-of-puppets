@@ -131,6 +131,7 @@ class Arm(RigModule):
         return super(Arm, self)._add_deform_joint(name=name, parent=parent)
 
     def update(self):
+        super(Arm, self).update()
         self._update_upper_twists()
         self._update_lower_twists()
 

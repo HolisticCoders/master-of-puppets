@@ -19,6 +19,7 @@ class Chain(RigModule):
             self._add_deform_joint()
 
     def update(self):
+        super(Chain, self).update()
         self._update_joint_count()
 
     def build(self):

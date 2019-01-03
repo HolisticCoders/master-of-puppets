@@ -25,6 +25,7 @@ class Corrective(RigModule):
         self.vector_base.set(self.parent_joint.get())
 
     def update(self):
+        super(Corrective, self).update()
         deform_joints = self.deform_joints.get()
         if deform_joints is None:
             deform_joints = []

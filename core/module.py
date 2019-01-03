@@ -70,11 +70,51 @@ class RigModule(IcarusNode):
         raise NotImplementedError
 
     def update(self):
-        """Update the placement based on the module's fields.
+        """Update the maya scene based on the module's fields
 
-        You need to overwrite this method in your subclasses.
+        This should ONLY be called in placement mode.
         """
-        raise NotImplementedError
+        if self.is_built.get():
+            return
+
+        scene_metadata = icarus.metadata.metadata_from_name(self.node_name)
+        name_changed = self.name.get() != scene_metadata['base_name']
+        side_changed = self.side.get() != scene_metadata['side']
+
+        if name_changed or side_changed:
+            # rename the module node
+            new_name = self._update_node_name(self.node_name, scene_metadata)
+            self.node_name = new_name
+
+            # rename the deform joints
+            for node in self.deform_joints.get():
+                self._update_node_name(node, scene_metadata)
+
+                        
+    def _update_node_name(self, node, scene_metadata):
+        new_name = node.replace(
+            scene_metadata['base_name'],
+            self.name.get()
+        ).replace(
+            scene_metadata['side'],
+            self.side.get()
+        )
+        cmds.rename(node, new_name)
+
+        # propagate the new name in all the object and object list fields
+        for module in self.rig.rig_modules:
+            for field in module._fields:
+                if field.__class__.__name__ == 'ObjectField':
+                    if field.__get__(module).get() == node:
+                        field.__get__(module).set(new_name)
+                if field.__class__.__name__ == 'ObjectListField':
+                    objects = field.__get__(module).get()
+                    for i, item in enumerate(objects):
+                        if item == node:
+                            objects[i] = new_name
+                    field.__get__(module).set(objects)
+        return new_name
+
 
     def _build(self):
         """Setup some stuff before actually building the module.
