@@ -111,7 +111,7 @@ def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True, m
                 quat_invert + '.inputQuat',
             )
             cmds.connectAttr(
-                decompose_mat + ".outputRotate",
+                decompose_mat + ".outputQuat",
                 quat_prod + '.input1Quat',
             )
             cmds.connectAttr(
