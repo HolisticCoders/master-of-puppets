@@ -6,13 +6,17 @@ class Attribute(object):
     def __init__(self, instance, field):
         self.field = field
         self.is_multi = field.create_attr_args.get('multi', False)
-        self.attr_name = '.'.join([instance.node_name, field.name])
+        self.instance = instance
         if not cmds.attributeQuery(field.name, node=instance.node_name, exists=True):
             cmds.addAttr(
                 instance.node_name,
                 longName=field.name,
                 **field.create_attr_args
             )
+
+    @property
+    def attr_name(self):
+        return '.'.join([self.instance.node_name, self.field.name])
 
     def set(self, value):
         if self.is_multi:
@@ -73,9 +77,16 @@ class FieldContainerMeta(type):
     def __new__(cls, cls_name, bases, attrs):
         fields = []
 
+        parent_classes = []
         for base in bases:
-            base_fields = getattr(base, 'fields', [])
-            fields += base_fields
+            parent_classes.append(base)
+            for parent in base.__mro__:
+                parent_classes.append(parent)
+
+        for parent in parent_classes:
+            for name, attr in parent.__dict__.iteritems():
+                if isinstance(attr, Field):
+                    fields.append(attr)
 
         for name, attr in attrs.iteritems():
             if isinstance(attr, Field) and attr.name is None:
@@ -176,6 +187,7 @@ class StringField(Field):
     def cast_to_attr(self, value):
         return str(value)
 
+
 class JSONField(StringField):
     def cast_to_attr(self, value):
         return json.dumps(value)
@@ -193,3 +205,33 @@ class ObjectField(StringField):
             return value
         else:
             raise ValueError('node `{}` does not exist'.format(value))
+
+
+class ObjectListField(JSONField):
+    def cast_to_attr(self, value):
+        if not isinstance(value, (tuple, list)):
+            raise ValueError(
+                ("{} is an Object List Field and only accepts lists and tuples. "
+                 + "provided value was of type {}").format(
+                        self.name,
+                        type(value),
+                )
+            )
+        curated_objects = []
+        for item in value:
+            if cmds.objExists(item):
+                curated_objects.append(item)
+            else:
+                raise ValueError(
+                    "{} does not exist and can't be added to the field {}".format(
+                        item,
+                        self.name
+                    )
+                )
+        return json.dumps(curated_objects)
+
+    def cast_from_attr(self, value):
+        if value is None:
+            return []
+        return json.loads(value)
+

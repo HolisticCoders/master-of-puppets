@@ -8,9 +8,6 @@ class Root(RigModule):
     def initialize(self):
         self._add_deform_joint()
 
-    def update(self):
-        pass
-
     def build(self):
         pass
 

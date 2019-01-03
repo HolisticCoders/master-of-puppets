@@ -92,9 +92,6 @@ class Rig(IcarusNode):
         # instantiate the new module from the list of possible modules.
         kwargs['rig'] = self
         new_module = all_rig_modules[module_type](*args, **kwargs)
-        parent = cmds.listRelatives(new_module.node_name, parent=True)
-        if not parent or parent[0] != self.modules_group.get():
-            cmds.parent(new_module.node_name, self.modules_group.get())
 
         # self.create_skeleton_from_module(new_module)
         return new_module

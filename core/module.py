@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
-from icarus.core.fields import ObjectField, StringField, JSONField
+from icarus.core.fields import ObjectField, StringField, ObjectListField
 from icarus.modules import all_rig_modules
 import icarus.metadata
 import icarus.dag
@@ -38,7 +38,7 @@ class RigModule(IcarusNode):
     extras_group = ObjectField()
 
     # list of all of this module's deform joints
-    deform_joints_list = JSONField()
+    deform_joints = ObjectListField()
 
     def __init__(self, name, side='M', parent_joint=None, rig=None):
         if cmds.objExists(name):
@@ -52,6 +52,10 @@ class RigModule(IcarusNode):
             self.name.set(name)
             self.side.set(side)
             self.module_type.set(self.__class__.__name__)
+
+            parent = cmds.listRelatives(self.node_name, parent=True)
+            if not parent or parent[0] != rig.modules_group.get():
+                cmds.parent(self.node_name, rig.modules_group.get())
 
             if parent_joint:
                 self.parent_joint.set(parent_joint)
@@ -93,11 +97,51 @@ class RigModule(IcarusNode):
         raise NotImplementedError
 
     def update(self):
-        """Update the placement based on the module's fields.
+        """Update the maya scene based on the module's fields
 
-        You need to overwrite this method in your subclasses.
+        This should ONLY be called in placement mode.
         """
-        raise NotImplementedError
+        if self.is_built.get():
+            return
+
+        scene_metadata = icarus.metadata.metadata_from_name(self.node_name)
+        name_changed = self.name.get() != scene_metadata['base_name']
+        side_changed = self.side.get() != scene_metadata['side']
+
+        if name_changed or side_changed:
+            # rename the module node
+            new_name = self._update_node_name(self.node_name, scene_metadata)
+            self.node_name = new_name
+
+            # rename the deform joints
+            for node in self.deform_joints.get():
+                self._update_node_name(node, scene_metadata)
+
+                        
+    def _update_node_name(self, node, scene_metadata):
+        new_name = node.replace(
+            scene_metadata['base_name'],
+            self.name.get()
+        ).replace(
+            scene_metadata['side'],
+            self.side.get()
+        )
+        cmds.rename(node, new_name)
+
+        # propagate the new name in all the object and object list fields
+        for module in self.rig.rig_modules:
+            for field in module._fields:
+                if field.__class__.__name__ == 'ObjectField':
+                    if field.__get__(module).get() == node:
+                        field.__get__(module).set(new_name)
+                if field.__class__.__name__ == 'ObjectListField':
+                    objects = field.__get__(module).get()
+                    for i, item in enumerate(objects):
+                        if item == node:
+                            objects[i] = new_name
+                    field.__get__(module).set(objects)
+        return new_name
+
 
     def _build(self):
         """Setup some stuff before actually building the module.
@@ -177,7 +221,7 @@ class RigModule(IcarusNode):
             name (str): name of the joint, in case you don't want the default one.
             parent (str): node under which the new joint will be parented
         """
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
 
         if deform_joints is None:
             deform_joints = []
@@ -211,13 +255,13 @@ class RigModule(IcarusNode):
                 cmds.setAttr(new_joint + '.' + attr, value)
 
         deform_joints.append(new_joint)
-        self.deform_joints_list.set(
+        self.deform_joints.set(
             deform_joints
         )
         return new_joint
 
     def create_driving_joints(self):
-        deform_joints = self.deform_joints_list.get()
+        deform_joints = self.deform_joints.get()
         duplicate = cmds.duplicate(
             deform_joints,
             parentOnly=True,
