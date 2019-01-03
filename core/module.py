@@ -39,6 +39,10 @@ class RigModule(IcarusNode):
             self.side.set(side)
             self.module_type.set(self.__class__.__name__)
 
+            parent = cmds.listRelatives(self.node_name, parent=True)
+            if not parent or parent[0] != rig.modules_group.get():
+                cmds.parent(self.node_name, rig.modules_group.get())
+
             if parent_joint:
                 self.parent_joint.set(parent_joint)
                 icarus.dag.matrix_constraint(parent_joint, self.node_name)
