@@ -261,12 +261,18 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
     elif not translate and not rotate:
         return
 
+    if isinstance(drivers, dict):
+        names = drivers.keys()
+        drivers = drivers.values()
+    else:
+        names = drivers
+
     cmds.addAttr(
         driven,
         longName='space',
         shortName=short_name,
         attributeType="enum",
-        enumName=':'.join(drivers) + ':',
+        enumName=':'.join(names) + ':',
         keyable=True
     )
 
