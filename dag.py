@@ -276,7 +276,7 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
         keyable=True
     )
 
-    driven_parent = cmds.listRelatives(driven, parent=True)[0]
+    driven_parent = add_parent_group(driven, suffix='PS')
     mult_mat = cmds.createNode('multMatrix')
     decompose_mat = cmds.createNode('decomposeMatrix')
     offset_choice = cmds.createNode('choice')
@@ -293,7 +293,7 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
     todel = []
     for i, driver in enumerate(drivers):
         cmds.addAttr(
-            driven_parent,
+            driven,
             longName = driver + '_offset',
             attributeType='matrix'
         )
@@ -311,12 +311,12 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
         offset_mat= cmds.getAttr(mult_mat_offset + '.matrixSum')
 
         cmds.setAttr(
-            driven_parent + '.' + driver + '_offset',
+            driven + '.' + driver + '_offset',
             offset_mat,
             type='matrix'
         )
         cmds.connectAttr(
-            driven_parent + '.' + driver + '_offset',
+            driven + '.' + driver + '_offset',
             offset_choice + ".input[{}]".format(i),
         )
 
@@ -333,8 +333,9 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
         driver_choice + ".output",
         mult_mat + ".matrixIn[1]",
     )
+    parent = cmds.listRelatives(driven_parent, parent=True)[0]
     cmds.connectAttr(
-        driven_parent + ".worldInverseMatrix[0]",
+        parent + ".worldInverseMatrix[0]",
         mult_mat + ".matrixIn[2]",
     )
     cmds.connectAttr(mult_mat + ".matrixSum", decompose_mat + ".inputMatrix")
@@ -342,12 +343,12 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
     if translate:
         cmds.connectAttr(
             decompose_mat + ".outputTranslate",
-            driven + ".translate"
+            driven_parent + ".translate"
         )
     if rotate:
         cmds.connectAttr(
             decompose_mat + ".outputRotate",
-            driven + ".rotate"
+            driven_parent + ".rotate"
         )
     cmds.delete(todel)
 
