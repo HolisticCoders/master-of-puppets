@@ -51,11 +51,11 @@ def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True, m
     if maintain_offset:
         mult_mat_offset = cmds.createNode('multMatrix')
         cmds.connectAttr(
-            driver + ".worldInverseMatrix[0]",
+            driven + ".worldMatrix[0]",
             mult_mat_offset + ".matrixIn[0]",
         )
         cmds.connectAttr(
-            driven + ".worldMatrix[0]",
+            driver + ".worldInverseMatrix[0]",
             mult_mat_offset + ".matrixIn[1]",
         )
         offset_mat = cmds.getAttr(mult_mat_offset + '.matrixSum') 
@@ -301,11 +301,11 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
         mult_mat_offset = cmds.createNode('multMatrix')
         todel.append(mult_mat_offset)
         cmds.connectAttr(
-            driver + ".worldInverseMatrix[0]",
+            driven + ".worldMatrix[0]",
             mult_mat_offset + ".matrixIn[0]",
         )
         cmds.connectAttr(
-            driven + ".worldMatrix[0]",
+            driver + ".worldInverseMatrix[0]",
             mult_mat_offset + ".matrixIn[1]",
         )
         offset_mat= cmds.getAttr(mult_mat_offset + '.matrixSum')
