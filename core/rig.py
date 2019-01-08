@@ -88,6 +88,7 @@ class Rig(IcarusNode):
 
         nodes_before_build = set(cmds.ls('*'))
         for module in self.rig_modules:
+            print "Building: " + module.node_name
             module._build()
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
