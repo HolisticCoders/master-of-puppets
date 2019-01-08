@@ -423,7 +423,14 @@ class Arm(RigModule):
         cmds.setAttr(wrist_ctl + '.rotate', 0, 0, 0)
         parent_group = icarus.dag.add_parent_group(wrist_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
-        cmds.orientConstraint(wrist_ctl, ik_chain[-1], maintainOffset=True)
+        icarus.dag.matrix_constraint(
+            wrist_ctl,
+            ik_chain[-1],
+            translate=False,
+            rotate=True,
+            scale=False,
+            maintain_offset=True
+        )
 
         shoulder_ctl = cmds.circle()[0]
         shoulder_ctl = cmds.rename(
@@ -439,6 +446,7 @@ class Arm(RigModule):
         cmds.setAttr(shoulder_ctl + '.rotate', 0, 0, 0)
         parent_group = icarus.dag.add_parent_group(shoulder_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
+        icarus.dag.matrix_constraint(shoulder_ctl, ik_chain[0], maintain_offset=True)
 
         pole_vector_ctl = cmds.circle()[0]
         pole_vector_ctl = cmds.rename(
@@ -458,8 +466,9 @@ class Arm(RigModule):
             startJoint=ik_chain[0],
             endEffector=ik_chain[2]
         )
+        cmds.parent(ik_handle, self.extras_group.get())
         cmds.poleVectorConstraint(pole_vector_ctl, ik_handle)
-        cmds.parent(ik_handle, wrist_ctl)
+        icarus.dag.matrix_constraint(wrist_ctl, ik_handle, maintain_offset=True)
 
     def _place_pole_vector(self, ctl):
         ik_chain = self.ik_chain.get()
