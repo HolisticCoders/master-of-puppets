@@ -24,7 +24,7 @@ class ISpinBox(QtWidgets.QSpinBox):
             self.setMaximum(1000000)
 
     def get(self):
-        self.value()
+        return self.value()
 
     def set(self, value):
         self.setValue(value)
@@ -42,7 +42,7 @@ class ILineEdit(QtWidgets.QLineEdit):
         self.setText(value)
 
     def get(self):
-        self.text()
+        return self.text()
 
     def signal(self):
         return self.textChanged
@@ -57,7 +57,7 @@ class ICheckBox(QtWidgets.QCheckBox):
         self.setChecked(value)
 
     def get(self):
-        self.isChecked()
+        return self.isChecked()
 
     def signal(self):
         return self.stateChanged
