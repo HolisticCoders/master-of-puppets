@@ -115,4 +115,5 @@ dmypy.json
 .pyre/
 
 .vscode
+.vs
 tags
