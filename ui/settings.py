@@ -1,5 +1,6 @@
 from functools import partial
 from operator import attrgetter
+from weakref import WeakValueDictionary
 
 from icarus.vendor.Qt import QtWidgets
 from icarus.core.rig import Rig
@@ -75,28 +76,45 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super(SettingsPanel, self).__init__(parent)
+        self._module_widgets = WeakValueDictionary()
+
         self.setWindowTitle('Icarus Settings')
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
+
         self.form = QtWidgets.QFormLayout()
+        self.apply_button = QtWidgets.QPushButton('Apply')
+
         layout.addLayout(self.form)
+        layout.addWidget(self.apply_button)
+
+        self.apply_button.released.connect(self._update_module)
+        self.apply_button.hide()
 
         observe('selected-module-changed', self._on_module_selected)
-
-    def _update_field(self, field, value):
-        getattr(self.module, field.name).set(value)
-        self.module.update()
 
     def _on_module_selected(self, module):
         """Update the module to edit."""
         self.module = module
         self._update_ui()
 
+    def _update_module(self):
+        """Update the Maya module."""
+        if not self.module:
+            return
+        for name, widget in self._module_widgets.iteritems():
+            field = getattr(self.module, name)
+            value = widget.get()
+            field.set(value)
+        self.module.update()
+
     def _update_ui(self):
         clear_layout(self.form)
         if not self.module:
+            self.apply_button.hide()
             return
+        self.apply_button.show()
         ordered_fields = sorted(self.module.fields, key=attrgetter('gui_order'))
         for field in ordered_fields:
             if not field.displayable:
@@ -111,9 +129,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             value = getattr(self.module, field.name).get()
             widget.set(value)
 
-            widget.signal().connect(
-                partial(self._update_field, field)
-            )
+            self._module_widgets[field.name] = widget
 
             self.form.addRow(field.display_name, widget)
 
