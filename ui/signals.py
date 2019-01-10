@@ -1,4 +1,5 @@
 from collections import defaultdict
+from weakref import WeakKeyDictionary
 
 _SIGNALS = defaultdict(list)
 
@@ -8,5 +9,8 @@ def observe(name, func):
 
 
 def publish(name, *args, **kwargs):
+    ret = WeakKeyDictionary()
     for func in _SIGNALS[name]:
-        func(*args, **kwargs)
+        res = func(*args, **kwargs)
+        ret[func] = res
+    return ret
