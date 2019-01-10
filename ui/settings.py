@@ -3,6 +3,8 @@ from operator import attrgetter
 
 from icarus.vendor.Qt import QtWidgets
 from icarus.core.rig import Rig
+from icarus.ui.signals import observe
+from icarus.ui.utils import clear_layout
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
@@ -77,12 +79,24 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
-        form = QtWidgets.QFormLayout()
-        layout.addLayout(form)
+        self.form = QtWidgets.QFormLayout()
+        layout.addLayout(self.form)
 
-        rig = Rig()
-        self.module = rig.rig_modules[-1]
+        observe('selected-module-changed', self._on_module_selected)
 
+    def _update_field(self, field, value):
+        getattr(self.module, field.name).set(value)
+        self.module.update()
+
+    def _on_module_selected(self, module):
+        """Update the module to edit."""
+        self.module = module
+        self._update_ui()
+
+    def _update_ui(self):
+        clear_layout(self.form)
+        if not self.module:
+            return
         ordered_fields = sorted(self.module.fields, key=attrgetter('gui_order'))
         for field in ordered_fields:
             if not field.displayable:
@@ -101,12 +115,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
                 partial(self._update_field, field)
             )
 
-            form.addRow(field.display_name, widget)
+            self.form.addRow(field.display_name, widget)
 
             if not field.editable:
                 widget.setEnabled(False)
-
-    def _update_field(self, field, value):
-        getattr(self.module, field.name).set(value)
-        self.module.update()
-
