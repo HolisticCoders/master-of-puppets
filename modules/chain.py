@@ -27,7 +27,7 @@ class Chain(RigModule):
     def build(self):
         parent = self.controls_group.get()
         for joint in self.driving_joints:
-            ctl = cmds.circle(name=joint + '_ctl')[0]
+            ctl = cmds.circle(name=joint.replace('driving', 'ctl'))[0]
 
             icarus.dag.snap_first_to_last(ctl, joint)
             cmds.parent(ctl, parent)

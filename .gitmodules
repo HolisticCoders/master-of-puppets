@@ -1,0 +1,3 @@
+[submodule "vendor/shapeshifter"]
+	path = vendor/shapeshifter
+	url = https://github.com/HolisticCoders/shapeshifter.git
