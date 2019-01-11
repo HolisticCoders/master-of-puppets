@@ -3,6 +3,7 @@ from icarus.core.icarusNode import IcarusNode
 from icarus.core.fields import ObjectField, StringField, ObjectListField
 import icarus.metadata
 import icarus.dag
+import icarus.attributes
 
 
 class RigModule(IcarusNode):
@@ -83,21 +84,54 @@ class RigModule(IcarusNode):
 
         if name_changed or side_changed:
             # rename the module node
-            new_name = self._update_node_name(self.node_name, scene_metadata)
+            new_name = self._update_node_name(self.node_name)
             self.node_name = new_name
 
             # rename the deform joints
             for node in self.deform_joints.get():
-                self._update_node_name(node, scene_metadata)
+                self._update_node_name(node)
 
+            # rename the persistent attributes
+            persistent_attrs = cmds.listAttr(
+                self.node_name,
+                category='persistent_attribute_backup'
+            )
+            if persistent_attrs:
+                for attr in persistent_attrs:
+                    value = cmds.getAttr(self.node_name + '.' + attr)
+                    old_node, attr_name = attr.split('__')
+
+                    metadata = icarus.metadata.metadata_from_name(old_node)
+                    metadata['base_name'] = self.name.get()
+                    metadata['side'] = self.side.get()
+                    new_node = icarus.metadata.name_from_metadata(
+                        metadata['base_name'],
+                        metadata['side'],
+                        metadata['type'],
+                        object_id = metadata.get('id', None),
+                        object_description = metadata.get('description', None),
+                    )
+                    kwargs = icarus.attributes.get_add_attribute_kwargs(
+                        self.node_name + '.' + attr
+                    )
+                    kwargs['longName'] = new_node + '__' + attr_name
+                    cmds.addAttr(
+                        self.node_name,
+                        **kwargs
+                    )
+                    cmds.setAttr(self.node_name + '.' + kwargs['longName'], value)
+                    cmds.deleteAttr(self.node_name, attribute=attr)
                         
-    def _update_node_name(self, node, scene_metadata):
-        new_name = node.replace(
-            scene_metadata['base_name'],
-            self.name.get()
-        ).replace(
-            scene_metadata['side'],
-            self.side.get()
+    def _update_node_name(self, node):
+        metadata = icarus.metadata.metadata_from_name(node)
+        metadata['base_name'] = self.name.get()
+        metadata['side'] = self.side.get()
+        new_name = icarus.metadata.name_from_metadata(
+            metadata['base_name'],
+            metadata['side'],
+            metadata['type'],
+            object_id = metadata.get('id', None),
+            object_description = metadata.get('description', None),
         )
         cmds.rename(node, new_name)
 
