@@ -16,6 +16,9 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
         self.tree_view = QtWidgets.QTreeView()
         layout.addWidget(self.tree_view)
+        refresh_button = QtWidgets.QPushButton('Refresh')
+        refresh_button.released.connect(self._refresh_model)
+        layout.addWidget(refresh_button)
 
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
