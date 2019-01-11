@@ -17,13 +17,19 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.tree_view = QtWidgets.QTreeView()
         layout.addWidget(self.tree_view)
 
-        rig = Rig()
-        modules = rig.rig_modules
-
-        self.model = ModulesModel(modules)
+        self.model = ModulesModel()
         self.tree_view.setModel(self.model)
         self.tree_view.expandAll()
         
+        selection = self.tree_view.selectionModel()
+        selection.currentChanged.connect(self._on_current_changed)
+
+        self.model = ModulesModel(modules)
+    def _refresh_model(self):
+        self.model = ModulesModel()
+        self.tree_view.setModel(self.model)
+        self.tree_view.expandAll()
+
         selection = self.tree_view.selectionModel()
         selection.currentChanged.connect(self._on_current_changed)
 
