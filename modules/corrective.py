@@ -47,7 +47,7 @@ class Corrective(RigModule):
         self.create_locators()
         value_range = self._build_angle_reader()
         for joint in self.driving_joints:
-            ctl = self._add_control(joint, name=joint + '_ctl')
+            ctl = self._add_control(joint, name=joint.replace('driving', 'ctl'))
             condition_nodes = []
             for angleAxis in 'YZ':
                 positive_offset = cmds.createNode('multiplyDivide')
