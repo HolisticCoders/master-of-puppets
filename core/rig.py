@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 
 import maya.cmds as cmds
 
@@ -10,6 +11,7 @@ from icarus.core.fields import ObjectField
 import icarus.dag
 import icarus.postscript
 
+logger = logging.getlogger()
 
 class Rig(IcarusNode):
 
@@ -88,7 +90,7 @@ class Rig(IcarusNode):
 
         nodes_before_build = set(cmds.ls('*'))
         for module in self.rig_modules:
-            print "Building: " + module.node_name
+            logger.info("Building: " + module.node_name)
             module._build()
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
