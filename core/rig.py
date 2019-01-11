@@ -82,7 +82,6 @@ class Rig(IcarusNode):
         kwargs['rig'] = self
         new_module = all_rig_modules[module_type](*args, **kwargs)
 
-        # self.create_skeleton_from_module(new_module)
         return new_module
 
     def build(self):
