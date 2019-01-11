@@ -4,7 +4,7 @@ from weakref import WeakValueDictionary
 
 from icarus.vendor.Qt import QtWidgets
 from icarus.core.rig import Rig
-from icarus.ui.signals import observe
+from icarus.ui.signals import observe, publish
 from icarus.ui.utils import clear_layout
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
@@ -108,6 +108,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             value = widget.get()
             field.set(value)
         self.module.update()
+        publish('module-updated')
 
     def _update_ui(self):
         clear_layout(self.form)
