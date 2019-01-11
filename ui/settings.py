@@ -114,6 +114,10 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         if not self.module:
             self.apply_button.hide()
             return
+        if self.module.is_built.get():
+            self.apply_button.setEnabled(False)
+        else:
+            self.apply_button.setEnabled(True)
         self.apply_button.show()
         ordered_fields = sorted(self.module.fields, key=attrgetter('gui_order'))
         for field in ordered_fields:
@@ -133,5 +137,5 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
             self.form.addRow(field.display_name, widget)
 
-            if not field.editable:
+            if not field.editable or self.module.is_built.get():
                 widget.setEnabled(False)
