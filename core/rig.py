@@ -85,6 +85,7 @@ class Rig(IcarusNode):
         return new_module
 
     def build(self):
+        cmds.undoInfo(openChunk=True)
         icarus.postscript.run_scripts('pre_build')
 
         nodes_before_build = set(cmds.ls('*'))
@@ -97,8 +98,10 @@ class Rig(IcarusNode):
         icarus.postscript.run_scripts('post_build')
 
         self._tag_nodes_for_unbuild(build_nodes)
+        cmds.undoInfo(closeChunk=True)
 
     def unbuild(self):
+        cmds.undoInfo(openChunk=True)
         icarus.postscript.run_scripts('pre_unbuild')
 
         self.reset_pose()
@@ -112,6 +115,7 @@ class Rig(IcarusNode):
             module.is_built.set(False)
 
         icarus.postscript.run_scripts('post_unbuild')
+        cmds.undoInfo(closeChunk=True)
 
     def reset_pose(self):
         for control in cmds.ls('*_ctl'):
