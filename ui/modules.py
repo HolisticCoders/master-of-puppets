@@ -32,16 +32,16 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         publish('selected-module-changed', module)
 
 
-
 class ModulesModel(QtCore.QAbstractItemModel):
-    def __init__(self, modules):
+    def __init__(self):
         super(ModulesModel, self).__init__()
-        self.modules = modules
         self._parent_modules_cache = WeakKeyDictionary()
         self.invalidate_cache()
 
     def invalidate_cache(self):
         """Refresh the cache."""
+        rig = Rig()
+        self.modules = rig.rig_modules
         for module in self.modules:
             self._parent_modules_cache[module] = module.parent_module
 
