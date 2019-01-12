@@ -1,6 +1,6 @@
-import os
 import json
 import logging
+import os
 import time
 
 import maya.cmds as cmds
@@ -11,6 +11,7 @@ from icarus.config import default_modules
 from icarus.core.fields import ObjectField
 import icarus.dag
 import icarus.postscript
+from shapeshifter import shapeshifter
 
 logger = logging.getLogger()
 
@@ -107,6 +108,11 @@ class Rig(IcarusNode):
     def unbuild(self):
         cmds.undoInfo(openChunk=True)
         icarus.postscript.run_scripts('pre_unbuild')
+
+        for module in self.rig_modules:
+            for ctl in module.controllers.get():
+                shape_data = shapeshifter.get_shape_data(ctl)
+                cmds.setAttr(ctl + '.shape_data', json.dumps(shape_data), type='string')
 
         self.reset_pose()
         for node in self.skeleton:
