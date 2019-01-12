@@ -444,6 +444,7 @@ class Arm(RigModule):
         )
         pole_vector_ctl, parent_group = self.add_control(ik_chain[-1], ctl_name, 'sphere')
         self._place_pole_vector(parent_group)
+        cmds.xform(parent_group, rotation=[0, 0, 0], worldSpace=True)
         cmds.parent(parent_group, self.ik_controls_group.get())
 
         ik_handle, effector = cmds.ikHandle(
