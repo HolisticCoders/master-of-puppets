@@ -227,19 +227,14 @@ class Arm(RigModule):
         self.ik_chain.set(ik_chain)
 
     def _create_settings_control(self):
-        ctl = cmds.circle()[0]
-        ctl = cmds.rename(ctl, icarus.metadata.name_from_metadata(
+        ctl_name = icarus.metadata.name_from_metadata(
             object_base_name=self.name.get(),
             object_side=self.side.get(),
             object_type='ctl',
             object_description='settings'
-        ))
-        icarus.dag.snap_first_to_last(
-            ctl,
-            self.arm_driving_joints[2]
         )
+        ctl, buffer_grp= self.add_control(self.arm_driving_joints[2], ctl_name)
         self.settings_ctl.set(ctl)
-        buffer_grp = icarus.dag.add_parent_group(ctl, 'buffer')
         cmds.parent(buffer_grp, self.controls_group.get())
         icarus.dag.matrix_constraint(self.arm_driving_joints[2], buffer_grp)
 
@@ -380,20 +375,20 @@ class Arm(RigModule):
         )
         cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.fk_controls_group.get())
+
         if fk_controls is None:
             fk_controls = []
+
         parent = self.fk_controls_group.get()
         names = ['shoulder', 'elbow', 'wrist']
         for i, fk in enumerate(self.fk_chain.get()):
-            ctl = cmds.circle()[0]
-            ctl = cmds.rename(ctl, icarus.metadata.name_from_metadata(
+            ctl_name = icarus.metadata.name_from_metadata(
                 object_base_name=self.name.get(),
                 object_side=self.side.get(),
                 object_type='ctl',
                 object_description='FK_' + names[i],
-            ))
-            icarus.dag.snap_first_to_last(ctl, fk)
-            parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
+            )
+            ctl, parent_group = self.add_control(fk, ctl_name)
             cmds.parent(parent_group, parent)
             icarus.dag.matrix_constraint(ctl, fk)
             parent = ctl
@@ -412,16 +407,14 @@ class Arm(RigModule):
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.ik_controls_group.get())
 
-        wrist_ctl = cmds.circle()[0]
-        wrist_ctl = cmds.rename(wrist_ctl, icarus.metadata.name_from_metadata(
+        ctl_name = icarus.metadata.name_from_metadata(
             object_base_name=self.name.get(),
             object_side=self.side.get(),
             object_type='ctl',
             object_description='IK_wrist'
-        ))
-        icarus.dag.snap_first_to_last(wrist_ctl, ik_chain[2])
-        cmds.setAttr(wrist_ctl + '.rotate', 0, 0, 0)
-        parent_group = icarus.dag.add_parent_group(wrist_ctl, 'buffer')
+        )
+        wrist_ctl, parent_group = self.add_control(ik_chain[-1], ctl_name, 'cube')
+        cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(
             wrist_ctl,
@@ -432,34 +425,25 @@ class Arm(RigModule):
             maintain_offset=True
         )
 
-        shoulder_ctl = cmds.circle()[0]
-        shoulder_ctl = cmds.rename(
-            shoulder_ctl,
-            icarus.metadata.name_from_metadata(
-                object_base_name=self.name.get(),
-                object_side=self.side.get(),
-                object_type='ctl',
-                object_description='IK_shoulder'
-            )
+        ctl_name = icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='ctl',
+            object_description='IK_shoulder'
         )
-        icarus.dag.snap_first_to_last(shoulder_ctl, ik_chain[0])
-        cmds.setAttr(shoulder_ctl + '.rotate', 0, 0, 0)
-        parent_group = icarus.dag.add_parent_group(shoulder_ctl, 'buffer')
+        shoulder_ctl, parent_group = self.add_control(ik_chain[0], ctl_name, 'cube')
+        cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(shoulder_ctl, ik_chain[0], maintain_offset=True)
 
-        pole_vector_ctl = cmds.circle()[0]
-        pole_vector_ctl = cmds.rename(
-            pole_vector_ctl,
-            icarus.metadata.name_from_metadata(
-                object_base_name=self.name.get(),
-                object_side=self.side.get(),
-                object_type='ctl',
-                object_description='IK_pole_vector'
-            )
+        ctl_name = icarus.metadata.name_from_metadata(
+            object_base_name=self.name.get(),
+            object_side=self.side.get(),
+            object_type='ctl',
+            object_description='IK_pole_vector'
         )
+        pole_vector_ctl, parent_group = self.add_control(ik_chain[-1], ctl_name, 'sphere')
         self._place_pole_vector(pole_vector_ctl)
-        parent_group = icarus.dag.add_parent_group(pole_vector_ctl, 'buffer')
         cmds.parent(parent_group, self.ik_controls_group.get())
 
         ik_handle, effector = cmds.ikHandle(
