@@ -1,9 +1,13 @@
+import logging
+
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
 from icarus.core.fields import ObjectField, StringField, ObjectListField
 import icarus.metadata
 import icarus.dag
 import icarus.attributes
+
+logger = logging.getLogger(__name__)
 
 
 class RigModule(IcarusNode):
@@ -98,7 +102,6 @@ class RigModule(IcarusNode):
             )
             if persistent_attrs:
                 for attr in persistent_attrs:
-                    value = cmds.getAttr(self.node_name + '.' + attr)
                     old_node, attr_name = attr.split('__')
 
                     metadata = icarus.metadata.metadata_from_name(old_node)
@@ -111,17 +114,15 @@ class RigModule(IcarusNode):
                         object_id = metadata.get('id', None),
                         object_description = metadata.get('description', None),
                     )
-                    kwargs = icarus.attributes.get_add_attribute_kwargs(
-                        self.node_name + '.' + attr
+                    logger.debug("Renaming persistent attribute from {} to {}".format(
+                        self.node_name + '.' + attr,
+                        self.node_name + '.' + new_node + '__' + attr_name
+                    ))
+                    cmds.renameAttr(
+                        self.node_name + '.' + attr,
+                        new_node + '__' + attr_name
                     )
-                    kwargs['longName'] = new_node + '__' + attr_name
-                    cmds.addAttr(
-                        self.node_name,
-                        **kwargs
-                    )
-                    cmds.setAttr(self.node_name + '.' + kwargs['longName'], value)
-                    cmds.deleteAttr(self.node_name, attribute=attr)
-                        
+
     def _update_node_name(self, node):
         metadata = icarus.metadata.metadata_from_name(node)
         metadata['base_name'] = self.name.get()
