@@ -39,7 +39,8 @@ def metadata_from_name(name):
     if split_name:
         try:
             # only works if the last component is the object id.
-            data['id'] = int(split_name.pop(-1))
+            data['id'] = int(split_name[-1])
+            split_name.pop(-1)
         except ValueError:
             # if it was not the id, it can only be the description.
             data['description'] = '_'.join(split_name)
