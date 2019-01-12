@@ -25,14 +25,9 @@ class Chain(RigModule):
     def build(self):
         parent = self.controls_group.get()
         for joint in self.driving_joints:
-            ctl = cmds.circle(name=joint.replace('driving', 'ctl'))[0]
-
-            icarus.dag.snap_first_to_last(ctl, joint)
-            cmds.parent(ctl, parent)
-
-            parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
+            ctl, parent_group = self.add_control(joint)
+            cmds.parent(parent_group, parent)
             icarus.dag.matrix_constraint(ctl, joint)
-
             parent = ctl
 
     def publish(self):

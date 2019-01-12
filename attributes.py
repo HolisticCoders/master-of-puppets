@@ -12,7 +12,16 @@ def create_persistent_attribute(node, module_node, *args, **kwargs):
     module_attr_name = node + '__' + long_name
     if cmds.attributeQuery(module_attr_name, node=module_node, exists=True):
         value = cmds.getAttr(module_node + '.' + module_attr_name)
-        cmds.setAttr(node + '.' + long_name, value)
+        data_type = cmds.addAttr(
+            module_node + '.' + module_attr_name,
+            query=True,
+            dataType=True
+        )
+        if data_type:
+            data_type = data_type[0]
+        else:
+            data_type = None
+        cmds.setAttr(node + '.' + long_name, value, type=data_type)
     else:
         backup_category = list(category)
         backup_category.append('persistent_attribute_backup')
