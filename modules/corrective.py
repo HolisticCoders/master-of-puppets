@@ -49,7 +49,7 @@ class Corrective(RigModule):
         self.create_locators()
         value_range = self._build_angle_reader()
         for joint in self.driving_joints:
-            ctl = self._add_control(joint, name=joint.replace('driving', 'ctl'))
+            ctl = self._add_control(joint)
             condition_nodes = []
             for angleAxis in 'YZ':
                 positive_offset = cmds.createNode('multiplyDivide')
@@ -237,10 +237,10 @@ class Corrective(RigModule):
             )
         return m1_to_p1_range
 
-    def _add_control(self, joint, name):
-        ctl = cmds.circle(name=name)[0]
+    def _add_control(self, joint):
+        ctl, parent_group = self.add_control(joint)
 
-        icarus.dag.snap_first_to_last(ctl, joint)
+        icarus.dag.snap_first_to_last(parent_group, joint)
         cmds.parent(ctl, self.controls_group.get())
 
         offset_group = icarus.dag.add_parent_group(ctl, 'offset')
