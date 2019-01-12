@@ -443,7 +443,7 @@ class Arm(RigModule):
             object_description='IK_pole_vector'
         )
         pole_vector_ctl, parent_group = self.add_control(ik_chain[-1], ctl_name, 'sphere')
-        self._place_pole_vector(pole_vector_ctl)
+        self._place_pole_vector(parent_group)
         cmds.parent(parent_group, self.ik_controls_group.get())
 
         ik_handle, effector = cmds.ikHandle(
