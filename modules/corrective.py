@@ -214,20 +214,20 @@ class Corrective(RigModule):
             angle_between + '.vector2',
         )
 
-        node_mult = cmds.createNode('multiplyDivide')
+        self.node_mult = cmds.createNode('multiplyDivide')
         cmds.connectAttr(
             angle_between + '.axis',
-            node_mult + '.input1',
+            self.node_mult + '.input1',
         )
         for axis in 'XYZ':
             cmds.connectAttr(
                 angle_between + '.angle',
-                node_mult + '.input2' + axis,
+                self.node_mult + '.input2' + axis,
             )
         m1_to_p1_range = cmds.createNode('multiplyDivide')
         cmds.setAttr(m1_to_p1_range + '.operation', 2)  # 2 is division
         cmds.connectAttr(
-            node_mult + '.output',
+            self.node_mult + '.output',
             m1_to_p1_range + '.input1',
         )
         for axis in 'XYZ':
@@ -254,6 +254,48 @@ class Corrective(RigModule):
             attributeType='enum',
             enumName='Y:Z:',
             keyable=True
+        )
+
+        # this attributes are there to ease the setup of the corrective for the rigger
+        cmds.addAttr(
+            ctl,
+            longName='angle',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.angle', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input2X',
+            ctl + '.angle'
+        )
+        cmds.addAttr(
+            ctl,
+            longName='xValue',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.xValue', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input1X',
+            ctl + '.xValue'
+        )
+        cmds.addAttr(
+            ctl,
+            longName='yValue',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.yValue', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input1Y',
+            ctl + '.yValue'
+        )
+        cmds.addAttr(
+            ctl,
+            longName='zValue',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.zValue', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input1Z',
+            ctl + '.zValue'
         )
 
         for axis in 'XYZ':
