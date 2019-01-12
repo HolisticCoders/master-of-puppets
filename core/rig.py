@@ -11,7 +11,7 @@ from icarus.core.fields import ObjectField
 import icarus.dag
 import icarus.postscript
 
-logger = logging.getlogger()
+logger = logging.getLogger()
 
 class Rig(IcarusNode):
 
