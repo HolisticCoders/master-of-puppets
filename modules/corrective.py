@@ -2,7 +2,9 @@ import maya.cmds as cmds
 
 from icarus.core.module import RigModule
 from icarus.core.fields import IntField, ObjectField
+import icarus.metadata
 import icarus.dag
+import icarus.attributes
 
 
 class Corrective(RigModule):
@@ -47,7 +49,7 @@ class Corrective(RigModule):
         self.create_locators()
         value_range = self._build_angle_reader()
         for joint in self.driving_joints:
-            ctl = self._add_control(joint, name=joint + '_ctl')
+            ctl = self._add_control(joint, name=joint.replace('driving', 'ctl'))
             condition_nodes = []
             for angleAxis in 'YZ':
                 positive_offset = cmds.createNode('multiplyDivide')
@@ -245,7 +247,7 @@ class Corrective(RigModule):
         icarus.dag.add_parent_group(ctl, 'buffer')
         icarus.dag.matrix_constraint(ctl, joint)
 
-        icarus.metadata.create_persistent_attribute(
+        icarus.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
             ln='affectedBy',
@@ -257,14 +259,14 @@ class Corrective(RigModule):
         for axis in 'XYZ':
             for transform in ['translate', 'rotate', 'scale']:
                 cmds.setAttr(ctl + '.' + transform + axis, lock=True)
-            icarus.metadata.create_persistent_attribute(
+            icarus.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
                 ln='offset' + 'Positive' + axis,
                 attributeType='long',
                 keyable=True
             )
-            icarus.metadata.create_persistent_attribute(
+            icarus.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
                 ln='offset' + 'Negative' + axis,

@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 
 import maya.cmds as cmds
 
@@ -10,6 +11,7 @@ from icarus.core.fields import ObjectField
 import icarus.dag
 import icarus.postscript
 
+logger = logging.getLogger()
 
 class Rig(IcarusNode):
 
@@ -80,15 +82,15 @@ class Rig(IcarusNode):
         kwargs['rig'] = self
         new_module = all_rig_modules[module_type](*args, **kwargs)
 
-        # self.create_skeleton_from_module(new_module)
         return new_module
 
     def build(self):
+        cmds.undoInfo(openChunk=True)
         icarus.postscript.run_scripts('pre_build')
 
         nodes_before_build = set(cmds.ls('*'))
         for module in self.rig_modules:
-            print "Building: " + module.node_name
+            logger.info("Building: " + module.node_name)
             module._build()
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
@@ -96,8 +98,10 @@ class Rig(IcarusNode):
         icarus.postscript.run_scripts('post_build')
 
         self._tag_nodes_for_unbuild(build_nodes)
+        cmds.undoInfo(closeChunk=True)
 
     def unbuild(self):
+        cmds.undoInfo(openChunk=True)
         icarus.postscript.run_scripts('pre_unbuild')
 
         self.reset_pose()
@@ -111,6 +115,7 @@ class Rig(IcarusNode):
             module.is_built.set(False)
 
         icarus.postscript.run_scripts('post_unbuild')
+        cmds.undoInfo(closeChunk=True)
 
     def reset_pose(self):
         for control in cmds.ls('*_ctl'):

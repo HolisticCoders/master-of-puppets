@@ -1,5 +1,8 @@
 import maya.cmds as cmds
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Attribute(object):
@@ -211,7 +214,7 @@ class ObjectListField(JSONField):
             if cmds.objExists(item):
                 curated_objects.append(item)
             else:
-                raise ValueError(
+                logger.warning(
                     "{} does not exist and can't be added to the field {}".format(
                         item,
                         self.name
