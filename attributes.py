@@ -29,7 +29,13 @@ def create_persistent_attribute(node, module_node, *args, **kwargs):
     source_category.append('persistent_attribute_source')
     long_name = kwargs.pop('longName', kwargs.pop('ln', None))
 
-    cmds.addAttr(node, longName=long_name, category=source_category, *args, **kwargs)
+    cmds.addAttr(
+        node,
+        longName=long_name,
+        category=source_category,
+        *args,
+        **kwargs
+    )
 
     module_attr_name = node + '__' + long_name
     if cmds.attributeQuery(module_attr_name, node=module_node, exists=True):
