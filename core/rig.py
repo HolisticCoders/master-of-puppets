@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import time
 
 import maya.cmds as cmds
 
@@ -86,6 +87,7 @@ class Rig(IcarusNode):
 
     def build(self):
         cmds.undoInfo(openChunk=True)
+        start_time = time.time()
         icarus.postscript.run_scripts('pre_build')
 
         nodes_before_build = set(cmds.ls('*'))
@@ -98,6 +100,8 @@ class Rig(IcarusNode):
         icarus.postscript.run_scripts('post_build')
 
         self._tag_nodes_for_unbuild(build_nodes)
+        tot_time = time.time() - start_time
+        logger.info("Building the rig took {}s".format(tot_time))
         cmds.undoInfo(closeChunk=True)
 
     def unbuild(self):
