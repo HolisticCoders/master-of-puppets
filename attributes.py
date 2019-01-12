@@ -1,5 +1,27 @@
 import maya.cmds as cmds
 
+
+valid_data_types = [
+    'matrix',
+    'string',
+    'double2',
+    'double3',
+    'doubleArray',
+    'float2',
+    'float3',
+    'floatArray',
+    'lattice',
+    'mesh',
+    'nurbsCurve',
+    'nurbsSurface',
+    'pointArray',
+    'reflectanceRGB',
+    'spectrumRGB',
+    'stringArray',
+    'vectorArray',
+]
+
+
 def create_persistent_attribute(node, module_node, *args, **kwargs):
     """Create an attribute that keeps its value when rebuilding."""
     category = kwargs.pop('category', kwargs.pop('ct', []))
@@ -17,11 +39,10 @@ def create_persistent_attribute(node, module_node, *args, **kwargs):
             query=True,
             dataType=True
         )
-        if data_type:
-            data_type = data_type[0]
-        else:
-            data_type = None
-        cmds.setAttr(node + '.' + long_name, value, type=data_type)
+        kwargs = {}
+        if data_type and data_type[0] in valid_data_types:
+            kwargs['type'] = data_type[0]
+        cmds.setAttr(node + '.' + long_name, value, **kwargs)
     else:
         backup_category = list(category)
         backup_category.append('persistent_attribute_backup')
