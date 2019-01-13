@@ -204,14 +204,8 @@ def add_parent_group(dag_node, suffix='grp'):
         worldSpace=True
     )
     metadata = icarus.metadata.metadata_from_name(dag_node)
-    metadata['type'] = suffix
-    buffer_name = icarus.metadata.name_from_metadata(
-        metadata['base_name'],
-        metadata['side'],
-        metadata['type'],
-        metadata.get('id', None),
-        metadata.get('description', None)
-    )
+    metadata['role'] = suffix
+    buffer_name = icarus.metadata.name_from_metadata(metadata)
     grp = cmds.createNode('transform', name=buffer_name)
     cmds.xform(grp, matrix=dag_node_mat, worldSpace=True)
 

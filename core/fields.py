@@ -86,11 +86,6 @@ class FieldContainerMeta(type):
             for parent in base.__mro__:
                 parent_classes.append(parent)
 
-        for parent in parent_classes:
-            for name, attr in parent.__dict__.iteritems():
-                if isinstance(attr, Field) and attr not in fields:
-                    fields.append(attr)
-
         for name, attr in attrs.iteritems():
             if isinstance(attr, Field) and attr.name is None:
                 attr.name = name
@@ -98,6 +93,13 @@ class FieldContainerMeta(type):
                     attr.display_name = name
                 if attr not in fields:
                     fields.append(attr)
+
+        for parent in parent_classes:
+            for name, attr in parent.__dict__.iteritems():
+                if isinstance(attr, Field):
+                    field_names = [n.name for n in fields]
+                    if attr.name not in field_names:
+                        fields.append(attr)
 
         attrs['fields'] = fields
         attrs['fields_dict'] = {p.name: p for p in fields}

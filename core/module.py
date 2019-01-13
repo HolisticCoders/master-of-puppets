@@ -53,7 +53,12 @@ class RigModule(IcarusNode):
         if cmds.objExists(name):
             self.node_name = name
         else:
-            self.node_name = icarus.metadata.name_from_metadata(name, side, 'mod')
+            metadata = {
+                'base_name': name,
+                'side': side,
+                'role': 'mod',
+            }
+            self.node_name = icarus.metadata.name_from_metadata(metadata)
         super(RigModule, self).__init__(self.node_name)
 
         self.rig = rig
@@ -140,13 +145,7 @@ class RigModule(IcarusNode):
                     metadata = icarus.metadata.metadata_from_name(old_node)
                     metadata['base_name'] = self.name.get()
                     metadata['side'] = self.side.get()
-                    new_node = icarus.metadata.name_from_metadata(
-                        metadata['base_name'],
-                        metadata['side'],
-                        metadata['type'],
-                        object_id = metadata.get('id', None),
-                        object_description = metadata.get('description', None),
-                    )
+                    new_node = icarus.metadata.name_from_metadata(metadata)
                     logger.debug("Renaming persistent attribute from {} to {}".format(
                         self.node_name + '.' + attr,
                         self.node_name + '.' + new_node + '__' + attr_name
@@ -163,13 +162,7 @@ class RigModule(IcarusNode):
         metadata = icarus.metadata.metadata_from_name(node)
         metadata['base_name'] = self.name.get()
         metadata['side'] = self.side.get()
-        new_name = icarus.metadata.name_from_metadata(
-            metadata['base_name'],
-            metadata['side'],
-            metadata['type'],
-            object_id = metadata.get('id', None),
-            object_description = metadata.get('description', None),
-        )
+        new_name = icarus.metadata.name_from_metadata(metadata)
         cmds.rename(node, new_name)
 
         # propagate the new name in all the object and object list fields
@@ -196,25 +189,28 @@ class RigModule(IcarusNode):
             raise RuntimeError(
                 "Module {} is already built!".format(self.node_name)
             )
+        
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'grp',
+            'description': 'controls'
+        }
 
-        controls_group_name = icarus.metadata.name_from_metadata(
-            self.name.get(),
-            self.side.get(),
-            'grp',
-            object_description='controls'
-        )
+        controls_group_name = icarus.metadata.name_from_metadata(metadata)
         self.controls_group.set(cmds.createNode(
             'transform',
             name=controls_group_name,
             parent=self.node_name
         ))
 
-        driving_group_name = icarus.metadata.name_from_metadata(
-            self.name.get(),
-            self.side.get(),
-            'grp',
-            object_description='driving'
-        )
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'grp',
+            'description': 'driving'
+        }
+        driving_group_name = icarus.metadata.name_from_metadata(metadata)
         self.driving_group.set(cmds.createNode(
             'transform',
             name=driving_group_name,
@@ -222,12 +218,13 @@ class RigModule(IcarusNode):
         ))
         cmds.setAttr(self.driving_group.get() + '.visibility', False)
 
-        extras_group_name = icarus.metadata.name_from_metadata(
-            self.name.get(),
-            self.side.get(),
-            'grp',
-            object_description='extras'
-        )
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'grp',
+            'description': 'extras'
+        }
+        extras_group_name = icarus.metadata.name_from_metadata(metadata)
         self.extras_group.set(cmds.createNode(
             'transform',
             name=extras_group_name,
@@ -273,12 +270,13 @@ class RigModule(IcarusNode):
         if name is not None:
             new_joint = name
         else:
-            new_joint = icarus.metadata.name_from_metadata(
-                self.name.get(),
-                self.side.get(),
-                'deform',
-                object_id=object_id
-            )
+            metadata = {
+                'base_name': self.name.get(),
+                'side': self.side.get(),
+                'role': 'deform',
+                'id': object_id
+            }
+            new_joint = icarus.metadata.name_from_metadata(metadata)
         cmds.createNode('joint', name=new_joint)
 
         if not parent:
@@ -339,14 +337,8 @@ class RigModule(IcarusNode):
     def add_control(self, dag_node, ctl_name=None, shape_type='circle'):
         if not ctl_name:
             metadata = icarus.metadata.metadata_from_name(dag_node)
-            metadata['type'] = 'ctl'
-            ctl_name = icarus.metadata.name_from_metadata(
-                metadata['base_name'],
-                metadata['side'],
-                metadata['type'],
-                metadata.get('id', None),
-                metadata.get('description', None)
-            )
+            metadata['role'] = 'ctl'
+            ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl = shapeshifter.create_controller_from_name(shape_type)
         ctl = cmds.rename(ctl, ctl_name)
         icarus.attributes.create_persistent_attribute(
