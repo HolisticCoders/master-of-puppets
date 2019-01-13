@@ -25,18 +25,22 @@ def show():
         # with the same name exist.
         close_instance_workspace(name)
 
+        kwargs = {}
         floating = settings.value('%s/floating' % name)
+        if floating is not None:
+            kwargs['floating'] = floating
         area = settings.value('%s/area' % name)
+        if area is not None:
+            kwargs['area'] = area
         g = settings.value('%s/geometry' % name)
-        x, y, height, width = g.x(), g.y(), g.height(), g.width()
+        if g is not None:
+            kwargs['x'] = g.x()
+            kwargs['y'] = g.y()
+            kwargs['width'] = g.width()
+            kwargs['height'] = g.height()
         instance.show(
             dockable=True,
-            floating=floating,
-            area=area,
-            x=x,
-            y=y,
-            width=width,
-            height=height,
+            **kwargs
         )
         _INSTANCES[name] = instance
 
@@ -97,18 +101,22 @@ def load_settings():
     """
     settings = get_settings()
     for name, instance in _INSTANCES.iteritems():
+        kwargs = {}
         floating = settings.value('%s/floating' % name)
+        if floating is not None:
+            kwargs['floating'] = floating
         area = settings.value('%s/area' % name)
+        if area is not None:
+            kwargs['area'] = area
         g = settings.value('%s/geometry' % name)
-        x, y, h, w = g.x(), g.y(), g.height(), g.width()
+        if g is not None:
+            kwargs['x'] = g.x()
+            kwargs['y'] = g.y()
+            kwargs['width'] = g.width()
+            kwargs['height'] = g.height()
         instance.setDockableParameters(
             dockable=True,
-            floating=floating,
-            area=area,
-            x=x,
-            y=y,
-            width=w,
-            height=h,
+            **kwargs
         )
         if instance.isFloating():
             instance.resize(w, h)
