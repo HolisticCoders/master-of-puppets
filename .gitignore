@@ -117,3 +117,5 @@ dmypy.json
 .vscode
 .vs
 tags
+tags.lock
+tags.temp
