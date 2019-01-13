@@ -1,5 +1,9 @@
 """Commands used throughout the GUI."""
 import sys
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def reload_icarus():
@@ -22,6 +26,8 @@ def reload_icarus():
 
     for module in icarus_modules:
         del(sys.modules[module])
+
+    logger.info('Reloaded Icarus modules.')
 
 
 def open_icarus():
