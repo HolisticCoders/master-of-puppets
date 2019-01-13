@@ -84,7 +84,10 @@ class ModulesModel(QtCore.QAbstractItemModel):
             m for m in self.modules
             if self._parent_modules_cache[m] is parent_module
         ]
-        module = children[row]
+        try:
+            module = children[row]
+        except IndexError:
+            return QtCore.QModelIndex()
         return self.createIndex(row, column, module)
 
     def parent(self, index):
