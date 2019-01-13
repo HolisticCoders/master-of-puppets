@@ -88,16 +88,19 @@ class FieldContainerMeta(type):
 
         for parent in parent_classes:
             for name, attr in parent.__dict__.iteritems():
-                if isinstance(attr, Field):
+                if isinstance(attr, Field) and attr not in fields:
                     fields.append(attr)
 
         for name, attr in attrs.iteritems():
             if isinstance(attr, Field) and attr.name is None:
                 attr.name = name
-                fields.append(attr)
+                if attr.display_name is None:
+                    attr.display_name = name
+                if attr not in fields:
+                    fields.append(attr)
 
-        attrs['_fields'] = fields
-        attrs['_fields_dict'] = {p.name: p for p in fields}
+        attrs['fields'] = fields
+        attrs['fields_dict'] = {p.name: p for p in fields}
         return type.__new__(cls, cls_name, bases, attrs)
 
 
@@ -110,6 +113,10 @@ class Field(object):
         **kwargs
     ):
         self.name = None
+        self.displayable = kwargs.pop('displayable', False)
+        self.editable = kwargs.pop('editable', False)
+        self.display_name = kwargs.pop('display_name', None)
+        self.gui_order = kwargs.pop('gui_order', 1)
 
         # copy the class attribute to the instance
         self.create_attr_args = self.create_attr_args.copy()
@@ -145,6 +152,11 @@ class IntField(Field):
     create_attr_args = {
         'attributeType': 'long'
     }
+
+    def __init__(self, *args, **kwargs):
+        self.min_value = kwargs.get('minValue', None)
+        self.max_value = kwargs.get('maxValue', None)
+        super(IntField, self).__init__(*args, **kwargs)
 
     def cast_to_attr(self, value):
         return int(value)

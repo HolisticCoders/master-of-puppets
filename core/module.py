@@ -4,6 +4,7 @@ import logging
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
 from icarus.core.fields import ObjectField, StringField, ObjectListField
+from icarus.modules import all_rig_modules
 import icarus.metadata
 import icarus.dag
 import icarus.attributes
@@ -14,12 +15,25 @@ logger = logging.getLogger(__name__)
 
 class RigModule(IcarusNode):
 
-    name = StringField()
-    side = StringField()
-    module_type = StringField()
+    name = StringField(
+        displayable=True,
+        editable=True,
+        gui_order=-2  # make sure it's always on top
+    )
+    side = StringField(
+        displayable=True,
+        editable=True,
+        gui_order=-2  # make sure it's always on top
+    )
 
     # Joint of the rig skeleton under which the deform joints will be parented.
-    parent_joint = ObjectField()
+    parent_joint = ObjectField(
+            displayable=True,
+            editable=True,
+            gui_order=-1  # always on top but under the name and side
+    )
+
+    module_type = StringField()
 
     # group holding all this module's controls
     controls_group = ObjectField()
@@ -67,6 +81,19 @@ class RigModule(IcarusNode):
         else:
             # listRelative returns a reversed list (children first)
             return list(reversed(joints))
+
+    @property
+    def parent_module(self):
+        parent_joint = self.parent_joint.get()
+        if parent_joint:
+            parent_module = '_'.join([
+                parent_joint.split('_')[0],
+                parent_joint.split('_')[1],
+                'mod'
+            ])
+            module_type = cmds.getAttr(parent_module + '.module_type')
+            parent_module = all_rig_modules[module_type](parent_module, rig=self.rig)
+            return parent_module
 
     def initialize(self):
         """Creation of all the needed placement nodes.
@@ -147,7 +174,7 @@ class RigModule(IcarusNode):
 
         # propagate the new name in all the object and object list fields
         for module in self.rig.rig_modules:
-            for field in module._fields:
+            for field in module.fields:
                 if field.__class__.__name__ == 'ObjectField':
                     if field.__get__(module).get() == node:
                         field.__get__(module).set(new_name)
@@ -158,7 +185,6 @@ class RigModule(IcarusNode):
                             objects[i] = new_name
                     field.__get__(module).set(objects)
         return new_name
-
 
     def _build(self):
         """Setup some stuff before actually building the module.
