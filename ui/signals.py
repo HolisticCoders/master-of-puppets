@@ -1,11 +1,12 @@
 """Minimal observer/publisher implementation for all your GUI needs."""
+import traceback
 from collections import defaultdict
 from weakref import WeakKeyDictionary
 
 _SIGNALS = defaultdict(list)
 
 
-def observe(name, func):
+def subscribe(name, func):
     """Subscribe ``func`` to a publisher.
 
     :param name: Signal to observe. When ``name`` is called
@@ -15,6 +16,18 @@ def observe(name, func):
     :type func: callable
     """
     _SIGNALS[name].append(func)
+
+
+def unsubscribe(name, func):
+    """Unsubscribe ``func`` from a publisher.
+
+    :param name: Signal to stop to observe.
+    :param func: Function to disconnect from the ``name`` signal.
+    :type name: str
+    :type func: callable
+    """
+    while func in _SIGNALS[name]:
+        _SIGNALS[name].remove(func)
 
 
 def publish(name, *args, **kwargs):
@@ -34,6 +47,10 @@ def publish(name, *args, **kwargs):
     """
     ret = WeakKeyDictionary()
     for func in _SIGNALS[name]:
-        res = func(*args, **kwargs)
+        try:
+            res = func(*args, **kwargs)
+        except Exception:
+            traceback.print_exc()
+            continue
         ret[func] = res
     return ret

@@ -2,7 +2,7 @@ from weakref import WeakKeyDictionary
 
 from icarus.vendor.Qt import QtWidgets, QtCore
 from icarus.core.rig import Rig
-from icarus.ui.signals import publish, observe
+from icarus.ui.signals import publish, subscribe, unsubscribe
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
@@ -27,8 +27,8 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         selection = self.tree_view.selectionModel()
         selection.currentChanged.connect(self._on_current_changed)
 
-        observe('module-created', self._refresh_model)
-        observe('module-updated', self._refresh_model)
+        subscribe('module-created', self._refresh_model)
+        subscribe('module-updated', self._refresh_model)
 
     def _refresh_model(self):
         self.model = ModulesModel()
@@ -41,6 +41,11 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def _on_current_changed(self, current, previous):
         module = current.internalPointer()
         publish('selected-module-changed', module)
+
+    def close(self):
+        unsubscribe('module-created', self._refresh_model)
+        unsubscribe('module-updated', self._refresh_model)
+        return super(ModulesPanel, self).close()
 
 
 class ModulesModel(QtCore.QAbstractItemModel):

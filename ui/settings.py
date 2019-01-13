@@ -4,7 +4,7 @@ from weakref import WeakValueDictionary
 
 from icarus.vendor.Qt import QtWidgets
 from icarus.core.rig import Rig
-from icarus.ui.signals import observe, publish
+from icarus.ui.signals import publish, subscribe, unsubscribe
 from icarus.ui.utils import clear_layout
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
@@ -92,7 +92,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.apply_button.released.connect(self._update_module)
         self.apply_button.hide()
 
-        observe('selected-module-changed', self._on_module_selected)
+        subscribe('selected-module-changed', self._on_module_selected)
 
     def _on_module_selected(self, module):
         """Update the module to edit."""
@@ -140,3 +140,7 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
             if not field.editable or self.module.is_built.get():
                 widget.setEnabled(False)
+
+    def close(self):
+        unsubscribe('selected-module-changed', self._on_module_selected)
+        return super(SettingsPanel, self).close()
