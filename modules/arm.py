@@ -81,12 +81,15 @@ class Arm(RigModule):
         name_list = ['shoulder', 'elbow', 'wrist']
 
         for i, name in enumerate(name_list):
-            joint_name = icarus.metadata.name_from_metadata(
-                    object_base_name=self.name.get(),
-                    object_side=self.side.get(),
-                    object_type='deform',
-                    object_description=name
-            )
+
+            metadata = {
+                'base_name': self.name.get(),
+                'side': self.side.get(),
+                'role': 'deform',
+                'description': name
+            }
+
+            joint_name = icarus.metadata.name_from_metadata(metadata)
             joint = self._add_deform_joint(name=joint_name)
 
             # Move the elbow and wrist joints only
@@ -94,26 +97,28 @@ class Arm(RigModule):
                 cmds.setAttr(joint + '.translateX', 10)
 
         for i in xrange(self.upper_twist_joint_count.get()):
-            name = icarus.metadata.name_from_metadata(
-                object_base_name=self.name.get(),
-                object_side=self.side.get(),
-                object_type='deform',
-                object_description='twist_upper',
-                object_id=i
-            )
+            metadata = {
+                'base_name': self.name.get(),
+                'side': self.side.get(),
+                'role': 'deform',
+                'description': 'twist_upper',
+                'id': i
+            }
+            name = icarus.metadata.name_from_metadata(metadata)
             self._add_twist_joint(
                 name=name,
                 parent=self.deform_joints.get()[0]
             )
 
         for i in xrange(self.lower_twist_joint_count.get()):
-            name = icarus.metadata.name_from_metadata(
-                object_base_name=self.name.get(),
-                object_side=self.side.get(),
-                object_type='deform',
-                object_description='twist_lower',
-                object_id=i
-            )
+            metadata = {
+                'base_name': self.name.get(),
+                'side': self.side.get(),
+                'role': 'deform',
+                'description': 'twist_lower',
+                'id': i
+            }
+            name = icarus.metadata.name_from_metadata(metadata)
             self._add_twist_joint(
                 name=name,
                 parent=self.deform_joints.get()[1]
@@ -142,13 +147,15 @@ class Arm(RigModule):
         if joint_diff > 0:
             # add twist joints
             for i in xrange(current_upper_twists, target_upper_twists):
-                name = icarus.metadata.name_from_metadata(
-                    object_base_name=self.name.get(),
-                    object_side=self.side.get(),
-                    object_type='deform',
-                    object_description='twist_upper',
-                    object_id=i
-                )
+
+                metadata = {
+                    'base_name': self.name.get(),
+                    'side': self.side.get(),
+                    'role': 'deform',
+                    'description': 'twist_upper',
+                    'id': i
+                }
+                name = icarus.metadata.name_from_metadata(metadata)
                 self._add_twist_joint(
                     name=name,
                     parent=self.deform_joints.get()[0]
@@ -168,13 +175,14 @@ class Arm(RigModule):
         if joint_diff > 0:
             # add twist joints
             for i in xrange(current_lower_twists, target_lower_twists):
-                name = icarus.metadata.name_from_metadata(
-                    object_base_name=self.name.get(),
-                    object_side=self.side.get(),
-                    object_type='deform',
-                    object_description='twist_lower',
-                    object_id=i
-                )
+                metadata = {
+                    'base_name': self.name.get(),
+                    'side': self.side.get(),
+                    'role': 'deform',
+                    'description': 'twist_lower',
+                    'id': i
+                }
+                name = icarus.metadata.name_from_metadata(metadata)
                 self._add_twist_joint(
                     name=name,
                     parent=self.deform_joints.get()[1]
@@ -227,12 +235,14 @@ class Arm(RigModule):
         self.ik_chain.set(ik_chain)
 
     def _create_settings_control(self):
-        ctl_name = icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='ctl',
-            object_description='settings'
-        )
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'ctl',
+            'description': 'settings',
+        }
+        ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl, buffer_grp= self.add_control(self.arm_driving_joints[2], ctl_name)
         self.settings_ctl.set(ctl)
         cmds.parent(buffer_grp, self.controls_group.get())
@@ -364,12 +374,13 @@ class Arm(RigModule):
 
     def _setup_fk(self):
         fk_controls = self.fk_controls.get()
-        fk_controls_group_name = icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='grp',
-            object_description='FK_controls',
-        )
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'grp',
+            'description': 'FK_controls',
+        }
+        fk_controls_group_name = icarus.metadata.name_from_metadata(metadata)
         self.fk_controls_group.set(
              cmds.createNode('transform', name=fk_controls_group_name)
         )
@@ -382,12 +393,13 @@ class Arm(RigModule):
         parent = self.fk_controls_group.get()
         names = ['shoulder', 'elbow', 'wrist']
         for i, fk in enumerate(self.fk_chain.get()):
-            ctl_name = icarus.metadata.name_from_metadata(
-                object_base_name=self.name.get(),
-                object_side=self.side.get(),
-                object_type='ctl',
-                object_description='FK_' + names[i],
-            )
+            metadata = {
+                'base_name': self.name.get(),
+                'side': self.side.get(),
+                'role': 'ctl',
+                'description': 'FK_' + names[i],
+            }
+            ctl_name = icarus.metadata.name_from_metadata(metadata)
             ctl, parent_group = self.add_control(fk, ctl_name)
             cmds.parent(parent_group, parent)
             icarus.dag.matrix_constraint(ctl, fk)
@@ -395,24 +407,26 @@ class Arm(RigModule):
 
     def _setup_ik(self):
         ik_chain = self.ik_chain.get()
-        ik_controls_group_name = icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='grp',
-            object_description='IK_controls',
-        )
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'grp',
+            'description': 'IK_controls',
+        }
+        ik_controls_group_name = icarus.metadata.name_from_metadata(metadata)
         self.ik_controls_group.set(
              cmds.createNode('transform', name=ik_controls_group_name)
         )
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.ik_controls_group.get())
 
-        ctl_name = icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='ctl',
-            object_description='IK_wrist'
-        )
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'ctl',
+            'description': 'IK_wrist',
+        }
+        ctl_name = icarus.metadata.name_from_metadata(metadata)
         wrist_ctl, parent_group = self.add_control(ik_chain[-1], ctl_name, 'cube')
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
@@ -425,23 +439,25 @@ class Arm(RigModule):
             maintain_offset=True
         )
 
-        ctl_name = icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='ctl',
-            object_description='IK_shoulder'
-        )
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'ctl',
+            'description': 'IK_shoulder',
+        }
+        ctl_name = icarus.metadata.name_from_metadata(metadata)
         shoulder_ctl, parent_group = self.add_control(ik_chain[0], ctl_name, 'cube')
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(shoulder_ctl, ik_chain[0], maintain_offset=True)
 
-        ctl_name = icarus.metadata.name_from_metadata(
-            object_base_name=self.name.get(),
-            object_side=self.side.get(),
-            object_type='ctl',
-            object_description='IK_pole_vector'
-        )
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'ctl',
+            'description': 'IK_pole_vector',
+        }
+        ctl_name = icarus.metadata.name_from_metadata(metadata)
         pole_vector_ctl, parent_group = self.add_control(ik_chain[-1], ctl_name, 'sphere')
         self._place_pole_vector(parent_group)
         cmds.xform(parent_group, rotation=[0, 0, 0], worldSpace=True)

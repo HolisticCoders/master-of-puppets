@@ -122,13 +122,14 @@ class Corrective(RigModule):
 
     def create_locators(self):
         locator_space_group = cmds.createNode('transform')
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'vectorsLocalSpace'
+        }
         locator_space_group = cmds.rename(
             locator_space_group,
-            icarus.metadata.name_from_metadata(
-                self.name.get(),
-                self.side.get(),
-                'vectorsLocalSpace'
-            )
+            icarus.metadata.name_from_metadata(metadata)
         )
         cmds.parent(locator_space_group, self.extras_group.get())
         cmds.setAttr(locator_space_group + '.inheritsTransform', False)
