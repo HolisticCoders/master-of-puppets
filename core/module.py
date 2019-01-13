@@ -86,6 +86,8 @@ class RigModule(IcarusNode):
         if self.is_built.get():
             return
 
+        self.update_parent_joint()
+
         scene_metadata = icarus.metadata.metadata_from_name(self.node_name)
         name_changed = self.name.get() != scene_metadata['base_name']
         side_changed = self.side.get() != scene_metadata['side']
@@ -126,6 +128,9 @@ class RigModule(IcarusNode):
                         self.node_name + '.' + attr,
                         new_node + '__' + attr_name
                     )
+
+    def update_parent_joint(self):
+        raise NotImplementedError
 
     def _update_node_name(self, node):
         metadata = icarus.metadata.metadata_from_name(node)

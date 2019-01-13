@@ -64,5 +64,14 @@ class Rivet(RigModule):
             maintain_offset=True
         )
 
+    def update_parent_joint(self):
+        """Reparent the joint to the proper parent_joint if needed."""
+        expected_parent = self.parent_joint.get()
+        joint = self.deform_joints.get()[0]
+        actual_parent = cmds.listRelatives(joint, parent=True)[0]
+
+        if expected_parent != actual_parent:
+            cmds.parent(joint, expected_parent)
+
 
 exported_rig_modules = [Rivet]
