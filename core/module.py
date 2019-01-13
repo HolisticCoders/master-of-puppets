@@ -165,7 +165,7 @@ class RigModule(IcarusNode):
 
         # propagate the new name in all the object and object list fields
         for module in self.rig.rig_modules:
-            for field in module._fields:
+            for field in module.fields:
                 if field.__class__.__name__ == 'ObjectField':
                     if field.__get__(module).get() == node:
                         field.__get__(module).set(new_name)
