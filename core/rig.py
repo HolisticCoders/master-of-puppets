@@ -9,6 +9,7 @@ from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
 from icarus.config import default_modules
 from icarus.core.fields import ObjectField
+from icarus.utils.undo import undoable
 import icarus.dag
 import icarus.postscript
 from shapeshifter import shapeshifter
@@ -130,8 +131,8 @@ class Rig(IcarusNode):
         cmds.delete(module_to_del.node_name)
         cmds.delete(deform_joints)
 
+    @undoable
     def build(self):
-        cmds.undoInfo(openChunk=True)
         start_time = time.time()
         icarus.postscript.run_scripts('pre_build')
 
@@ -148,10 +149,9 @@ class Rig(IcarusNode):
         tot_time = time.time() - start_time
         self.is_built.set(True)
         logger.info("Building the rig took {}s".format(tot_time))
-        cmds.undoInfo(closeChunk=True)
 
+    @undoable
     def unbuild(self):
-        cmds.undoInfo(openChunk=True)
         icarus.postscript.run_scripts('pre_unbuild')
 
         for module in self.rig_modules:
@@ -171,7 +171,6 @@ class Rig(IcarusNode):
 
         self.is_built.set(False)
         icarus.postscript.run_scripts('post_unbuild')
-        cmds.undoInfo(closeChunk=True)
 
     def reset_pose(self):
         for control in cmds.ls('*_ctl'):
