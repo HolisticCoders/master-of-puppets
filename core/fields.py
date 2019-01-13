@@ -2,6 +2,8 @@ import maya.cmds as cmds
 import json
 import logging
 
+from icarus.utils.case import title
+
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +92,7 @@ class FieldContainerMeta(type):
             if isinstance(attr, Field) and attr.name is None:
                 attr.name = name
                 if attr.display_name is None:
-                    attr.display_name = name
+                    attr.display_name = title(name)
                 if attr not in fields:
                     fields.append(attr)
 

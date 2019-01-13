@@ -5,6 +5,7 @@ from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 from icarus.core.rig import Rig
 from icarus.modules import all_rig_modules
 from icarus.ui.signals import publish
+from icarus.utils.case import title
 from icarus.vendor.Qt import QtCore, QtWidgets
 
 
@@ -29,7 +30,7 @@ class CreateModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.content.setLayout(self.content_layout)
 
         for module in all_rig_modules:
-            button = QtWidgets.QPushButton(module)
+            button = QtWidgets.QPushButton(title(module))
             button.released.connect(partial(self._create_module, module))
             self.content_layout.addWidget(button)
 
