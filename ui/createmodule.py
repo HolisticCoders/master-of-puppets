@@ -1,9 +1,12 @@
-from icarus.modules import all_rig_modules
-from icarus.ui.signals import publish
-from icarus.vendor.Qt import QtWidgets
+from functools import partial
+
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 from icarus.core.rig import Rig
+from icarus.modules import all_rig_modules
+from icarus.ui.signals import publish
+from icarus.vendor.Qt import QtWidgets
+
 
 class CreateModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -13,26 +16,32 @@ class CreateModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.layout= QtWidgets.QVBoxLayout()
         self.setLayout(self.layout)
 
-        self.modules_widget = QtWidgets.QListWidget()
-        self.layout.addWidget(self.modules_widget)
+        self.scroll = QtWidgets.QScrollArea()
+        self.layout.addWidget(self.scroll)
+
+        self.scroll.setWidgetResizable(True)
+
+        self.content = QtWidgets.QWidget()
+        self.content_layout = QtWidgets.QVBoxLayout()
+
+        self.content.setLayout(self.content_layout)
+
         for module in all_rig_modules:
-            item = QtWidgets.QListWidgetItem(module)
-            self.modules_widget.addItem(item)
+            button = QtWidgets.QPushButton(module)
+            button.released.connect(partial(self._create_module, module))
+            self.content_layout.addWidget(button)
 
-        self.create_button = QtWidgets.QPushButton('Create')
-        self.layout.addWidget(self.create_button)
-        self.create_button.released.connect(self._create_module)
+        self.content_layout.addStretch()
 
-    def _create_module(self):
-        sel = self.modules_widget.selectedItems()
-        if sel:
-            module_type = sel[0].text()
-            rig = Rig()
-            rig.add_module(
-                module_type,
-                name=module_type.lower(),
-                parent_joint='root_M_000_deform'
-            )
+        self.scroll.setWidget(self.content)
 
-            publish('module-created')
+    def _create_module(self, module_type):
+        rig = Rig()
+        rig.add_module(
+            module_type,
+            name=module_type.lower(),
+            parent_joint='root_M_000_deform'
+        )
+
+        publish('module-created')
 
