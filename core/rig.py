@@ -86,6 +86,17 @@ class Rig(IcarusNode):
 
         return new_module
 
+    def get_module(self, module_node_name):
+        """Get a module instance from a node name.
+
+        :param module_node_name: name of the module's node
+        :type module_node_name: str
+        """
+        for module in self.rig_modules:
+            if module.node_name == module_node_name:
+                return module
+        logger.warning("Found no module named {}.".format(module_node_name))
+
     def build(self):
         cmds.undoInfo(openChunk=True)
         start_time = time.time()
