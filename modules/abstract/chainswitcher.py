@@ -109,9 +109,6 @@ class ChainSwitcher(Chain):
             self.reverse_switch.get() + ".inputX"
         )
 
-        print "in ChainSwitcher._setup_switch"
-        print chain_a
-        print chain_b
         for i in xrange(len(driving_chain)):
             driving = driving_chain[i]
             a = chain_a[i]
