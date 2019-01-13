@@ -4,29 +4,34 @@ import icarus.ui.commands
 
 
 ICARUS_MENU = 'icarus_menu'
-ICARUS_RELOAD_MI = 'icarus_reload_menu_item'
-ICARUS_OPEN_MI = 'icarus_open_menu_item'
-ICARUS_BUILD_MI = 'icarus_build_menu_item'
-ICARUS_UNBUILD_MI = 'icarus_unbuild_menu_item'
 
-MENU_ITEMS = {
-    ICARUS_RELOAD_MI: {
-        'command': 'from icarus.ui.commands import reload_icarus;reload_icarus()',
-        'label': 'Reload Icarus',
+MENU_ITEMS = [
+    {
+        'name': 'icarus_increment_menu_item',
+        'command': 'import icarus;icarus.incremental_save()',
+        'label': 'Incremental Save',
     },
-    ICARUS_OPEN_MI: {
+    {
+        'name': 'icarus_open_menu_item',
         'command': 'from icarus.ui.commands import open_icarus;open_icarus()',
         'label': 'Open Icarus',
     },
-    ICARUS_BUILD_MI: {
+    {
+        'name': 'icarus_build_menu_item',
         'command': 'from icarus.ui.commands import build_rig;build_rig()',
         'label': 'Build Rig',
     },
-    ICARUS_UNBUILD_MI: {
+    {
+        'name': 'icarus_unbuild_menu_item',
         'command': 'from icarus.ui.commands import unbuild_rig;unbuild_rig()',
         'label': 'Unbuild Rig',
     },
-}
+    {
+        'name': 'icarus_reload_menu_item',
+        'command': 'from icarus.ui.commands import reload_icarus;reload_icarus()',
+        'label': 'Reload Icarus',
+    },
+]
 
 
 def build_menu():
@@ -42,8 +47,10 @@ def build_menu():
     if not cmds.menu(ICARUS_MENU, query=True, exists=True):
         cmds.menu(ICARUS_MENU, label='Icarus', parent='MayaWindow', tearOff=False)
 
-    for label, data in MENU_ITEMS.iteritems():
+    for data in MENU_ITEMS:
+        name = data.pop('name')
         cmds.menuItem(
+            name,
             parent=ICARUS_MENU,
             **data
         )
