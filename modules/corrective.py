@@ -318,6 +318,15 @@ class Corrective(RigModule):
 
         return ctl
 
+    def update_parent_joint(self):
+        """Reparent the joints to the proper parent_joint if needed."""
+        for joint in self.deform_joints:
+            expected_parent = self.parent_joint.get()
+            actual_parent = cmds.listRelatives(joint, parent=True)[0]
+
+            if expected_parent != actual_parent:
+                cmds.parent(joint, expected_parent)
+
 
 exported_rig_modules = [Corrective]
 

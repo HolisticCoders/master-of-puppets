@@ -86,6 +86,37 @@ class Rig(IcarusNode):
 
         return new_module
 
+    def get_module(self, module_node_name):
+        """Get a module instance from a node name.
+
+        :param module_node_name: name of the module's node
+        :type module_node_name: str
+        """
+        for module in self.rig_modules:
+            if module.node_name == module_node_name:
+                return module
+        logger.warning("Found no module named {}.".format(module_node_name))
+
+    def delete_module(self, module_node_name):
+        """Delete a module.
+
+        :param module_node_name: name of the module's node
+        :type module_node_name: str
+        """
+        if self.is_built.get():
+            logger.error('Cannot delete a module if the rig is built.')
+            return
+
+        module_to_del = self.get_module(module_node_name)
+        deform_joints = module_to_del.deform_joints.get()
+        for module in self.rig_modules:
+            if module.parent_joint.get() in deform_joints:
+                new_parent_joint = module_to_del.parent_joint.get()
+                module.parent_joint.set(new_parent_joint)
+                module.update()
+        cmds.delete(module_to_del.node_name)
+        cmds.delete(deform_joints)
+
     def build(self):
         cmds.undoInfo(openChunk=True)
         start_time = time.time()
@@ -102,6 +133,7 @@ class Rig(IcarusNode):
 
         self._tag_nodes_for_unbuild(build_nodes)
         tot_time = time.time() - start_time
+        self.is_built.set(True)
         logger.info("Building the rig took {}s".format(tot_time))
         cmds.undoInfo(closeChunk=True)
 
@@ -124,6 +156,7 @@ class Rig(IcarusNode):
         for module in self.rig_modules:
             module.is_built.set(False)
 
+        self.is_built.set(False)
         icarus.postscript.run_scripts('post_unbuild')
         cmds.undoInfo(closeChunk=True)
 

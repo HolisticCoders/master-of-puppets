@@ -511,6 +511,15 @@ class Arm(RigModule):
                 twist + '.rotateX'
             )
 
+    def update_parent_joint(self):
+        """Reparent the first joint to the proper parent_joint if needed."""
+        expected_parent = self.parent_joint.get()
+        first_joint = self.deform_joints.get()[0]
+        actual_parent = cmds.listRelatives(first_joint, parent=True)[0]
+
+        if expected_parent != actual_parent:
+            cmds.parent(first_joint, expected_parent)
+
 
 exported_rig_modules = [Arm]
 
