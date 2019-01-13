@@ -1,13 +1,13 @@
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from icarus.core.module import RigModule
+from icarus.modules.abstract.chainswitcher import ChainSwitcher
 from icarus.core.fields import IntField, ObjectListField, ObjectField
 import icarus.dag
 import icarus.metadata
 
 
-class Arm(RigModule):
+class Arm(ChainSwitcher):
 
     upper_twist_joint_count = IntField(
         defaultValue=0,
@@ -38,9 +38,6 @@ class Arm(RigModule):
 
     # group containing all the IK controls
     ik_controls_group = ObjectField()
-
-    # settings control of the arm.
-    settings_ctl = ObjectField()
 
     ik_handle = ObjectField()
     effector = ObjectField()
@@ -78,23 +75,27 @@ class Arm(RigModule):
         return [j for j in deform_joints if 'twist_lower' in j]
 
     def initialize(self, *args, **kwargs):
+        self.joint_count.set(3)
+        super(Arm, self).initialize()
+
+        self.switch_long_name.set('FK_IK_Switch')
+        self.switch_nice_name.set('FK/IK')
+        self.switch_enum_name.set('FK:IK:')
+
         name_list = ['shoulder', 'elbow', 'wrist']
 
-        for i, name in enumerate(name_list):
-
+        deform_joints = []
+        for deform, name in zip(self.deform_joints.get(), name_list):
             metadata = {
                 'base_name': self.name.get(),
                 'side': self.side.get(),
                 'role': 'deform',
                 'description': name
             }
-
-            joint_name = icarus.metadata.name_from_metadata(metadata)
-            joint = self._add_deform_joint(name=joint_name)
-
-            # Move the elbow and wrist joints only
-            if i > 0:
-                cmds.setAttr(joint + '.translateX', 10)
+            deform_name = icarus.metadata.name_from_metadata(metadata)
+            deform = cmds.rename(deform, deform_name)
+            deform_joints.append(deform)
+        self.deform_joints.set(deform_joints)
 
         for i in xrange(self.upper_twist_joint_count.get()):
             metadata = {
@@ -123,14 +124,6 @@ class Arm(RigModule):
                 name=name,
                 parent=self.deform_joints.get()[1]
             )
-
-    def _add_deform_joint(self, name):
-        """Add a new deform joint, child of the last one."""
-        parent = None
-        deform_joints = self.deform_joints.get()
-        if deform_joints:
-            parent = deform_joints[-1]
-        return super(Arm, self)._add_deform_joint(parent=parent, name=name)
 
     def _add_twist_joint(self, name, parent):
         return super(Arm, self)._add_deform_joint(name=name, parent=parent)
@@ -196,184 +189,50 @@ class Arm(RigModule):
             cmds.delete(joints_to_remove)
 
     def build(self):
-        self._create_ik_fk_chains()
-        self._create_settings_control()
+        super(Arm, self).build()
         self._setup_fk()
         self._setup_ik()
-        self._setup_ik_fk_switch()
+        self._setup_switch_vis()
         self._setup_lower_twist()
 
-    def _create_ik_fk_chains(self):
-        driving_chain = self.arm_driving_joints
+    def _create_chains(self):
+        """Rename the FK and IK joints."""
+        super(Arm, self)._create_chains()
 
-        # create the fk chain
-        fk_chain = cmds.duplicate(
-            driving_chain,
-            parentOnly=True,
-            renameChildren=True,
-        )
+        return
+        fk_chain = self.chain_a.get()
         for i, fk in enumerate(fk_chain):
+            metadata = icarus.metadata.metadata_from_name(fk)
+            metadata['role'] = 'fk'
             fk_chain[i] = cmds.rename(
                 fk,
-                fk.replace('driving1', 'fk')
+                icarus.metadata.name_from_metadata(metadata)
             )
-        cmds.parent(fk_chain[0], self.extras_group.get())
-        self.fk_chain.set(fk_chain)
+        self.chain_a.set(fk_chain)
 
-        # create the fk chain
-        ik_chain = cmds.duplicate(
-            driving_chain,
-            parentOnly=True,
-            renameChildren=True,
-        )
+        ik_chain = self.chain_b.get()
         for i, ik in enumerate(ik_chain):
+            metadata = icarus.metadata.metadata_from_name(ik)
+            metadata['role'] = 'ik'
             ik_chain[i] = cmds.rename(
                 ik,
-                ik.replace('driving1', 'ik')
+                icarus.metadata.name_from_metadata(metadata)
             )
-        cmds.parent(ik_chain[0], self.extras_group.get())
-        self.ik_chain.set(ik_chain)
+        self.chain_b.set(ik_chain)
 
-    def _create_settings_control(self):
-
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'ctl',
-            'description': 'settings',
-        }
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
-        ctl, buffer_grp= self.add_control(self.arm_driving_joints[2], ctl_name)
-        self.settings_ctl.set(ctl)
-        cmds.parent(buffer_grp, self.controls_group.get())
-        icarus.dag.matrix_constraint(self.arm_driving_joints[2], buffer_grp)
-
-        for attr in ['translate', 'rotate', 'scale']:
-            for axis in 'XYZ':
-                attrName = ctl + '.' + attr + axis
-                cmds.setAttr(
-                    attrName,
-                    lock=True,
-                    keyable=False,
-                    channelBox=False
-                )
-        cmds.setAttr(
-            ctl + '.visibility',
-            lock=True,
-            keyable=False,
-            channelBox=False
-        )
-
-        cmds.addAttr(
-            ctl,
-            longName="IK_FK_Switch",
-            niceName="IK/FK",
-            attributeType="enum",
-            enumName="IK:FK:"
-        )
-        cmds.setAttr(ctl + ".IK_FK_Switch", keyable=True)
-
-    def _setup_ik_fk_switch(self):
-        """Create the necessary nodes to switch between the ik and fk chains"""
-        driving_chain = self.arm_driving_joints
-        fk_chain = self.fk_chain.get()
-        ik_chain = self.ik_chain.get()
+    def _setup_switch_vis(self):
         settings_ctl = self.settings_ctl.get()
-
-        # Show the IK or FK controls based on the settings
         cmds.connectAttr(
-            settings_ctl + '.IK_FK_Switch',
+            settings_ctl + '.' + self.switch_long_name.get(),
             self.fk_controls_group.get() + '.visibility'
         )
-        reverse_switch = cmds.createNode('reverse')
         cmds.connectAttr(
-            settings_ctl + ".IK_FK_Switch",
-            reverse_switch + ".inputX"
-        )
-        cmds.connectAttr(
-            reverse_switch + '.outputX',
+            self.reverse_switch.get() + '.outputX',
             self.ik_controls_group.get() + '.visibility'
         )
 
-        for i in xrange(len(driving_chain)):
-            driving = driving_chain[i]
-            fk = fk_chain[i]
-            ik = ik_chain[i]
-            wt_add_mat = cmds.createNode('wtAddMatrix')
-            mult_mat = cmds.createNode('multMatrix')
-            decompose_mat = cmds.createNode('decomposeMatrix')
-            cmds.connectAttr(
-                fk + ".worldMatrix[0]",
-                wt_add_mat + ".wtMatrix[0].matrixIn"
-            )
-            cmds.connectAttr(
-                ik + ".worldMatrix[0]",
-                wt_add_mat + ".wtMatrix[1].matrixIn"
-            )
-            cmds.connectAttr(
-                settings_ctl + ".IK_FK_Switch",
-                wt_add_mat + ".wtMatrix[0].weightIn"
-            )
-            cmds.connectAttr(
-                reverse_switch + ".outputX",
-                wt_add_mat + ".wtMatrix[1].weightIn"
-            )
-            cmds.connectAttr(
-                wt_add_mat + ".matrixSum",
-                mult_mat + '.matrixIn[0]',
-            )
-            cmds.connectAttr(
-                driving + '.parentInverseMatrix[0]',
-                mult_mat + '.matrixIn[1]',
-            )
-            cmds.connectAttr(
-                mult_mat + ".matrixSum",
-                decompose_mat + ".inputMatrix"
-            )
-
-            # substract the driven's joint orient from the rotation
-            euler_to_quat = cmds.createNode('eulerToQuat')
-            quat_invert = cmds.createNode('quatInvert')
-            quat_prod = cmds.createNode('quatProd')
-            quat_to_euler = cmds.createNode('quatToEuler')
-
-            cmds.connectAttr(
-                driving + '.jointOrient',
-                euler_to_quat + '.inputRotate',
-            )
-            cmds.connectAttr(
-                euler_to_quat + '.outputQuat',
-                quat_invert + '.inputQuat',
-            )
-            cmds.connectAttr(
-                decompose_mat + '.outputQuat',
-                quat_prod + '.input1Quat',
-            )
-            cmds.connectAttr(
-                quat_invert + '.outputQuat',
-                quat_prod + '.input2Quat',
-            )
-            cmds.connectAttr(
-                quat_prod + '.outputQuat',
-                quat_to_euler + '.inputQuat',
-            )
-
-            # connect the graph to the driving joint's transform attributes
-            cmds.connectAttr(
-                decompose_mat + '.outputTranslate',
-                driving + '.translate'
-            )
-            cmds.connectAttr(
-                quat_to_euler + '.outputRotate',
-                driving + '.rotate',
-            )
-            cmds.connectAttr(
-                decompose_mat + '.outputScale',
-                driving + '.scale'
-            )
-
     def _setup_fk(self):
-        fk_controls = self.fk_controls.get()
+        fk_controls = self.chain_a.get()
         metadata = {
             'base_name': self.name.get(),
             'side': self.side.get(),
@@ -406,7 +265,7 @@ class Arm(RigModule):
             parent = ctl
 
     def _setup_ik(self):
-        ik_chain = self.ik_chain.get()
+        ik_chain = self.chain_b.get()
         metadata = {
             'base_name': self.name.get(),
             'side': self.side.get(),
@@ -472,7 +331,7 @@ class Arm(RigModule):
         icarus.dag.matrix_constraint(wrist_ctl, ik_handle, maintain_offset=True)
 
     def _place_pole_vector(self, ctl):
-        ik_chain = self.ik_chain.get()
+        ik_chain = self.chain_b.get()
         shoulder_pos = cmds.xform(
             ik_chain[0],
             query=True,
