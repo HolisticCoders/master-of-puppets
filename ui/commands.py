@@ -40,6 +40,8 @@ def open_icarus():
 def build_rig():
     """Build the current scene rig."""
     from icarus.core.rig import Rig
+    import icarus
+    icarus.incremental_save()
     rig = Rig()
     rig.build()
 
@@ -47,6 +49,8 @@ def build_rig():
 def unbuild_rig():
     """Unbuild the current scene rig."""
     from icarus.core.rig import Rig
+    import icarus
+    icarus.incremental_save()
     rig = Rig()
     rig.unbuild()
 
