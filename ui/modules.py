@@ -9,6 +9,8 @@ from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ModulesPanel, self).__init__(parent)
+        self.setObjectName('icarus_modules_panel')
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('Icarus Modules')
 
         layout = QtWidgets.QVBoxLayout()

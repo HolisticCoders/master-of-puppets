@@ -5,12 +5,14 @@ from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 from icarus.core.rig import Rig
 from icarus.modules import all_rig_modules
 from icarus.ui.signals import publish
-from icarus.vendor.Qt import QtWidgets
+from icarus.vendor.Qt import QtCore, QtWidgets
 
 
 class CreateModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(CreateModulePanel, self).__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setObjectName('icarus_createmodule_panel')
         self.setWindowTitle('Icarus Create Module')
 
         self.layout= QtWidgets.QVBoxLayout()

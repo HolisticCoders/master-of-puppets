@@ -2,7 +2,7 @@ from functools import partial
 from operator import attrgetter
 from weakref import WeakValueDictionary
 
-from icarus.vendor.Qt import QtWidgets
+from icarus.vendor.Qt import QtCore, QtWidgets
 from icarus.core.rig import Rig
 from icarus.ui.signals import publish, subscribe, unsubscribe
 from icarus.ui.utils import clear_layout
@@ -76,6 +76,8 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super(SettingsPanel, self).__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setObjectName('icarus_settings_panel')
         self._module_widgets = WeakValueDictionary()
 
         self.setWindowTitle('Icarus Settings')
