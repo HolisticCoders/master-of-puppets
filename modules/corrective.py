@@ -42,6 +42,16 @@ class Corrective(RigModule):
             joints_to_delete = joints[diff:]
             joints_to_keep = joints[:len(joints) + diff]
             deform_joints = joints_to_keep
+
+            for module in self.rig.rig_modules:
+                if module.parent_joint.get() in joints_to_delete:
+                    if joints_to_keep:
+                        new_parent_joint = joints_to_keep[-1]
+                    else:
+                        new_parent_joint = self.parent_joint.get()
+                    module.parent_joint.set(new_parent_joint)
+                    module.update()
+
             cmds.delete(joints_to_delete)
         self.deform_joints.set(deform_joints)
 
