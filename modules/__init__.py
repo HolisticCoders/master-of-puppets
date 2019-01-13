@@ -3,7 +3,10 @@ import importlib
 
 
 all_rig_modules = {}
-for mod in os.listdir(os.path.dirname(__file__)):
+current_dir = os.path.dirname(__file__)
+for mod in os.listdir(current_dir):
+    if os.path.isdir(os.path.join(current_dir, mod)):
+        continue
     if mod.endswith('.pyc'):
         continue
     if mod == os.path.basename(__file__):
