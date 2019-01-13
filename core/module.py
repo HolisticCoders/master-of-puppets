@@ -177,7 +177,6 @@ class RigModule(IcarusNode):
                     field.__get__(module).set(objects)
         return new_name
 
-
     def _build(self):
         """Setup some stuff before actually building the module.
 

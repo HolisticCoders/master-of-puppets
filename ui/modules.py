@@ -23,7 +23,7 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
         self.tree_view.expandAll()
-        
+
         selection = self.tree_view.selectionModel()
         selection.currentChanged.connect(self._on_current_changed)
 
@@ -58,10 +58,16 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
     def rowCount(self, parent):
         if not parent.isValid():
-            return len([m for m in self.modules if self._parent_modules_cache[m] is None])
+            return len([
+                m for m in self.modules
+                if self._parent_modules_cache[m] is None
+            ])
         else:
             parent_module = parent.internalPointer()
-            children = [m for m in self.modules if self._parent_modules_cache[m] is parent_module]
+            children = [
+                m for m in self.modules
+                if self._parent_modules_cache[m] is parent_module
+            ]
             return len(children)
 
     def columnCount(self, parent):
@@ -74,7 +80,10 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
     def index(self, row, column, parent):
         parent_module = parent.internalPointer() if parent.isValid() else None
-        children = [m for m in self.modules if self._parent_modules_cache[m] is parent_module]
+        children = [
+            m for m in self.modules
+            if self._parent_modules_cache[m] is parent_module
+        ]
         module = children[row]
         return self.createIndex(row, column, module)
 
@@ -86,7 +95,9 @@ class ModulesModel(QtCore.QAbstractItemModel):
             return QtCore.QModelIndex()
 
         great_parent_module = self._parent_modules_cache[parent_module]
-        great_children = [m for m in self.modules if self._parent_modules_cache[m] is great_parent_module]
+        great_children = [
+            m for m in self.modules
+            if self._parent_modules_cache[m] is great_parent_module
+        ]
         row = great_children.index(parent_module)
         return self.createIndex(row, 0, parent_module)
-
