@@ -25,14 +25,9 @@ class Chain(RigModule):
     def build(self):
         parent = self.controls_group.get()
         for joint in self.driving_joints:
-            ctl = cmds.circle(name=joint.replace('driving', 'ctl'))[0]
-
-            icarus.dag.snap_first_to_last(ctl, joint)
-            cmds.parent(ctl, parent)
-
-            parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
+            ctl, parent_group = self.add_control(joint)
+            cmds.parent(parent_group, parent)
             icarus.dag.matrix_constraint(ctl, joint)
-
             parent = ctl
 
     def publish(self):
@@ -63,8 +58,27 @@ class Chain(RigModule):
             joints_to_delete = joints[diff:]
             joints_to_keep = joints[:len(joints) + diff]
             deform_joints = joints_to_keep
+
+            for module in self.rig.rig_modules:
+                if module.parent_joint.get() in joints_to_delete:
+                    if joints_to_keep:
+                        new_parent_joint = joints_to_keep[-1]
+                    else:
+                        new_parent_joint = self.parent_joint.get()
+                    module.parent_joint.set(new_parent_joint)
+                    module.update()
+
             cmds.delete(joints_to_delete)
         self.deform_joints.set(deform_joints)
+
+    def update_parent_joint(self):
+        """Reparent the first joint to the proper parent_joint if needed."""
+        expected_parent = self.parent_joint.get()
+        first_joint = self.deform_joints.get()[0]
+        actual_parent = cmds.listRelatives(first_joint, parent=True)[0]
+
+        if expected_parent != actual_parent:
+            cmds.parent(first_joint, expected_parent)
 
 
 exported_rig_modules = [Chain]

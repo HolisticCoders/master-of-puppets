@@ -13,10 +13,9 @@ class Rivet(RigModule):
 
     def build(self):
         joint = self.driving_joints[0]
-        ctl = cmds.circle(name=joint.replace('driving', 'ctl'))[0]
-        icarus.dag.snap_first_to_last(ctl, joint)
+        ctl, parent_group = self.add_control(joint)
+        icarus.dag.snap_first_to_last(parent_group, joint)
         cmds.parent(ctl, self.controls_group.get())
-        ctl_buffer = icarus.dag.add_parent_group(ctl, 'buffer')
         icarus.dag.matrix_constraint(ctl, joint)
 
         if cmds.nodeType(self.surface.get()) == 'transform':
@@ -61,9 +60,18 @@ class Rivet(RigModule):
         cmds.setAttr(follicle + '.parameterV', v)
         icarus.dag.matrix_constraint(
             follicle_transform,
-            ctl_buffer,
+            parent_group,
             maintain_offset=True
         )
+
+    def update_parent_joint(self):
+        """Reparent the joint to the proper parent_joint if needed."""
+        expected_parent = self.parent_joint.get()
+        joint = self.deform_joints.get()[0]
+        actual_parent = cmds.listRelatives(joint, parent=True)[0]
+
+        if expected_parent != actual_parent:
+            cmds.parent(joint, expected_parent)
 
 
 exported_rig_modules = [Rivet]

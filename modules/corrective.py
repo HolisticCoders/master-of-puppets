@@ -42,6 +42,16 @@ class Corrective(RigModule):
             joints_to_delete = joints[diff:]
             joints_to_keep = joints[:len(joints) + diff]
             deform_joints = joints_to_keep
+
+            for module in self.rig.rig_modules:
+                if module.parent_joint.get() in joints_to_delete:
+                    if joints_to_keep:
+                        new_parent_joint = joints_to_keep[-1]
+                    else:
+                        new_parent_joint = self.parent_joint.get()
+                    module.parent_joint.set(new_parent_joint)
+                    module.update()
+
             cmds.delete(joints_to_delete)
         self.deform_joints.set(deform_joints)
 
@@ -49,7 +59,7 @@ class Corrective(RigModule):
         self.create_locators()
         value_range = self._build_angle_reader()
         for joint in self.driving_joints:
-            ctl = self._add_control(joint, name=joint.replace('driving', 'ctl'))
+            ctl = self._add_control(joint)
             condition_nodes = []
             for angleAxis in 'YZ':
                 positive_offset = cmds.createNode('multiplyDivide')
@@ -214,20 +224,20 @@ class Corrective(RigModule):
             angle_between + '.vector2',
         )
 
-        node_mult = cmds.createNode('multiplyDivide')
+        self.node_mult = cmds.createNode('multiplyDivide')
         cmds.connectAttr(
             angle_between + '.axis',
-            node_mult + '.input1',
+            self.node_mult + '.input1',
         )
         for axis in 'XYZ':
             cmds.connectAttr(
                 angle_between + '.angle',
-                node_mult + '.input2' + axis,
+                self.node_mult + '.input2' + axis,
             )
         m1_to_p1_range = cmds.createNode('multiplyDivide')
         cmds.setAttr(m1_to_p1_range + '.operation', 2)  # 2 is division
         cmds.connectAttr(
-            node_mult + '.output',
+            self.node_mult + '.output',
             m1_to_p1_range + '.input1',
         )
         for axis in 'XYZ':
@@ -237,10 +247,10 @@ class Corrective(RigModule):
             )
         return m1_to_p1_range
 
-    def _add_control(self, joint, name):
-        ctl = cmds.circle(name=name)[0]
+    def _add_control(self, joint):
+        ctl, parent_group = self.add_control(joint)
 
-        icarus.dag.snap_first_to_last(ctl, joint)
+        icarus.dag.snap_first_to_last(parent_group, joint)
         cmds.parent(ctl, self.controls_group.get())
 
         offset_group = icarus.dag.add_parent_group(ctl, 'offset')
@@ -254,6 +264,48 @@ class Corrective(RigModule):
             attributeType='enum',
             enumName='Y:Z:',
             keyable=True
+        )
+
+        # this attributes are there to ease the setup of the corrective for the rigger
+        cmds.addAttr(
+            ctl,
+            longName='angle',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.angle', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input2X',
+            ctl + '.angle'
+        )
+        cmds.addAttr(
+            ctl,
+            longName='xValue',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.xValue', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input1X',
+            ctl + '.xValue'
+        )
+        cmds.addAttr(
+            ctl,
+            longName='yValue',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.yValue', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input1Y',
+            ctl + '.yValue'
+        )
+        cmds.addAttr(
+            ctl,
+            longName='zValue',
+            attributeType='double',
+        )
+        cmds.setAttr(ctl + '.zValue', channelBox=True)
+        cmds.connectAttr(
+            self.node_mult + '.input1Z',
+            ctl + '.zValue'
         )
 
         for axis in 'XYZ':
@@ -275,6 +327,15 @@ class Corrective(RigModule):
             )
 
         return ctl
+
+    def update_parent_joint(self):
+        """Reparent the joints to the proper parent_joint if needed."""
+        for joint in self.deform_joints.get():
+            expected_parent = self.parent_joint.get()
+            actual_parent = cmds.listRelatives(joint, parent=True)[0]
+
+            if expected_parent != actual_parent:
+                cmds.parent(joint, expected_parent)
 
 
 exported_rig_modules = [Corrective]

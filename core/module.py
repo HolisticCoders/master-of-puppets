@@ -1,3 +1,4 @@
+import json
 import logging
 
 import maya.cmds as cmds
@@ -6,6 +7,7 @@ from icarus.core.fields import ObjectField, StringField, ObjectListField
 import icarus.metadata
 import icarus.dag
 import icarus.attributes
+from shapeshifter import shapeshifter
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,8 @@ class RigModule(IcarusNode):
 
     # list of all of this module's deform joints
     deform_joints = ObjectListField()
+
+    controllers = ObjectListField()
 
     def __init__(self, name, side='M', parent_joint=None, rig=None):
         if cmds.objExists(name):
@@ -82,6 +86,8 @@ class RigModule(IcarusNode):
         if self.is_built.get():
             return
 
+        self.update_parent_joint()
+
         scene_metadata = icarus.metadata.metadata_from_name(self.node_name)
         name_changed = self.name.get() != scene_metadata['base_name']
         side_changed = self.side.get() != scene_metadata['side']
@@ -122,6 +128,9 @@ class RigModule(IcarusNode):
                         self.node_name + '.' + attr,
                         new_node + '__' + attr_name
                     )
+
+    def update_parent_joint(self):
+        raise NotImplementedError
 
     def _update_node_name(self, node):
         metadata = icarus.metadata.metadata_from_name(node)
@@ -300,4 +309,34 @@ class RigModule(IcarusNode):
                 cmds.parent(driving, parent)
 
             icarus.dag.matrix_constraint(driving, deform)
+
+    def add_control(self, dag_node, ctl_name=None, shape_type='circle'):
+        if not ctl_name:
+            metadata = icarus.metadata.metadata_from_name(dag_node)
+            metadata['type'] = 'ctl'
+            ctl_name = icarus.metadata.name_from_metadata(
+                metadata['base_name'],
+                metadata['side'],
+                metadata['type'],
+                metadata.get('id', None),
+                metadata.get('description', None)
+            )
+        ctl = shapeshifter.create_controller_from_name(shape_type)
+        ctl = cmds.rename(ctl, ctl_name)
+        icarus.attributes.create_persistent_attribute(
+            ctl,
+            self.node_name,
+            longName='shape_data',
+            dataType='string'
+        )
+        ctl_data = cmds.getAttr(ctl + '.shape_data')
+        if ctl_data:
+            ctl_data = json.loads(ctl_data)
+            shapeshifter.change_controller_shape(ctl, ctl_data)
+        icarus.dag.snap_first_to_last(ctl, dag_node)
+        parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
+        controllers = self.controllers.get()
+        controllers.append(ctl)
+        self.controllers.set(controllers)
+        return ctl, parent_group
 
