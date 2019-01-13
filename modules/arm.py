@@ -223,11 +223,11 @@ class Arm(ChainSwitcher):
     def _setup_switch_vis(self):
         settings_ctl = self.settings_ctl.get()
         cmds.connectAttr(
-            settings_ctl + '.' + self.switch_long_name.get(),
+            self.reverse_switch.get() + '.outputX',
             self.fk_controls_group.get() + '.visibility'
         )
         cmds.connectAttr(
-            self.reverse_switch.get() + '.outputX',
+            settings_ctl + '.' + self.switch_long_name.get(),
             self.ik_controls_group.get() + '.visibility'
         )
 

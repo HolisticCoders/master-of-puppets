@@ -125,11 +125,11 @@ class ChainSwitcher(Chain):
                 wt_add_mat + ".wtMatrix[1].matrixIn"
             )
             cmds.connectAttr(
-                settings_ctl + "." + self.switch_long_name.get(),
+                self.reverse_switch.get() + ".outputX",
                 wt_add_mat + ".wtMatrix[0].weightIn"
             )
             cmds.connectAttr(
-                self.reverse_switch.get() + ".outputX",
+                settings_ctl + "." + self.switch_long_name.get(),
                 wt_add_mat + ".wtMatrix[1].weightIn"
             )
             cmds.connectAttr(
