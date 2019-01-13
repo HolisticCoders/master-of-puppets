@@ -28,7 +28,7 @@ def camel(string):
     :rtype: str
     """
     tokens = re.split(SEPARATORS, string)
-    return tokens[0].lower() + ''.join([s.title() for s in tokens[1:]])
+    return tokens[0][0].lower() + tokens[0][1:] + ''.join([s.title() for s in tokens[1:]])
 
 
 def pascal(string):

@@ -1,11 +1,15 @@
 import maya.cmds as cmds
 
+import icarus.utils.case
+
 
 def name_from_metadata(metadata):
     """Generate a node name from the given metadata.
 
     This function should be used EVERYTIME a node is named.
     """
+    metadata['base_name'] = icarus.utils.case.camel(metadata['base_name'])
+    metadata['role'] = icarus.utils.case.camel(metadata['role'])
     name_components = [
         metadata['base_name'],
         metadata['side'],
