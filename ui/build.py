@@ -25,19 +25,18 @@ def show():
         # with the same name exist.
         close_instance_workspace(name)
 
-        dockable = settings.value('%s/dockable' % name)
         floating = settings.value('%s/floating' % name)
         area = settings.value('%s/area' % name)
         g = settings.value('%s/geometry' % name)
         x, y, height, width = g.x(), g.y(), g.height(), g.width()
         instance.show(
             dockable=True,
-            # floating=floating,
-            # area=area,
-            # x=x,
-            # y=y,
-            # width=width,
-            # height=height,
+            floating=floating,
+            area=area,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
         )
         _INSTANCES[name] = instance
 
@@ -111,7 +110,7 @@ def load_settings():
             width=w,
             height=h,
         )
-        if instance.isDockable() and instance.isFloating():
+        if instance.isFloating():
             instance.resize(w, h)
             instance.move(x, y)
 
@@ -127,16 +126,12 @@ def save_settings():
     """
     settings = get_settings()
     for name, instance in _INSTANCES.iteritems():
-        print cmds.workspaceControl(get_workspace_name(name), query=True, requiredControl=True)
         settings.setValue('%s/floating' % name, instance.isFloating())
         settings.setValue('%s/area' % name, instance.dockArea())
-        if instance.isDockable():
-            if instance.isFloating():
-                geometry = instance.window().geometry()
-            else:
-                # Get the dock geometry.
-                geometry = instance.parent().geometry()
+        if instance.isFloating():
+            geometry = instance.window().geometry()
         else:
-            geometry = instance.geometry()
+            # Get the dock geometry.
+            geometry = instance.parent().geometry()
         settings.setValue('%s/geometry' % name, geometry)
 
