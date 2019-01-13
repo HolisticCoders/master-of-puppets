@@ -15,10 +15,11 @@ class Chain(RigModule):
         editable=True,
     )
 
-    def initialize(self, *args, **kwargs):
-        joints = []
+    def initialize(self):
         for i in range(self.joint_count.get()):
-            self._add_deform_joint()
+            new_joint = self._add_deform_joint()
+            if i > 0:
+                cmds.setAttr(new_joint + '.translateX', 5)
 
     def update(self):
         super(Chain, self).update()
@@ -35,14 +36,14 @@ class Chain(RigModule):
     def publish(self):
         pass
 
-    def _add_deform_joint(self):
+    def _add_deform_joint(self, name=None, parent=None):
         """Add a new deform joint, child of the last one.
         """
         parent = None
         deform_joints = self.deform_joints.get()
         if deform_joints:
             parent = deform_joints[-1]
-        return super(Chain, self)._add_deform_joint(parent=parent)
+        return super(Chain, self)._add_deform_joint(name=name, parent=parent)
 
     def _update_joint_count(self):
         deform_joints = self.deform_joints.get()

@@ -1,26 +1,20 @@
 import maya.cmds as cmds
 
 
-def name_from_metadata(
-    object_base_name,
-    object_side,
-    object_type,
-    object_id=None,
-    object_description=None
-):
+def name_from_metadata(metadata):
     """Generate a node name from the given metadata.
 
     This function should be used EVERYTIME a node is named.
     """
     name_components = [
-        object_base_name,
-        object_side,
-        object_type,
+        metadata['base_name'],
+        metadata['side'],
+        metadata['role'],
     ]
-    if object_description is not None:
-        name_components.insert(2, object_description)
-    if object_id is not None:
-        object_id = str(object_id).zfill(3)
+    if metadata.get('description', None) is not None:
+        name_components.insert(2, metadata['description'])
+    if metadata.get('id', None) is not None:
+        object_id = str(metadata['id']).zfill(3)
         name_components.insert(-1, object_id)
     name = '_'.join(name_components)
     return name
@@ -33,7 +27,9 @@ def metadata_from_name(name):
     # every name should at least contain these 3 components.
     data['base_name'] = split_name.pop(0)
     data['side'] = split_name.pop(0)
-    data['type'] = split_name.pop(-1)
+    data['role'] = split_name.pop(-1)
+    data['id'] = None
+    data['description'] = None
 
     # try to get the optional components.
     if split_name:
