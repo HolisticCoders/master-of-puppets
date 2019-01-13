@@ -251,7 +251,7 @@ class Arm(ChainSwitcher):
 
         parent = self.fk_controls_group.get()
         names = ['shoulder', 'elbow', 'wrist']
-        for i, fk in enumerate(self.fk_chain.get()):
+        for i, fk in enumerate(self.chain_a.get()):
             metadata = {
                 'base_name': self.name.get(),
                 'side': self.side.get(),
