@@ -1,6 +1,9 @@
+import logging
 import re
 
 import maya.cmds as cmds
+
+logger = logging.getLogger(__name__)
 
 
 def increment_version(path):
@@ -58,13 +61,13 @@ def incremental_save():
 
     If you want to further customize the way scenes are saved, you
     can override the `icarus.incremental_save` attribute.
-
-    :raise ValueError: When the path does not contain a version number.
-                       This exception is inherited from
-                       :func:`icarus.increment_version`.
     """
     import icarus
     path = cmds.file(query=True, location=True)
-    new_path = icarus.increment_version(path)
+    try:
+        new_path = icarus.increment_version(path)
+    except ValueError as err:
+        logger.error(str(err))
+        return
     cmds.file(rename=new_path)
     cmds.file(save=True, force=True)
