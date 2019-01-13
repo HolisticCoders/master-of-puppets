@@ -9,7 +9,7 @@ class Root(RigModule):
         self._add_deform_joint()
 
     def build(self):
-        pass
+        cmds.makeIdentity(self.deform_joints.get()[0], apply=True, rotate=True)
 
     def publish(self):
         pass
