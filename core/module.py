@@ -1,9 +1,14 @@
+import logging
+
 import maya.cmds as cmds
 from icarus.core.icarusNode import IcarusNode
 from icarus.core.fields import ObjectField, StringField, ObjectListField
 from icarus.modules import all_rig_modules
 import icarus.metadata
 import icarus.dag
+import icarus.attributes
+
+logger = logging.getLogger(__name__)
 
 
 class RigModule(IcarusNode):
@@ -110,21 +115,51 @@ class RigModule(IcarusNode):
 
         if name_changed or side_changed:
             # rename the module node
-            new_name = self._update_node_name(self.node_name, scene_metadata)
+            new_name = self._update_node_name(self.node_name)
             self.node_name = new_name
 
             # rename the deform joints
             for node in self.deform_joints.get():
-                self._update_node_name(node, scene_metadata)
+                self._update_node_name(node)
 
-                        
-    def _update_node_name(self, node, scene_metadata):
-        new_name = node.replace(
-            scene_metadata['base_name'],
-            self.name.get()
-        ).replace(
-            scene_metadata['side'],
-            self.side.get()
+            # rename the persistent attributes
+            persistent_attrs = cmds.listAttr(
+                self.node_name,
+                category='persistent_attribute_backup'
+            )
+            if persistent_attrs:
+                for attr in persistent_attrs:
+                    old_node, attr_name = attr.split('__')
+
+                    metadata = icarus.metadata.metadata_from_name(old_node)
+                    metadata['base_name'] = self.name.get()
+                    metadata['side'] = self.side.get()
+                    new_node = icarus.metadata.name_from_metadata(
+                        metadata['base_name'],
+                        metadata['side'],
+                        metadata['type'],
+                        object_id = metadata.get('id', None),
+                        object_description = metadata.get('description', None),
+                    )
+                    logger.debug("Renaming persistent attribute from {} to {}".format(
+                        self.node_name + '.' + attr,
+                        self.node_name + '.' + new_node + '__' + attr_name
+                    ))
+                    cmds.renameAttr(
+                        self.node_name + '.' + attr,
+                        new_node + '__' + attr_name
+                    )
+
+    def _update_node_name(self, node):
+        metadata = icarus.metadata.metadata_from_name(node)
+        metadata['base_name'] = self.name.get()
+        metadata['side'] = self.side.get()
+        new_name = icarus.metadata.name_from_metadata(
+            metadata['base_name'],
+            metadata['side'],
+            metadata['type'],
+            object_id = metadata.get('id', None),
+            object_description = metadata.get('description', None),
         )
         cmds.rename(node, new_name)
 
