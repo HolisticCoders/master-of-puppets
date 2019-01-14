@@ -76,6 +76,7 @@ class Chain(RigModule):
 
     def update_parent_joint(self):
         """Reparent the first joint to the proper parent_joint if needed."""
+        super(Chain, self).update_parent_joint()
         expected_parent = self.parent_joint.get()
         first_joint = self.deform_joints.get()[0]
         actual_parent = cmds.listRelatives(first_joint, parent=True)[0]
