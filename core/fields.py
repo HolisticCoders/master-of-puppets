@@ -1,13 +1,16 @@
-import maya.cmds as cmds
+import collections
 import json
 import logging
+
+import maya.cmds as cmds
 
 from icarus.utils.case import title
 
 logger = logging.getLogger(__name__)
 
 
-class Attribute(object):
+class AttributeBase(object):
+
     def __init__(self, instance, field):
         self.field = field
         self.is_multi = field.create_attr_args.get('multi', False)
@@ -23,36 +26,22 @@ class Attribute(object):
     def attr_name(self):
         return '.'.join([self.instance.node_name, self.field.name])
 
+
+class Attribute(AttributeBase):
+
     def set(self, value):
-        if self.is_multi:
-            self._set_multi_attribute(value)
-        else:
-            self._set_single_attribute(value)
-
-    def get(self):
-        if self.is_multi:
-            return self._get_multi_attribute()
-        else:
-            return self.field.cast_from_attr(cmds.getAttr(self.attr_name))
-
-    def _get_multi_attribute(self):
-        indices = self._get_multi_indices()
-        if indices:
-            values = []
-            for i in indices:
-                val = cmds.getAttr('{}[{}]'.format(self.attr_name, i))
-                val = self.field.cast_from_attr(val)
-                values.append(val)
-            return values
-        else:
-            return []
-
-    def _set_single_attribute(self, value):
         casted_value = self.field.cast_to_attr(value)
         cmds.setAttr(self.attr_name, casted_value, **self.field.set_attr_args)
 
-    def _set_multi_attribute(self, value):
-        self._clear_multi_attribute()
+    def get(self):
+        return self.field.cast_from_attr(cmds.getAttr(self.attr_name))
+
+
+class MultiAttribute(AttributeBase, collections.MutableSequence):
+    """An interface for Maya multi-attributes."""
+
+    def set(self, value):
+        self.clear()
         if not isinstance(value, list):
             value = [value]
         for index, item in enumerate(value):
@@ -60,16 +49,37 @@ class Attribute(object):
             attrName = '{}[{}]'.format(self.attr_name, index)
             cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
-    def _clear_multi_attribute(self):
+    def get(self):
+        indices = cmds.getAttr(self.attr_name, multiIndices=True) or []
+        values = []
+        for i in indices:
+            val = cmds.getAttr('{}[{}]'.format(self.attr_name, i))
+            val = self.field.cast_from_attr(val)
+            values.append(val)
+        return values
+
+    def clear(self):
         indices = self._get_multi_indices()
         for index in indices:
             cmds.removeMultiInstance('{}[{}]'.format(self.attr_name, index))
 
-    def _get_multi_indices(self):
-        indices = cmds.getAttr(self.attr_name, multiIndices=True)
-        if not indices:
-            indices = []
-        return indices
+    def __getitem__(self, index):
+        val = cmds.getAttr('{}[{}]'.format(self.attr_name, index))
+        return self.field.cast_from_attr(val)
+
+    def __setitem__(self, index, value):
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
+
+    def __delitem__(self, index):
+        cmds.removeMultiInstance('{}[{}]'.format(self.attr_name, index))
+
+    def __len__(self):
+        return cmds.getAttr(self.attr_name, size=True)
+
+    def insert(self, index, value):
+        return NotImplemented
 
 
 class FieldContainerMeta(type):
@@ -137,6 +147,8 @@ class Field(object):
             self._attrs[instance] = self.create_attr(instance)
 
     def create_attr(self, instance):
+        if self.create_attr_args.get('multi', False):
+            return MultiAttribute(instance, self)
         return Attribute(instance, self)
 
     def cast_to_attr(self, value):
