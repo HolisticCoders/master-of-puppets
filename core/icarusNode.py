@@ -13,7 +13,6 @@ class IcarusNode(object):
     is_built = BoolField(defaultValue=False)
     is_published = BoolField(defaultValue=False)
 
-
     def __new__(cls, *args, **kwargs):
         if 'instances' not in cls.__dict__:
             cls.instances = weakref.WeakSet()
@@ -35,4 +34,7 @@ class IcarusNode(object):
             cmds.createNode('transform', name=name)
 
     def __repr__(self):
-        return "%s (%s)" % (self.__class__, self.node_name)
+        return "%s(%s)" % (self.__class__, self.node_name)
+
+    def __str__(self):
+        return self.node_name

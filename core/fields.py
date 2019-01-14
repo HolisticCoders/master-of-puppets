@@ -50,18 +50,18 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
             cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
     def get(self):
-        indices = cmds.getAttr(self.attr_name, multiIndices=True) or []
         values = []
-        for i in indices:
-            val = cmds.getAttr('{}[{}]'.format(self.attr_name, i))
+        for val in cmds.getAttr('{}[*]'.format(self.attr_name)):
             val = self.field.cast_from_attr(val)
             values.append(val)
         return values
 
     def clear(self):
-        indices = self._get_multi_indices()
-        for index in indices:
-            cmds.removeMultiInstance('{}[{}]'.format(self.attr_name, index))
+        cmds.removeMultiInstance(
+            '{}'.format(self.attr_name),
+            allChildren=True,
+            b=True
+        )
 
     def __getitem__(self, index):
         val = cmds.getAttr('{}[{}]'.format(self.attr_name, index))
@@ -73,13 +73,60 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
         cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
     def __delitem__(self, index):
-        cmds.removeMultiInstance('{}[{}]'.format(self.attr_name, index))
+        cmds.removeMultiInstance(
+            '{}[{}]'.format(self.attr_name, index),
+            b=True
+        )
 
     def __len__(self):
-        return cmds.getAttr(self.attr_name, size=True)
+        return len(cmds.getAttr('{}[*]'.format(self.attr_name)))
 
     def insert(self, index, value):
-        return NotImplemented
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
+
+
+class MessageMultiAttribute(MultiAttribute):
+
+    def __setitem__(self, index, value):
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.connectAttr(casted_item + '.message', attrName)
+
+    def get(self):
+        values = cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True
+        ) or []
+        return map(self.field.cast_from_attr, values)
+
+    def set(self, value):
+        self.clear()
+        if not isinstance(value, list):
+            value = [value]
+        for index, item in enumerate(value):
+            casted_item = self.field.cast_to_attr(item)
+            attrName = '{}[{}]'.format(self.attr_name, index)
+            cmds.connectAttr(casted_item + '.message', attrName)
+
+    def __getitem__(self, index):
+        val = cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True
+        ) or []
+        return self.field.cast_from_attr(val[index])
+
+    def __len__(self):
+        return len(cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True) or []
+        )
+
+    def insert(self, index, value):
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.connectAttr(casted_item + '.message', attrName)
 
 
 class FieldContainerMeta(type):
@@ -227,31 +274,14 @@ class ObjectField(StringField):
             raise ValueError('node `{}` does not exist'.format(value))
 
 
-class ObjectListField(JSONField):
+class ObjectListField(Field):
+    create_attr_args = {
+        'attributeType': 'message',
+        'multi': True
+    }
+
+    def create_attr(self, instance):
+            return MessageMultiAttribute(instance, self)
+
     def cast_to_attr(self, value):
-        if not isinstance(value, (tuple, list)):
-            raise ValueError(
-                ("{} is an Object List Field and only accepts lists and tuples. "
-                 + "provided value was of type {}").format(
-                        self.name,
-                        type(value),
-                )
-            )
-        curated_objects = []
-        for item in value:
-            if cmds.objExists(item):
-                curated_objects.append(item)
-            else:
-                logger.warning(
-                    "{} does not exist and can't be added to the field {}".format(
-                        item,
-                        self.name
-                    )
-                )
-        return json.dumps(curated_objects)
-
-    def cast_from_attr(self, value):
-        if value is None:
-            return []
-        return json.loads(value)
-
+        return str(value)

@@ -274,12 +274,7 @@ class RigModule(IcarusNode):
             name (str): name of the joint, in case you don't want the default one.
             parent (str): node under which the new joint will be parented
         """
-        deform_joints = self.deform_joints.get()
-
-        if deform_joints is None:
-            deform_joints = []
-
-        object_id=len(deform_joints)
+        object_id = len(self.deform_joints)
         if name is not None:
             new_joint = name
         else:
@@ -308,10 +303,7 @@ class RigModule(IcarusNode):
                 attr = transform + axis
                 cmds.setAttr(new_joint + '.' + attr, value)
 
-        deform_joints.append(new_joint)
-        self.deform_joints.set(
-            deform_joints
-        )
+        self.deform_joints.append(new_joint)
         return new_joint
 
     def create_driving_joints(self):
