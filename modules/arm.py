@@ -55,6 +55,8 @@ class Arm(FkIkChain):
 
     def initialize(self):
         super(Arm, self).initialize()
+        self.ik_start_description.set('IK_wrist')
+        self.ik_end_description.set('IK_shoulder')
 
         name_list = ['shoulder', 'elbow', 'wrist']
 
@@ -165,52 +167,6 @@ class Arm(FkIkChain):
     def build(self):
         super(Arm, self).build()
         self._setup_lower_twist()
-
-    def _setup_fk(self):
-        """Rename the FK controllers."""
-        super(Arm, self)._setup_fk()
-        name_list = ['shoulder', 'elbow', 'wrist']
-        fk_controls = []
-        for ctl, name in zip(self.fk_controls.get(), name_list):
-            print ctl
-            metadata = {
-                'base_name': self.name.get(),
-                'side': self.side.get(),
-                'role': 'ctl',
-                'description': 'FK_' + name
-            }
-            ctl_name = icarus.metadata.name_from_metadata(metadata)
-
-            deform = cmds.rename(ctl, ctl_name)
-            fk_controls.append(deform)
-        self.fk_controls.set(fk_controls)
-
-    def _setup_ik(self):
-        """Rename the FK controllers."""
-        super(Arm, self)._setup_ik()
-        ik_controls = []
-        # name the wrist ctl
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'ctl',
-            'description': 'IK_wrist'
-        }
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
-        deform = cmds.rename(self.ik_controls.get()[0], ctl_name)
-        ik_controls.append(deform)
-
-        # name the shoulder ctl
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'ctl',
-            'description': 'IK_shoulder'
-        }
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
-        deform = cmds.rename(self.ik_controls.get()[1], ctl_name)
-        ik_controls.append(deform)
-        self.ik_controls.set(ik_controls)
 
     def _setup_lower_twist(self):
         wrist_driving = self.arm_driving_joints[-1]

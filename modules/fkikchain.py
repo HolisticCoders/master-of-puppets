@@ -2,7 +2,12 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
 from icarus.modules.abstract.chainswitcher import ChainSwitcher
-from icarus.core.fields import IntField, ObjectListField, ObjectField
+from icarus.core.fields import (
+    IntField,
+    StringField,
+    ObjectListField,
+    ObjectField,
+)
 import icarus.metadata
 
 
@@ -29,9 +34,14 @@ class FkIkChain(ChainSwitcher):
     ik_handle = ObjectField()
     effector = ObjectField()
 
+    ik_start_description = StringField()
+    ik_end_description = StringField()
+
     def initialize(self):
         super(FkIkChain, self).initialize()
 
+        self.ik_start_description.set('IK_start')
+        self.ik_end_description.set('IK_end')
         self.switch_long_name.set('FK_IK_Switch')
         self.switch_nice_name.set('FK/IK')
         self.switch_enum_name.set('FK:IK:')
@@ -118,7 +128,7 @@ class FkIkChain(ChainSwitcher):
             'base_name': self.name.get(),
             'side': self.side.get(),
             'role': 'ctl',
-            'description': 'IK_end',
+            'description': self.ik_end_description.get(),
         }
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         end_ctl, parent_group = self.add_control(
@@ -142,7 +152,7 @@ class FkIkChain(ChainSwitcher):
             'base_name': self.name.get(),
             'side': self.side.get(),
             'role': 'ctl',
-            'description': 'IK_start',
+            'description': self.ik_start_description.get(),
         }
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         start_ctl, parent_group = self.add_control(
