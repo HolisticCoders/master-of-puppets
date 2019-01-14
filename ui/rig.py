@@ -6,12 +6,12 @@ from icarus.ui.signals import publish, subscribe, unsubscribe
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
-class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(ModulesPanel, self).__init__(parent)
-        self.setObjectName('icarus_modules_panel')
+        super(RigPanel, self).__init__(parent)
+        self.setObjectName('icarus_rig_panel')
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('Icarus Modules')
+        self.setWindowTitle('Icarus Rig Panel')
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
@@ -47,7 +47,7 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def close(self):
         unsubscribe('module-created', self._refresh_model)
         unsubscribe('module-updated', self._refresh_model)
-        return super(ModulesPanel, self).close()
+        return super(RigPanel, self).close()
 
 
 class ModulesModel(QtCore.QAbstractItemModel):

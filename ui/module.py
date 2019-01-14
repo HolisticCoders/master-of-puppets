@@ -72,15 +72,15 @@ map_field_to_widget = {
 }
 
 
-class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def __init__(self, parent=None):
-        super(SettingsPanel, self).__init__(parent)
+        super(ModulePanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setObjectName('icarus_settings_panel')
         self._module_widgets = WeakValueDictionary()
 
-        self.setWindowTitle('Icarus Settings')
+        self.setWindowTitle('Icarus Module Panel')
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
@@ -145,4 +145,4 @@ class SettingsPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def close(self):
         unsubscribe('selected-module-changed', self._on_module_selected)
-        return super(SettingsPanel, self).close()
+        return super(ModulePanel, self).close()

@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 
-from icarus.ui.createmodule import CreateModulePanel
-from icarus.ui.modules import ModulesPanel
-from icarus.ui.settings import SettingsPanel
+from icarus.ui.creation import CreationPanel
+from icarus.ui.rig import RigPanel
+from icarus.ui.module import ModulePanel
 from icarus.vendor.Qt import QtCore
 
 
@@ -13,7 +13,7 @@ if '_INSTANCES' not in globals():
 def show():
     """Run the Icarus GUI."""
     settings = get_settings()
-    for cls in [CreateModulePanel, ModulesPanel, SettingsPanel]:
+    for cls in [CreationPanel, RigPanel, ModulePanel]:
         instance = cls()
 
         name = instance.objectName()

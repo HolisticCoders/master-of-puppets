@@ -9,12 +9,12 @@ from icarus.utils.case import title
 from icarus.vendor.Qt import QtCore, QtWidgets
 
 
-class CreateModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class CreationPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(CreateModulePanel, self).__init__(parent)
+        super(CreationPanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setObjectName('icarus_createmodule_panel')
-        self.setWindowTitle('Icarus Create Module')
+        self.setObjectName('icarus_creation_panel')
+        self.setWindowTitle('Icarus Creation Panel')
 
         self.layout= QtWidgets.QVBoxLayout()
         self.setLayout(self.layout)
