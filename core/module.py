@@ -156,7 +156,20 @@ class RigModule(IcarusNode):
                     )
 
     def update_parent_joint(self):
-        raise NotImplementedError
+        # delete the old constraint
+        old_constraint_nodes = []
+        first_node = cmds.listConnections(
+            self.node_name + '.translate',
+            source=True
+        )[0]
+        second_node = cmds.listConnections(
+            first_node + '.inputMatrix',
+            source=True
+        )[0]
+        old_constraint_nodes.append(first_node)
+        old_constraint_nodes.append(second_node)
+        cmds.delete(old_constraint_nodes)
+        icarus.dag.matrix_constraint(self.parent_joint.get(), self.node_name)
 
     def _update_node_name(self, node):
         metadata = icarus.metadata.metadata_from_name(node)

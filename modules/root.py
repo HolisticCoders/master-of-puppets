@@ -1,7 +1,11 @@
+import logging
 import maya.cmds as cmds
 
 from icarus.core.module import RigModule
-import icarus.metadata
+
+
+logger = logging.getLogger(__name__)
+
 
 class Root(RigModule):
 
@@ -9,9 +13,20 @@ class Root(RigModule):
         self._add_deform_joint()
 
     def build(self):
-        cmds.makeIdentity(self.deform_joints.get()[0], apply=True, rotate=True)
+        try:
+            cmds.makeIdentity(
+                self.deform_joints.get()[0],
+                apply=True,
+                rotate=True
+            )
+        except RuntimeError:
+            logger.warning(
+                "couldn't bake the joints' rotation to the jointOrient "
+                "because some of the joints are connected to a skinCluster."
+            )
 
     def publish(self):
         pass
+
 
 exported_rig_modules = [Root]
