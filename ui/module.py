@@ -1,75 +1,11 @@
-from functools import partial
 from operator import attrgetter
 from weakref import WeakValueDictionary
 
 from icarus.vendor.Qt import QtCore, QtWidgets
-from icarus.core.rig import Rig
 from icarus.ui.signals import publish, subscribe, unsubscribe
 from icarus.ui.utils import clear_layout
+from icarus.ui.fieldwidgets import map_field_to_widget
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-
-
-class ISpinBox(QtWidgets.QSpinBox):
-    def __init__(self, field, *args, **kwargs):
-        super(ISpinBox, self).__init__(*args, **kwargs)
-        self.field = field
-        minValue = field.min_value
-        maxValue = field.max_value
-        if minValue is not None:
-            self.setMinimum(minValue)
-        else:
-            self.setMinimum(-1000000)
-        if maxValue is not None:
-            self.setMaximum(maxValue)
-        else:
-            self.setMaximum(1000000)
-
-    def get(self):
-        return self.value()
-
-    def set(self, value):
-        self.setValue(value)
-
-    def signal(self):
-        return self.valueChanged
-
-
-class ILineEdit(QtWidgets.QLineEdit):
-    def __init__(self, field, *args, **kwargs):
-        super(ILineEdit, self).__init__(*args, **kwargs)
-        self.field = field
-
-    def set(self, value):
-        self.setText(value)
-
-    def get(self):
-        return self.text()
-
-    def signal(self):
-        return self.textChanged
-
-
-class ICheckBox(QtWidgets.QCheckBox):
-    def __init__(self, field, *args, **kwargs):
-        super(ICheckBox, self).__init__(*args, **kwargs)
-        self.field = field
-
-    def set(self, value):
-        self.setChecked(value)
-
-    def get(self):
-        return self.isChecked()
-
-    def signal(self):
-        return self.stateChanged
-
-
-map_field_to_widget = {
-    'BoolField': ICheckBox,
-    'IntField': ISpinBox,
-    'StringField': ILineEdit,
-    'ObjectField': ILineEdit,
-}
 
 
 class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
@@ -122,7 +58,10 @@ class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         else:
             self.apply_button.setEnabled(True)
         self.apply_button.show()
-        ordered_fields = sorted(self.module.fields, key=attrgetter('gui_order'))
+        ordered_fields = sorted(
+            self.module.fields,
+            key=attrgetter('gui_order')
+        )
         for field in ordered_fields:
             if not field.displayable:
                 continue
