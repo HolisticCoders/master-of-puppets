@@ -14,7 +14,8 @@ import icarus.dag
 import icarus.postscript
 from shapeshifter import shapeshifter
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+
 
 class Rig(IcarusNode):
 
