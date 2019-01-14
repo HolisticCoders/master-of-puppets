@@ -91,6 +91,7 @@ class Rig(IcarusNode):
         for module_type, data in default_modules.iteritems():
             self.add_module(module_type, **data)
 
+    @undoable
     def add_module(self, module_type, *args, **kwargs):
         if module_type not in all_rig_modules:
             raise Exception("Module Type {} is not valid".format(module_type))
@@ -112,6 +113,7 @@ class Rig(IcarusNode):
                 return module
         logger.warning("Found no module named {}.".format(module_node_name))
 
+    @undoable
     def delete_module(self, module_node_name):
         """Delete a module.
 
@@ -173,6 +175,7 @@ class Rig(IcarusNode):
         self.is_built.set(False)
         icarus.postscript.run_scripts('post_unbuild')
 
+    @undoable
     def reset_pose(self):
         for control in cmds.ls('*_ctl'):
             icarus.dag.reset_node(control)

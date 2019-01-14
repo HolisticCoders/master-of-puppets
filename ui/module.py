@@ -5,6 +5,7 @@ from icarus.vendor.Qt import QtCore, QtWidgets
 from icarus.ui.signals import publish, subscribe, unsubscribe
 from icarus.ui.utils import clear_layout
 from icarus.ui.fieldwidgets import map_field_to_widget
+from icarus.core.rig import Rig
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
@@ -21,14 +22,30 @@ class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
+        self.settings_group = QtWidgets.QGroupBox('Settings')
         self.form = QtWidgets.QFormLayout()
         self.apply_button = QtWidgets.QPushButton('Apply')
 
-        layout.addLayout(self.form)
-        layout.addWidget(self.apply_button)
+        self.actions_group = QtWidgets.QGroupBox('Actions')
+        self.delete_button = QtWidgets.QPushButton('Delete')
+
+        layout.addWidget(self.settings_group)
+        layout.addStretch()
+        layout.addWidget(self.actions_group)
+
+        settings_layout = QtWidgets.QVBoxLayout()
+        self.settings_group.setLayout(settings_layout)
+        settings_layout.addLayout(self.form)
+        settings_layout.addWidget(self.apply_button)
+
+        actions_layout = QtWidgets.QVBoxLayout()
+        self.actions_group.setLayout(actions_layout)
+        actions_layout.addWidget(self.delete_button)
 
         self.apply_button.released.connect(self._update_module)
         self.apply_button.hide()
+        self.delete_button.released.connect(self._delete_module)
+        self.delete_button.hide()
 
         subscribe('selected-module-changed', self._on_module_selected)
 
@@ -48,16 +65,36 @@ class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.module.update()
         publish('module-updated')
 
+    def _delete_module(self):
+        """Delete the selected module."""
+        if not self.module:
+            return
+        button = QtWidgets.QMessageBox.warning(
+            self,
+            'Icarus - Delete Module',
+            'You are about to delete module %s. Continue ?' % self.module.node_name,
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+        )
+        if button != QtWidgets.QMessageBox.Yes:
+            return
+        rig = Rig()
+        rig.delete_module(self.module.node_name)
+        publish('module-updated')
+
     def _update_ui(self):
         clear_layout(self.form)
         if not self.module:
             self.apply_button.hide()
+            self.delete_button.hide()
             return
         if self.module.is_built.get():
             self.apply_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         else:
             self.apply_button.setEnabled(True)
+            self.delete_button.setEnabled(True)
         self.apply_button.show()
+        self.delete_button.show()
         ordered_fields = sorted(
             self.module.fields,
             key=attrgetter('gui_order')
