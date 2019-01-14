@@ -169,7 +169,6 @@ class Arm(FkIkChain):
     def _setup_fk(self):
         """Rename the FK controllers."""
         super(Arm, self)._setup_fk()
-        print "In Arm _setup_fk"
         name_list = ['shoulder', 'elbow', 'wrist']
         fk_controls = []
         for ctl, name in zip(self.fk_controls.get(), name_list):
@@ -181,7 +180,6 @@ class Arm(FkIkChain):
                 'description': 'FK_' + name
             }
             ctl_name = icarus.metadata.name_from_metadata(metadata)
-            print ctl_name
 
             deform = cmds.rename(ctl, ctl_name)
             fk_controls.append(deform)
