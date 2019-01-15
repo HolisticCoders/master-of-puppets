@@ -3,6 +3,7 @@ from weakref import WeakKeyDictionary
 from icarus.vendor.Qt import QtWidgets, QtCore
 from icarus.core.rig import Rig
 from icarus.ui.signals import publish, subscribe, unsubscribe
+from icarus.ui.commands import build_rig, unbuild_rig
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
@@ -16,11 +17,32 @@ class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
+        self.modules_group = QtWidgets.QGroupBox('Modules')
+        self.actions_group = QtWidgets.QGroupBox('Actions')
+
+        layout.addWidget(self.modules_group)
+        layout.addWidget(self.actions_group)
+
+        modules_layout = QtWidgets.QVBoxLayout()
+        actions_layout = QtWidgets.QVBoxLayout()
+
+        self.modules_group.setLayout(modules_layout)
+        self.actions_group.setLayout(actions_layout)
+
         self.tree_view = QtWidgets.QTreeView()
-        layout.addWidget(self.tree_view)
+        modules_layout.addWidget(self.tree_view)
+
         refresh_button = QtWidgets.QPushButton('Refresh')
+        build_button = QtWidgets.QPushButton('Build Rig')
+        unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
+
+        actions_layout.addWidget(refresh_button)
+        actions_layout.addWidget(build_button)
+        actions_layout.addWidget(unbuild_button)
+
         refresh_button.released.connect(self._refresh_model)
-        layout.addWidget(refresh_button)
+        build_button.released.connect(build_rig)
+        unbuild_button.released.connect(unbuild_rig)
 
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
