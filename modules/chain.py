@@ -46,13 +46,10 @@ class Chain(RigModule):
         return super(Chain, self)._add_deform_joint(name=name, parent=parent)
 
     def _update_joint_count(self):
-        self.deform_joints.get()
-
         diff = self.joint_count.get() - len(self.deform_joints)
         if diff > 0:
             for index in range(diff):
                 new_joint = self._add_deform_joint()
-                # self.deform_joints.append(new_joint)
                 cmds.setAttr(new_joint + '.translateX', 5)
         elif diff < 0:
             joints = self.deform_joints.get()

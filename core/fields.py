@@ -44,13 +44,14 @@ class MessageAttribute(AttributeBase):
         cmds.connectAttr(
             casted_value + '.message',
             self.attr_name,
-            force=True
+            force=True,
         )
 
     def get(self):
         val = cmds.listConnections(
             '{}'.format(self.attr_name),
-            source=True
+            source=True,
+            shapes=True
         )
         if val:
             return val[0]
@@ -76,11 +77,14 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
         return values
 
     def clear(self):
-        cmds.removeMultiInstance(
-            '{}'.format(self.attr_name),
-            allChildren=True,
-            b=True
-        )
+        try:
+            cmds.removeMultiInstance(
+                self.attr_name,
+                allChildren=True,
+                b=True
+            )
+        except RuntimeError:
+            pass
 
     def __getitem__(self, index):
         val = cmds.getAttr('{}[{}]'.format(self.attr_name, index))

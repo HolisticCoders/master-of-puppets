@@ -304,11 +304,12 @@ class RigModule(IcarusNode):
             renameChildren=True
         )
         driving_joints = []
-        for j in duplicate:
-            driving_joints.append(cmds.rename(
-                j,
-                j.replace('deform1', 'driving')
-            ))
+        for joint in duplicate:
+            metadata = icarus.metadata.metadata_from_name(joint)
+            metadata['role'] = 'driving'
+            new_name = icarus.metadata.name_from_metadata(metadata)
+            joint = cmds.rename(joint, new_name)
+            driving_joints.append(joint)
 
         for deform, driving in zip(deform_joints, driving_joints):
             # Find out who the father is.

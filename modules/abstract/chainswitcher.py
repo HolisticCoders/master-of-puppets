@@ -35,26 +35,21 @@ class ChainSwitcher(Chain):
         self._setup_switch()
 
     def _create_chains(self):
-        chain_a = cmds.duplicate(self.driving_joints, renameChildren=True)
-        cmds.parent(chain_a[0], self.extras_group.get())
-        for i, joint in enumerate(chain_a):
+        self.chain_a.set(cmds.duplicate(self.driving_joints, renameChildren=True))
+        cmds.parent(self.chain_a[0], self.extras_group.get())
+        for joint in self.chain_a:
             metadata = icarus.metadata.metadata_from_name(joint)
             metadata['role'] = 'chainA'
             new_name = icarus.metadata.name_from_metadata(metadata)
             joint = cmds.rename(joint, new_name)
-            chain_a[i] = joint
 
-        chain_b = cmds.duplicate(self.driving_joints, renameChildren=True)
-        cmds.parent(chain_b[0], self.extras_group.get())
-        for i, joint in enumerate(chain_b):
+        self.chain_b.set(cmds.duplicate(self.driving_joints, renameChildren=True))
+        cmds.parent(self.chain_b[0], self.extras_group.get())
+        for joint in self.chain_b:
             metadata = icarus.metadata.metadata_from_name(joint)
             metadata['role'] = 'chainB'
             new_name = icarus.metadata.name_from_metadata(metadata)
             joint = cmds.rename(joint, new_name)
-            chain_b[i] = joint
-
-        self.chain_a.set(chain_a)
-        self.chain_b.set(chain_b)
 
     def _create_settings_control(self):
         metadata = {
@@ -100,8 +95,6 @@ class ChainSwitcher(Chain):
     def _setup_switch(self):
         """Create the necessary nodes to switch between the A and B chains"""
         driving_chain = self.driving_joints
-        chain_a = self.chain_a.get()
-        chain_b = self.chain_b.get()
         settings_ctl = self.settings_ctl.get()
         self.reverse_switch.set(cmds.createNode('reverse'))
         cmds.connectAttr(
@@ -111,8 +104,8 @@ class ChainSwitcher(Chain):
 
         for i in xrange(len(driving_chain)):
             driving = driving_chain[i]
-            a = chain_a[i]
-            b = chain_b[i]
+            a = self.chain_a[i]
+            b = self.chain_b[i]
             wt_add_mat = cmds.createNode('wtAddMatrix')
             mult_mat = cmds.createNode('multMatrix')
             decompose_mat = cmds.createNode('decomposeMatrix')

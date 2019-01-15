@@ -60,7 +60,6 @@ class Arm(FkIkChain):
 
         name_list = ['shoulder', 'elbow', 'wrist']
 
-        deform_joints = []
         for deform, name in zip(self.deform_joints.get(), name_list):
             metadata = {
                 'base_name': self.name.get(),
@@ -70,8 +69,6 @@ class Arm(FkIkChain):
             }
             deform_name = icarus.metadata.name_from_metadata(metadata)
             deform = cmds.rename(deform, deform_name)
-            deform_joints.append(deform)
-        self.deform_joints.set(deform_joints)
 
         for i in xrange(self.upper_twist_joint_count.get()):
             metadata = {
@@ -130,11 +127,7 @@ class Arm(FkIkChain):
                     parent=self.deform_joints.get()[0]
                 )
         elif joint_diff < 0:
-            all_deform = self.deform_joints.get()
             joints_to_remove = self.upper_twist_deform_joints[joint_diff:]
-            self.deform_joints.set(
-                [j for j in all_deform if j not in joints_to_remove]
-            )
             cmds.delete(joints_to_remove)
 
     def _update_lower_twists(self):
@@ -157,11 +150,7 @@ class Arm(FkIkChain):
                     parent=self.deform_joints.get()[1]
                 )
         elif joint_diff < 0:
-            all_deform = self.deform_joints.get()
             joints_to_remove = self.lower_twist_deform_joints[joint_diff:]
-            self.deform_joints.set(
-                [j for j in all_deform if j not in joints_to_remove]
-            )
             cmds.delete(joints_to_remove)
 
     def build(self):
