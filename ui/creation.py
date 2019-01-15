@@ -40,11 +40,11 @@ class CreationPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def _create_module(self, module_type):
         rig = Rig()
-        rig.add_module(
+        module = rig.add_module(
             module_type,
             name=module_type.lower(),
             parent_joint='root_M_000_deform'
         )
 
-        publish('module-created')
+        publish('module-created', module)
 
