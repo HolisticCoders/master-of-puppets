@@ -177,19 +177,6 @@ class RigModule(IcarusNode):
         metadata['side'] = self.side.get()
         new_name = icarus.metadata.name_from_metadata(metadata)
         cmds.rename(node, new_name)
-
-        # propagate the new name in all the object and object list fields
-        for module in self.rig.rig_modules:
-            for field in module.fields:
-                if field.__class__.__name__ == 'ObjectField':
-                    if field.__get__(module).get() == node:
-                        field.__get__(module).set(new_name)
-                if field.__class__.__name__ == 'ObjectListField':
-                    objects = field.__get__(module).get()
-                    for i, item in enumerate(objects):
-                        if item == node:
-                            objects[i] = new_name
-                    field.__get__(module).set(objects)
         return new_name
 
     def _build(self):
@@ -358,8 +345,5 @@ class RigModule(IcarusNode):
             shapeshifter.change_controller_shape(ctl, ctl_data)
         icarus.dag.snap_first_to_last(ctl, dag_node)
         parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
-        controllers = self.controllers.get()
-        controllers.append(ctl)
-        self.controllers.set(controllers)
+        self.controllers.append(ctl)
         return ctl, parent_group
-

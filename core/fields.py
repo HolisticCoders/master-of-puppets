@@ -37,6 +37,25 @@ class Attribute(AttributeBase):
         return self.field.cast_from_attr(cmds.getAttr(self.attr_name))
 
 
+class MessageAttribute(AttributeBase):
+
+    def set(self, value):
+        casted_value = self.field.cast_to_attr(value)
+        cmds.connectAttr(
+            casted_value + '.message',
+            self.attr_name,
+            force=True
+        )
+
+    def get(self):
+        val = cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True
+        )
+        if val:
+            return val[0]
+
+
 class MultiAttribute(AttributeBase, collections.MutableSequence):
     """An interface for Maya multi-attributes."""
 
@@ -266,6 +285,9 @@ class JSONField(StringField):
 
 
 class ObjectField(StringField):
+    def create_attr(self, instance):
+        return MessageAttribute(instance, self)
+
     def cast_to_attr(self, value):
         value = super(ObjectField, self).cast_to_attr(value)
         if cmds.objExists(value):
