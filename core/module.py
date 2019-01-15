@@ -2,13 +2,16 @@ import json
 import logging
 
 import maya.cmds as cmds
-from icarus.core.icarusNode import IcarusNode
+
 from icarus.core.fields import ObjectField, StringField, ObjectListField
+from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
-import icarus.metadata
-import icarus.dag
 import icarus.attributes
+import icarus.dag
+import icarus.metadata
+
 from shapeshifter import shapeshifter
+
 
 logger = logging.getLogger(__name__)
 

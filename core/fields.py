@@ -303,7 +303,7 @@ class ObjectListField(Field):
     }
 
     def create_attr(self, instance):
-            return MessageMultiAttribute(instance, self)
+        return MessageMultiAttribute(instance, self)
 
     def cast_to_attr(self, value):
         return str(value)
