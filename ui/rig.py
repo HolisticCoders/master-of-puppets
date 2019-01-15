@@ -63,6 +63,46 @@ class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         selection = self.tree_view.selectionModel()
         selection.currentChanged.connect(self._on_current_changed)
 
+        # Find the index of the new module.
+        # NOTE: maybe optimize this part, and keep the same
+        # model for the whole session, instead of discarding
+        # it for any module added/deleted/changed.
+        if module:
+            index = self._find_index(module)
+            if index:
+                self.tree_view.selectionModel().setCurrentIndex(
+                    index,
+                    QtCore.QItemSelectionModel.SelectCurrent,
+                )
+
+    def _find_index(self, module, index=QtCore.QModelIndex()):
+        """Return a Qt index to ``module``.
+
+        If there is no modules model yet, or the module cannot be
+        found, return ``None``.
+
+        A matching index is an index containing a module of the same
+        :attr:`icarus.core.module.RigModule.node_name` as the passed
+        module.
+
+        :param module: Module to find the index of.
+        :param index: Parent index of the search, since we are in a
+                      tree view.
+        :type module: icarus.core.module.RigModule
+        :type index: PySide2.QtCore.QModelIndex
+        :rtype: PySide2.QtCore.QModelIndex
+        """
+        if not self.model:
+            return None
+        name = module.node_name
+        for i in xrange(self.model.rowCount(index)):
+            child = self.model.index(i, 0, index)
+            if child.internalPointer().node_name == name:
+                return child
+            _index = self._find_index(module, child)
+            if _index:
+                return _index
+
     def _on_current_changed(self, current, previous):
         module = current.internalPointer()
         publish('selected-module-changed', module)
