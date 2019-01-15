@@ -63,7 +63,7 @@ class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             value = widget.get()
             field.set(value)
         self.module.update()
-        publish('module-updated')
+        publish('module-updated', self.module)
 
     def _delete_module(self):
         """Delete the selected module."""
@@ -79,7 +79,7 @@ class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             return
         rig = Rig()
         rig.delete_module(self.module.node_name)
-        publish('module-updated')
+        publish('module-deleted')
 
     def _update_ui(self):
         clear_layout(self.form)

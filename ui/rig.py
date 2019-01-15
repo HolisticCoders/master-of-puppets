@@ -53,8 +53,9 @@ class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
         subscribe('module-created', self._refresh_model)
         subscribe('module-updated', self._refresh_model)
+        subscribe('module-deleted', self._refresh_model)
 
-    def _refresh_model(self):
+    def _refresh_model(self, module=None):
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
         self.tree_view.expandAll()
@@ -69,6 +70,7 @@ class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def close(self):
         unsubscribe('module-created', self._refresh_model)
         unsubscribe('module-updated', self._refresh_model)
+        unsubscribe('module-deleted', self._refresh_model)
         return super(RigPanel, self).close()
 
 
