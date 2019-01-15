@@ -14,4 +14,3 @@ class Spine(Chain):
 
 
 exported_rig_modules = [Spine]
-

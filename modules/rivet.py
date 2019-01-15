@@ -6,7 +6,10 @@ import icarus.dag
 
 class Rivet(RigModule):
 
-    surface = ObjectField()
+    surface = ObjectField(
+        displayable=True,
+        editable=True,
+    )
 
     def initialize(self, *args, **kwargs):
         self._add_deform_joint()
@@ -30,6 +33,8 @@ class Rivet(RigModule):
             follicle + '.outRotate',
             follicle_transform + '.rotate'
         )
+        # u_value = 0
+        # v_value = 0
         if cmds.nodeType(self.surface.get()) == 'mesh':
             cmds.connectAttr(
                 self.surface.get() + '.outMesh',
@@ -50,14 +55,14 @@ class Rivet(RigModule):
                 self.surface.get() + '.outMesh',
                 closest_point_node + '.inMesh'
             )
-            u = cmds.getAttr(closest_point_node + '.result.parameterU')
-            v = cmds.getAttr(closest_point_node + '.result.parameterV')
+            u_value = cmds.getAttr(closest_point_node + '.result.parameterU')
+            v_value = cmds.getAttr(closest_point_node + '.result.parameterV')
         cmds.connectAttr(
             self.surface.get() + '.worldMatrix[0]',
             follicle + '.inputWorldMatrix'
         )
-        cmds.setAttr(follicle + '.parameterU', u)
-        cmds.setAttr(follicle + '.parameterV', v)
+        cmds.setAttr(follicle + '.parameterU', u_value)
+        cmds.setAttr(follicle + '.parameterV', v_value)
         icarus.dag.matrix_constraint(
             follicle_transform,
             parent_group,
@@ -68,7 +73,7 @@ class Rivet(RigModule):
         """Reparent the joint to the proper parent_joint if needed."""
         super(Rivet, self).update_parent_joint()
         expected_parent = self.parent_joint.get()
-        joint = self.deform_joints.get()[0]
+        joint = self.deform_joints[0]
         actual_parent = cmds.listRelatives(joint, parent=True)[0]
 
         if expected_parent != actual_parent:

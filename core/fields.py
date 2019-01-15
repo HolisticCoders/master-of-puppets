@@ -1,13 +1,16 @@
-import maya.cmds as cmds
+import collections
 import json
 import logging
+
+import maya.cmds as cmds
 
 from icarus.utils.case import title
 
 logger = logging.getLogger(__name__)
 
 
-class Attribute(object):
+class AttributeBase(object):
+
     def __init__(self, instance, field):
         self.field = field
         self.is_multi = field.create_attr_args.get('multi', False)
@@ -23,36 +26,42 @@ class Attribute(object):
     def attr_name(self):
         return '.'.join([self.instance.node_name, self.field.name])
 
+
+class Attribute(AttributeBase):
+
     def set(self, value):
-        if self.is_multi:
-            self._set_multi_attribute(value)
-        else:
-            self._set_single_attribute(value)
-
-    def get(self):
-        if self.is_multi:
-            return self._get_multi_attribute()
-        else:
-            return self.field.cast_from_attr(cmds.getAttr(self.attr_name))
-
-    def _get_multi_attribute(self):
-        indices = self._get_multi_indices()
-        if indices:
-            values = []
-            for i in indices:
-                val = cmds.getAttr('{}[{}]'.format(self.attr_name, i))
-                val = self.field.cast_from_attr(val)
-                values.append(val)
-            return values
-        else:
-            return []
-
-    def _set_single_attribute(self, value):
         casted_value = self.field.cast_to_attr(value)
         cmds.setAttr(self.attr_name, casted_value, **self.field.set_attr_args)
 
-    def _set_multi_attribute(self, value):
-        self._clear_multi_attribute()
+    def get(self):
+        return self.field.cast_from_attr(cmds.getAttr(self.attr_name))
+
+
+class MessageAttribute(AttributeBase):
+
+    def set(self, value):
+        casted_value = self.field.cast_to_attr(value)
+        cmds.connectAttr(
+            casted_value + '.message',
+            self.attr_name,
+            force=True,
+        )
+
+    def get(self):
+        val = cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True,
+            shapes=True
+        )
+        if val:
+            return val[0]
+
+
+class MultiAttribute(AttributeBase, collections.MutableSequence):
+    """An interface for Maya multi-attributes."""
+
+    def set(self, value):
+        self.clear()
         if not isinstance(value, list):
             value = [value]
         for index, item in enumerate(value):
@@ -60,16 +69,87 @@ class Attribute(object):
             attrName = '{}[{}]'.format(self.attr_name, index)
             cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
-    def _clear_multi_attribute(self):
-        indices = self._get_multi_indices()
-        for index in indices:
-            cmds.removeMultiInstance('{}[{}]'.format(self.attr_name, index))
+    def get(self):
+        values = []
+        for val in cmds.getAttr('{}[*]'.format(self.attr_name)):
+            val = self.field.cast_from_attr(val)
+            values.append(val)
+        return values
 
-    def _get_multi_indices(self):
-        indices = cmds.getAttr(self.attr_name, multiIndices=True)
-        if not indices:
-            indices = []
-        return indices
+    def clear(self):
+        try:
+            cmds.removeMultiInstance(
+                self.attr_name,
+                allChildren=True,
+                b=True
+            )
+        except RuntimeError:
+            pass
+
+    def __getitem__(self, index):
+        val = cmds.getAttr('{}[{}]'.format(self.attr_name, index))
+        return self.field.cast_from_attr(val)
+
+    def __setitem__(self, index, value):
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
+
+    def __delitem__(self, index):
+        cmds.removeMultiInstance(
+            '{}[{}]'.format(self.attr_name, index),
+            b=True
+        )
+
+    def __len__(self):
+        return len(cmds.getAttr('{}[*]'.format(self.attr_name)))
+
+    def insert(self, index, value):
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
+
+
+class MessageMultiAttribute(MultiAttribute):
+
+    def __setitem__(self, index, value):
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.connectAttr(casted_item + '.message', attrName)
+
+    def get(self):
+        values = cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True
+        ) or []
+        return map(self.field.cast_from_attr, values)
+
+    def set(self, value):
+        self.clear()
+        if not isinstance(value, list):
+            value = [value]
+        for index, item in enumerate(value):
+            casted_item = self.field.cast_to_attr(item)
+            attrName = '{}[{}]'.format(self.attr_name, index)
+            cmds.connectAttr(casted_item + '.message', attrName)
+
+    def __getitem__(self, index):
+        val = cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True
+        ) or []
+        return self.field.cast_from_attr(val[index])
+
+    def __len__(self):
+        return len(cmds.listConnections(
+            '{}'.format(self.attr_name),
+            source=True) or []
+        )
+
+    def insert(self, index, value):
+        casted_item = self.field.cast_to_attr(value)
+        attrName = '{}[{}]'.format(self.attr_name, index)
+        cmds.connectAttr(casted_item + '.message', attrName)
 
 
 class FieldContainerMeta(type):
@@ -137,6 +217,8 @@ class Field(object):
             self._attrs[instance] = self.create_attr(instance)
 
     def create_attr(self, instance):
+        if self.create_attr_args.get('multi', False):
+            return MultiAttribute(instance, self)
         return Attribute(instance, self)
 
     def cast_to_attr(self, value):
@@ -207,6 +289,9 @@ class JSONField(StringField):
 
 
 class ObjectField(StringField):
+    def create_attr(self, instance):
+        return MessageAttribute(instance, self)
+
     def cast_to_attr(self, value):
         value = super(ObjectField, self).cast_to_attr(value)
         if cmds.objExists(value):
@@ -215,31 +300,14 @@ class ObjectField(StringField):
             raise ValueError('node `{}` does not exist'.format(value))
 
 
-class ObjectListField(JSONField):
+class ObjectListField(Field):
+    create_attr_args = {
+        'attributeType': 'message',
+        'multi': True
+    }
+
+    def create_attr(self, instance):
+        return MessageMultiAttribute(instance, self)
+
     def cast_to_attr(self, value):
-        if not isinstance(value, (tuple, list)):
-            raise ValueError(
-                ("{} is an Object List Field and only accepts lists and tuples. "
-                 + "provided value was of type {}").format(
-                        self.name,
-                        type(value),
-                )
-            )
-        curated_objects = []
-        for item in value:
-            if cmds.objExists(item):
-                curated_objects.append(item)
-            else:
-                logger.warning(
-                    "{} does not exist and can't be added to the field {}".format(
-                        item,
-                        self.name
-                    )
-                )
-        return json.dumps(curated_objects)
-
-    def cast_from_attr(self, value):
-        if value is None:
-            return []
-        return json.loads(value)
-
+        return str(value)
