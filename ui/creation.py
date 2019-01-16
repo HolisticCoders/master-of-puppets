@@ -1,7 +1,5 @@
 from functools import partial
 
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-
 from icarus.core.rig import Rig
 from icarus.modules import all_rig_modules
 from icarus.ui.signals import publish
@@ -9,15 +7,17 @@ from icarus.utils.case import title
 from icarus.vendor.Qt import QtCore, QtWidgets
 
 
-class CreationPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class CreationPanel(QtWidgets.QDockWidget):
     def __init__(self, parent=None):
         super(CreationPanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setObjectName('icarus_creation_panel')
-        self.setWindowTitle('Icarus Creation Panel')
+        self.setWindowTitle('Creation Panel')
 
-        self.layout= QtWidgets.QVBoxLayout()
-        self.setLayout(self.layout)
+        self.setWidget(QtWidgets.QWidget())
+
+        self.layout = QtWidgets.QVBoxLayout()
+        self.widget().setLayout(self.layout)
 
         self.scroll = QtWidgets.QScrollArea()
         self.layout.addWidget(self.scroll)
@@ -47,4 +47,3 @@ class CreationPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         )
 
         publish('module-created', module)
-
