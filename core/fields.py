@@ -209,10 +209,10 @@ class Field(object):
         self._attrs = {}
 
     def __get__(self, instance, instancetype=None):
-        self._ensure_maya_attr(instance)
+        self.ensure_maya_attr(instance)
         return self._attrs[instance]
 
-    def _ensure_maya_attr(self, instance):
+    def ensure_maya_attr(self, instance):
         if instance not in self._attrs:
             self._attrs[instance] = self.create_attr(instance)
 

@@ -33,6 +33,9 @@ class IcarusNode(object):
         if not cmds.objExists(name):
             cmds.createNode('transform', name=name)
 
+        for field in self.fields:
+            field.ensure_maya_attr(self)
+
     def __repr__(self):
         return "%s(%s)" % (self.__class__, self.node_name)
 
