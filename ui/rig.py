@@ -2,25 +2,46 @@ from weakref import WeakKeyDictionary
 
 from icarus.vendor.Qt import QtWidgets, QtCore
 from icarus.core.rig import Rig
-from icarus.ui.signals import publish, subscribe, unsubscribe
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
+from icarus.ui.signals import publish, subscribe
+from icarus.ui.commands import build_rig, unbuild_rig
 
 
-class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class RigPanel(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(ModulesPanel, self).__init__(parent)
-        self.setObjectName('icarus_modules_panel')
+        super(RigPanel, self).__init__(parent)
+        self.setObjectName('icarus_rig_panel')
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('Icarus Modules')
+        self.setWindowTitle('Rig Panel')
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
+        self.modules_group = QtWidgets.QGroupBox('Modules')
+        self.actions_group = QtWidgets.QGroupBox('Actions')
+
+        layout.addWidget(self.modules_group)
+        layout.addWidget(self.actions_group)
+
+        modules_layout = QtWidgets.QVBoxLayout()
+        actions_layout = QtWidgets.QHBoxLayout()
+
+        self.modules_group.setLayout(modules_layout)
+        self.actions_group.setLayout(actions_layout)
+
         self.tree_view = QtWidgets.QTreeView()
-        layout.addWidget(self.tree_view)
+        modules_layout.addWidget(self.tree_view)
+
         refresh_button = QtWidgets.QPushButton('Refresh')
+        build_button = QtWidgets.QPushButton('Build Rig')
+        unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
+
+        actions_layout.addWidget(refresh_button)
+        actions_layout.addWidget(build_button)
+        actions_layout.addWidget(unbuild_button)
+
         refresh_button.released.connect(self._refresh_model)
-        layout.addWidget(refresh_button)
+        build_button.released.connect(build_rig)
+        unbuild_button.released.connect(unbuild_rig)
 
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
@@ -31,8 +52,9 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
         subscribe('module-created', self._refresh_model)
         subscribe('module-updated', self._refresh_model)
+        subscribe('module-deleted', self._refresh_model)
 
-    def _refresh_model(self):
+    def _refresh_model(self, module=None):
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
         self.tree_view.expandAll()
@@ -40,14 +62,49 @@ class ModulesPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         selection = self.tree_view.selectionModel()
         selection.currentChanged.connect(self._on_current_changed)
 
+        # Find the index of the new module.
+        # NOTE: maybe optimize this part, and keep the same
+        # model for the whole session, instead of discarding
+        # it for any module added/deleted/changed.
+        if module:
+            index = self._find_index(module)
+            if index:
+                self.tree_view.selectionModel().setCurrentIndex(
+                    index,
+                    QtCore.QItemSelectionModel.SelectCurrent,
+                )
+
+    def _find_index(self, module, index=QtCore.QModelIndex()):
+        """Return a Qt index to ``module``.
+
+        If there is no modules model yet, or the module cannot be
+        found, return ``None``.
+
+        A matching index is an index containing a module of the same
+        :attr:`icarus.core.module.RigModule.node_name` as the passed
+        module.
+
+        :param module: Module to find the index of.
+        :param index: Parent index of the search, since we are in a
+                      tree view.
+        :type module: icarus.core.module.RigModule
+        :type index: PySide2.QtCore.QModelIndex
+        :rtype: PySide2.QtCore.QModelIndex
+        """
+        if not self.model:
+            return None
+        name = module.node_name
+        for i in xrange(self.model.rowCount(index)):
+            child = self.model.index(i, 0, index)
+            if child.internalPointer().node_name == name:
+                return child
+            _index = self._find_index(module, child)
+            if _index:
+                return _index
+
     def _on_current_changed(self, current, previous):
         module = current.internalPointer()
         publish('selected-module-changed', module)
-
-    def close(self):
-        unsubscribe('module-created', self._refresh_model)
-        unsubscribe('module-updated', self._refresh_model)
-        return super(ModulesPanel, self).close()
 
 
 class ModulesModel(QtCore.QAbstractItemModel):

@@ -56,25 +56,21 @@ class FkIkRPChain(ChainSwitcher):
         """Rename the FK and IK joints."""
         super(FkIkRPChain, self)._create_chains()
 
-        fk_chain = self.chain_a.get()
-        for i, fk in enumerate(fk_chain):
+        for fk in self.chain_a:
             metadata = icarus.metadata.metadata_from_name(fk)
             metadata['role'] = 'fk'
-            fk_chain[i] = cmds.rename(
+            cmds.rename(
                 fk,
                 icarus.metadata.name_from_metadata(metadata)
             )
-        self.chain_a.set(fk_chain)
 
-        ik_chain = self.chain_b.get()
-        for i, ik in enumerate(ik_chain):
+        for ik in self.chain_b:
             metadata = icarus.metadata.metadata_from_name(ik)
             metadata['role'] = 'ik'
-            ik_chain[i] = cmds.rename(
+            cmds.rename(
                 ik,
                 icarus.metadata.name_from_metadata(metadata)
             )
-        self.chain_b.set(ik_chain)
 
     def _setup_fk(self):
         metadata = {
@@ -90,7 +86,6 @@ class FkIkRPChain(ChainSwitcher):
         cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.fk_controls_group.get())
 
-        fk_controls = []
         parent = self.fk_controls_group.get()
         for i, fk in enumerate(self.chain_a.get()):
             metadata = {
@@ -102,11 +97,10 @@ class FkIkRPChain(ChainSwitcher):
             }
             ctl_name = icarus.metadata.name_from_metadata(metadata)
             ctl, parent_group = self.add_control(fk, ctl_name)
-            fk_controls.append(ctl)
+            self.fk_controls.append(ctl)
             cmds.parent(parent_group, parent)
             icarus.dag.matrix_constraint(ctl, fk)
             parent = ctl
-        self.fk_controls.set(fk_controls)
 
     def _setup_ik(self):
         ik_chain = self.chain_b.get()
@@ -123,7 +117,6 @@ class FkIkRPChain(ChainSwitcher):
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.ik_controls_group.get())
 
-        ik_controls = []
         metadata = {
             'base_name': self.name.get(),
             'side': self.side.get(),
@@ -136,7 +129,7 @@ class FkIkRPChain(ChainSwitcher):
             ctl_name,
             'cube'
         )
-        ik_controls.append(end_ctl)
+        self.ik_controls.append(end_ctl)
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(
@@ -160,7 +153,7 @@ class FkIkRPChain(ChainSwitcher):
             ctl_name,
             'cube'
         )
-        ik_controls.append(start_ctl)
+        self.ik_controls.append(start_ctl)
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(
@@ -181,8 +174,7 @@ class FkIkRPChain(ChainSwitcher):
             ctl_name,
             'sphere'
         )
-        ik_controls.append(pole_vector_ctl)
-        self.ik_controls.set(ik_controls)
+        self.ik_controls.append(pole_vector_ctl)
         self._place_pole_vector(parent_group)
         cmds.xform(parent_group, rotation=[0, 0, 0], worldSpace=True)
         cmds.parent(parent_group, self.ik_controls_group.get())

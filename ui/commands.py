@@ -12,6 +12,10 @@ def reload_icarus():
     Use this command to reload the `icarus` package after
     a change was made.
     """
+    import icarus.ui
+    is_running = icarus.ui.is_running()
+    icarus.ui.close()
+
     search = [
         'icarus',
         'shapeshifter',
@@ -27,6 +31,8 @@ def reload_icarus():
     for module in icarus_modules:
         del(sys.modules[module])
 
+    if is_running:
+        icarus.ui.show()
     logger.info('Reloaded Icarus modules.')
 
 

@@ -2,13 +2,16 @@ import json
 import logging
 
 import maya.cmds as cmds
-from icarus.core.icarusNode import IcarusNode
+
 from icarus.core.fields import ObjectField, StringField, ObjectListField
+from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
-import icarus.metadata
-import icarus.dag
 import icarus.attributes
+import icarus.dag
+import icarus.metadata
+
 from shapeshifter import shapeshifter
+
 
 logger = logging.getLogger(__name__)
 
@@ -177,19 +180,6 @@ class RigModule(IcarusNode):
         metadata['side'] = self.side.get()
         new_name = icarus.metadata.name_from_metadata(metadata)
         cmds.rename(node, new_name)
-
-        # propagate the new name in all the object and object list fields
-        for module in self.rig.rig_modules:
-            for field in module.fields:
-                if field.__class__.__name__ == 'ObjectField':
-                    if field.__get__(module).get() == node:
-                        field.__get__(module).set(new_name)
-                if field.__class__.__name__ == 'ObjectListField':
-                    objects = field.__get__(module).get()
-                    for i, item in enumerate(objects):
-                        if item == node:
-                            objects[i] = new_name
-                    field.__get__(module).set(objects)
         return new_name
 
     def _build(self):
@@ -274,12 +264,7 @@ class RigModule(IcarusNode):
             name (str): name of the joint, in case you don't want the default one.
             parent (str): node under which the new joint will be parented
         """
-        deform_joints = self.deform_joints.get()
-
-        if deform_joints is None:
-            deform_joints = []
-
-        object_id=len(deform_joints)
+        object_id = len(self.deform_joints)
         if name is not None:
             new_joint = name
         else:
@@ -308,10 +293,7 @@ class RigModule(IcarusNode):
                 attr = transform + axis
                 cmds.setAttr(new_joint + '.' + attr, value)
 
-        deform_joints.append(new_joint)
-        self.deform_joints.set(
-            deform_joints
-        )
+        self.deform_joints.append(new_joint)
         return new_joint
 
     def create_driving_joints(self):
@@ -322,11 +304,12 @@ class RigModule(IcarusNode):
             renameChildren=True
         )
         driving_joints = []
-        for j in duplicate:
-            driving_joints.append(cmds.rename(
-                j,
-                j.replace('deform1', 'driving')
-            ))
+        for joint in duplicate:
+            metadata = icarus.metadata.metadata_from_name(joint)
+            metadata['role'] = 'driving'
+            new_name = icarus.metadata.name_from_metadata(metadata)
+            joint = cmds.rename(joint, new_name)
+            driving_joints.append(joint)
 
         for deform, driving in zip(deform_joints, driving_joints):
             # Find out who the father is.
@@ -366,8 +349,5 @@ class RigModule(IcarusNode):
             shapeshifter.change_controller_shape(ctl, ctl_data)
         icarus.dag.snap_first_to_last(ctl, dag_node)
         parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
-        controllers = self.controllers.get()
-        controllers.append(ctl)
-        self.controllers.set(controllers)
+        self.controllers.append(ctl)
         return ctl, parent_group
-

@@ -1,9 +1,16 @@
 """Minimal observer/publisher implementation for all your GUI needs."""
 import traceback
 from collections import defaultdict
-from weakref import WeakKeyDictionary
 
 _SIGNALS = defaultdict(list)
+
+
+def clear_all_signals():
+    """Clear all signals.
+
+    Calling this function will unsubscribe all functions.
+    """
+    _SIGNALS.clear()
 
 
 def subscribe(name, func):
@@ -45,7 +52,7 @@ def publish(name, *args, **kwargs):
     :type name: str
     :rtype: weakref.WeakKeyDictionary
     """
-    ret = WeakKeyDictionary()
+    ret = {}
     for func in _SIGNALS[name]:
         try:
             res = func(*args, **kwargs)
