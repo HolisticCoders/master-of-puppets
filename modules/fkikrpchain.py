@@ -11,7 +11,7 @@ from icarus.core.fields import (
 import icarus.metadata
 
 
-class FkIkChain(ChainSwitcher):
+class FkIkRPChain(ChainSwitcher):
 
     joint_count = IntField(
         defaultValue=3,
@@ -38,7 +38,7 @@ class FkIkChain(ChainSwitcher):
     ik_end_description = StringField()
 
     def initialize(self):
-        super(FkIkChain, self).initialize()
+        super(FkIkRPChain, self).initialize()
 
         self.ik_start_description.set('IK_start')
         self.ik_end_description.set('IK_end')
@@ -47,14 +47,14 @@ class FkIkChain(ChainSwitcher):
         self.switch_enum_name.set('FK:IK:')
 
     def build(self):
-        super(FkIkChain, self).build()
+        super(FkIkRPChain, self).build()
         self._setup_fk()
         self._setup_ik()
         self._setup_switch_vis()
 
     def _create_chains(self):
         """Rename the FK and IK joints."""
-        super(FkIkChain, self)._create_chains()
+        super(FkIkRPChain, self)._create_chains()
 
         fk_chain = self.chain_a.get()
         for i, fk in enumerate(fk_chain):
@@ -249,4 +249,4 @@ class FkIkChain(ChainSwitcher):
         )
 
 
-exported_rig_modules = [FkIkChain]
+exported_rig_modules = [FkIkRPChain]

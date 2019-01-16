@@ -1,13 +1,13 @@
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from icarus.modules.fkikchain import FkIkChain
+from icarus.modules.fkikrpchain import FkIkRPChain
 from icarus.core.fields import IntField, ObjectListField, ObjectField
 import icarus.dag
 import icarus.metadata
 
 
-class Arm(FkIkChain):
+class Arm(FkIkRPChain):
 
     upper_twist_joint_count = IntField(
         defaultValue=0,
