@@ -289,6 +289,10 @@ class JSONField(StringField):
 
 
 class ObjectField(StringField):
+    create_attr_args = {
+        'attributeType': 'message',
+    }
+
     def create_attr(self, instance):
         return MessageAttribute(instance, self)
 
