@@ -33,6 +33,10 @@ class IcarusWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
 
         for dock in [self.creation_panel, self.module_panel]:
             dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+            dock.setFeatures(
+                QtWidgets.QDockWidget.DockWidgetMovable
+                | QtWidgets.QDockWidget.DockWidgetFloatable
+            )
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.creation_panel)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.module_panel)
