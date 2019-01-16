@@ -2,25 +2,26 @@ from operator import attrgetter
 from weakref import WeakValueDictionary
 
 from icarus.vendor.Qt import QtCore, QtWidgets
-from icarus.ui.signals import publish, subscribe, unsubscribe
+from icarus.ui.signals import publish, subscribe
 from icarus.ui.utils import clear_layout
 from icarus.ui.fieldwidgets import map_field_to_widget
 from icarus.core.rig import Rig
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
-class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class ModulePanel(QtWidgets.QDockWidget):
 
     def __init__(self, parent=None):
         super(ModulePanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setObjectName('icarus_settings_panel')
+        self.setWindowTitle('Module Panel')
+
         self._module_widgets = WeakValueDictionary()
 
-        self.setWindowTitle('Icarus Module Panel')
+        self.setWidget(QtWidgets.QWidget())
 
         layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
+        self.widget().setLayout(layout)
 
         self.settings_group = QtWidgets.QGroupBox('Settings')
         self.form = QtWidgets.QFormLayout()
@@ -118,7 +119,3 @@ class ModulePanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
             if not field.editable or self.module.is_built.get():
                 widget.setEnabled(False)
-
-    def close(self):
-        unsubscribe('selected-module-changed', self._on_module_selected)
-        return super(ModulePanel, self).close()

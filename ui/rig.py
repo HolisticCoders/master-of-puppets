@@ -2,17 +2,16 @@ from weakref import WeakKeyDictionary
 
 from icarus.vendor.Qt import QtWidgets, QtCore
 from icarus.core.rig import Rig
-from icarus.ui.signals import publish, subscribe, unsubscribe
+from icarus.ui.signals import publish, subscribe
 from icarus.ui.commands import build_rig, unbuild_rig
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
-class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class RigPanel(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(RigPanel, self).__init__(parent)
         self.setObjectName('icarus_rig_panel')
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('Icarus Rig Panel')
+        self.setWindowTitle('Rig Panel')
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
@@ -24,7 +23,7 @@ class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         layout.addWidget(self.actions_group)
 
         modules_layout = QtWidgets.QVBoxLayout()
-        actions_layout = QtWidgets.QVBoxLayout()
+        actions_layout = QtWidgets.QHBoxLayout()
 
         self.modules_group.setLayout(modules_layout)
         self.actions_group.setLayout(actions_layout)
@@ -106,12 +105,6 @@ class RigPanel(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     def _on_current_changed(self, current, previous):
         module = current.internalPointer()
         publish('selected-module-changed', module)
-
-    def close(self):
-        unsubscribe('module-created', self._refresh_model)
-        unsubscribe('module-updated', self._refresh_model)
-        unsubscribe('module-deleted', self._refresh_model)
-        return super(RigPanel, self).close()
 
 
 class ModulesModel(QtCore.QAbstractItemModel):
