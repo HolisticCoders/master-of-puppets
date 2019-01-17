@@ -88,13 +88,10 @@ class FkIkRPChain(ChainSwitcher):
 
         parent = self.fk_controls_group.get()
         for i, fk in enumerate(self.chain_a.get()):
-            metadata = {
-                'base_name': self.name.get(),
-                'side': self.side.get(),
-                'role': 'ctl',
-                'description': 'FK',
-                'id': i
-            }
+            metadata = icarus.metadata.metadata_from_name(fk)
+            metadata['role'] = 'ctl'
+            if metadata['description']:
+                metadata['description'] = 'FK_' + metadata['description']
             ctl_name = icarus.metadata.name_from_metadata(metadata)
             ctl, parent_group = self.add_control(fk, ctl_name)
             self.fk_controls.append(ctl)
