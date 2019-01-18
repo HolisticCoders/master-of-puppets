@@ -1,6 +1,7 @@
 import math
 
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
 
 from icarus.core.module import RigModule
 from icarus.core.fields import IntField, ObjectListField
@@ -82,6 +83,11 @@ class Chain(RigModule):
                 mult_mat + '.matrixSum',
                 decomp_mat + '.inputMatrix',
             )
+
+            mat = om2.MMatrix(cmds.getAttr(mult_mat + '.matrixSum'))
+            inverseMat = mat.inverse()
+            cmds.setAttr(mult_mat + '.matrixIn[2]', inverseMat, type='matrix')
+
             cmds.connectAttr(
                 decomp_mat + '.outputQuatX',
                 quat_to_euler + '.inputQuatX',
@@ -90,6 +96,7 @@ class Chain(RigModule):
                 decomp_mat + '.outputQuatW',
                 quat_to_euler + '.inputQuatW',
             )
+
             factor = 1.0 / self.twist_joint_count.get()
             for i, twist in enumerate(twists):
                 current_factor = (i + 1) * factor
