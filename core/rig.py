@@ -159,8 +159,11 @@ class Rig(IcarusNode):
 
         for module in self.rig_modules:
             for ctl in module.controllers.get():
-                shape_data = shapeshifter.get_shape_data(ctl)
-                cmds.setAttr(ctl + '.shape_data', json.dumps(shape_data), type='string')
+                try:
+                    shape_data = shapeshifter.get_shape_data(ctl)
+                    cmds.setAttr(ctl + '.shape_data', json.dumps(shape_data), type='string')
+                except:
+                    pass
 
         self.reset_pose()
         for node in self.skeleton:
