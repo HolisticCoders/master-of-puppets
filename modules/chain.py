@@ -65,131 +65,52 @@ class Chain(RigModule):
         if not self.twist_joint_count.get():
             return
 
-        i = 0
         for joint, next_joint in zip(self.driving_chain[:-1], self.driving_chain[1:]):
-            joint_metadata = icarus.metadata.metadata_from_name(joint)
-            joint_metadata['role'] = 'ribbonDeform'
-            joint_metadata['description'] = 'start'
-            joint_metadata['id'] = i
-            surface_skin_jnt1 = icarus.metadata.name_from_metadata(joint_metadata)
-            dupli = cmds.duplicate(joint, parentOnly=True)[0]
-            cmds.rename(dupli, surface_skin_jnt1)
-            cmds.parent(surface_skin_jnt1, self.extras_group.get())
-            buffer_grp = icarus.dag.add_parent_group(surface_skin_jnt1, 'buffer')
-            icarus.dag.matrix_constraint(joint, buffer_grp)
-            cmds.aimConstraint(
-                next_joint,
-                surface_skin_jnt1,
-                worldUpType='objectrotation',
-                worldUpObject=joint
-            )
-
-            next_joint_metadata = icarus.metadata.metadata_from_name(next_joint)
-            next_joint_metadata['role'] = 'ribbonDeform'
-            next_joint_metadata['description'] = 'end'
-            next_joint_metadata['id'] = joint_metadata['id']
-            next_joint_metadata['id'] = i
-            surface_skin_jnt2 = icarus.metadata.name_from_metadata(next_joint_metadata)
-            dupli = cmds.duplicate(next_joint, parentOnly=True)[0]
-            cmds.rename(dupli, surface_skin_jnt2)
-            cmds.parent(surface_skin_jnt2, self.extras_group.get())
-            buffer_grp = icarus.dag.add_parent_group(surface_skin_jnt2, 'buffer')
-            icarus.dag.matrix_constraint(next_joint, buffer_grp)
-            cmds.aimConstraint(
-                joint,
-                surface_skin_jnt2,
-                worldUpType='objectrotation',
-                worldUpObject=next_joint
-            )
-
-            i += 1
-
-            surface = self._create_surface(surface_skin_jnt1, surface_skin_jnt2)
             twists = [j for j in cmds.listRelatives(joint) if 'twist' in j]
-            for twist in twists:
-                metadata = icarus.metadata.metadata_from_name(twist)
-                metadata['role'] = 'follicle'
-                follicle_name = icarus.metadata.name_from_metadata(metadata)
-                follicle = _shapeutils.add_follicle(surface, twist)
-                follicle = cmds.rename(
-                    cmds.listRelatives(follicle, parent=True)[0],
-                    follicle_name
+            mult_mat = cmds.createNode('multMatrix')
+            decomp_mat = cmds.createNode('decomposeMatrix')
+            quat_to_euler = cmds.createNode('quatToEuler')
+            cmds.connectAttr(
+                next_joint + '.worldMatrix[0]',
+                mult_mat + '.matrixIn[0]'
+            )
+            cmds.connectAttr(
+                joint + '.worldInverseMatrix[0]',
+                mult_mat + '.matrixIn[1]'
+            )
+            cmds.connectAttr(
+                mult_mat + '.matrixSum',
+                decomp_mat + '.inputMatrix',
+            )
+            cmds.connectAttr(
+                decomp_mat + '.outputQuatX',
+                quat_to_euler + '.inputQuatX',
+            )
+            cmds.connectAttr(
+                decomp_mat + '.outputQuatW',
+                quat_to_euler + '.inputQuatW',
+            )
+            factor = 1.0 / self.twist_joint_count.get()
+            for i, twist in enumerate(twists):
+                current_factor = (i + 1) * factor
+                current_factor_reverse = 1 - current_factor
+                anim_blend = cmds.createNode('animBlendNodeAdditiveRotation')
+                cmds.setAttr(
+                    anim_blend + '.weightA',
+                    current_factor
                 )
-                cmds.parent(follicle, self.extras_group.get())
-                icarus.dag.matrix_constraint(follicle, twist, maintain_offset=True)
-
-    def _create_surface(self, joint1, joint2):
-        joint_pos = cmds.xform(
-            joint1,
-            query=True,
-            translation=True,
-            ws=True
-        )
-        next_joint_pos = cmds.xform(
-            joint2,
-            query=True,
-            translation=True,
-            ws=True
-        )
-
-        dist = math.sqrt(
-            (joint_pos[0] - next_joint_pos[0]) ** 2 +
-            (joint_pos[1] - next_joint_pos[1]) ** 2 +
-            (joint_pos[2] - next_joint_pos[2]) ** 2
-        )
-
-        mid_point = []
-        mid_point.append((joint_pos[0] + next_joint_pos[0]) / 2)
-        mid_point.append((joint_pos[1] + next_joint_pos[1]) / 2)
-        mid_point.append((joint_pos[2] + next_joint_pos[2]) / 2)
-
-        metadata = icarus.metadata.metadata_from_name(joint1)
-        metadata['role'] = 'ribbon'
-        surface_name = icarus.metadata.name_from_metadata(metadata)
-        surface, make_nurb_surface = cmds.nurbsPlane(name=surface_name)
-        cmds.setAttr(surface + '.rotateZ', 90)
-        cmds.makeIdentity(surface, apply=True)
-        cmds.setAttr(make_nurb_surface + '.lengthRatio', dist)
-        cmds.setAttr(surface + '.translate', *mid_point)
-        aim = cmds.aimConstraint(
-            joint2,
-            surface,
-            aimVector=[1, 0, 0],
-            worldUpType='objectrotation',
-            worldUpObject=joint2
-        )
-        cmds.delete(aim)
-        cmds.delete(surface, constructionHistory=True)
-        cmds.parent(surface, self.extras_group.get())
-        cmds.makeIdentity(surface, apply=True)
-
-        skin = cmds.skinCluster(
-            [joint1, joint2],
-            surface,
-            toSelectedBones=True,
-        )[0]
-        cmds.setAttr(skin + '.skinningMethod', 1)
-        cmds.skinPercent(
-            skin,
-            surface + '.cv[0:3][3]',
-            transformValue=[(joint1, 1), (joint2, 0)]
-        )
-        cmds.skinPercent(
-            skin,
-            surface + '.cv[0:3][2]',
-            transformValue=[(joint1, 0.75), (joint2, 0.25)]
-        )
-        cmds.skinPercent(
-            skin,
-            surface + '.cv[0:3][1]',
-            transformValue=[(joint1, 0.25), (joint2, 0.75)]
-        )
-        cmds.skinPercent(
-            skin,
-            surface + '.cv[0:3][0]',
-            transformValue=[(joint1, 0), (joint2, 1)]
-        )
-        return surface
+                cmds.setAttr(
+                    anim_blend + '.weightB',
+                    current_factor_reverse
+                )
+                cmds.connectAttr(
+                    quat_to_euler + '.outputRotate',
+                    anim_blend + '.inputA',
+                )
+                cmds.connectAttr(
+                    anim_blend + '.output',
+                    twist + '.rotate'
+                )
 
     def publish(self):
         pass
