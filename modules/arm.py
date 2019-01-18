@@ -8,7 +8,6 @@ import icarus.metadata
 
 
 class Arm(FkIkRPChain):
-
     def initialize(self):
         super(Arm, self).initialize()
         self.ik_start_description.set('IK_shoulder')
@@ -25,6 +24,18 @@ class Arm(FkIkRPChain):
             }
             deform_name = icarus.metadata.name_from_metadata(metadata)
             deform = cmds.rename(deform, deform_name)
+
+    def build(self):
+        super(Arm, self).build()
+        cmds.setAttr(
+            self.settings_ctl.get() + '.' + self.switch_long_name.get(),
+            1
+        )
+        cmds.addAttr(
+            self.settings_ctl.get() + '.' + self.switch_long_name.get(),
+            edit=True,
+            defaultValue=1
+        )
 
 
 exported_rig_modules = [Arm]
