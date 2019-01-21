@@ -11,7 +11,7 @@ from icarus.core.fields import (
 import icarus.metadata
 
 
-class FkIkChain(ChainSwitcher):
+class FkIkRPChain(ChainSwitcher):
 
     joint_count = IntField(
         defaultValue=3,
@@ -38,7 +38,7 @@ class FkIkChain(ChainSwitcher):
     ik_end_description = StringField()
 
     def initialize(self):
-        super(FkIkChain, self).initialize()
+        super(FkIkRPChain, self).initialize()
 
         self.ik_start_description.set('IK_start')
         self.ik_end_description.set('IK_end')
@@ -47,14 +47,14 @@ class FkIkChain(ChainSwitcher):
         self.switch_enum_name.set('FK:IK:')
 
     def build(self):
-        super(FkIkChain, self).build()
+        super(FkIkRPChain, self).build()
         self._setup_fk()
         self._setup_ik()
         self._setup_switch_vis()
 
     def _create_chains(self):
         """Rename the FK and IK joints."""
-        super(FkIkChain, self)._create_chains()
+        super(FkIkRPChain, self)._create_chains()
 
         for fk in self.chain_a:
             metadata = icarus.metadata.metadata_from_name(fk)
@@ -88,13 +88,10 @@ class FkIkChain(ChainSwitcher):
 
         parent = self.fk_controls_group.get()
         for i, fk in enumerate(self.chain_a.get()):
-            metadata = {
-                'base_name': self.name.get(),
-                'side': self.side.get(),
-                'role': 'ctl',
-                'description': 'FK',
-                'id': i
-            }
+            metadata = icarus.metadata.metadata_from_name(fk)
+            metadata['role'] = 'ctl'
+            if metadata['description']:
+                metadata['description'] = 'FK_' + metadata['description']
             ctl_name = icarus.metadata.name_from_metadata(metadata)
             ctl, parent_group = self.add_control(fk, ctl_name)
             self.fk_controls.append(ctl)
@@ -241,4 +238,4 @@ class FkIkChain(ChainSwitcher):
         )
 
 
-exported_rig_modules = [FkIkChain]
+exported_rig_modules = [FkIkRPChain]
