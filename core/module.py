@@ -337,6 +337,8 @@ class RigModule(IcarusNode):
             ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl = shapeshifter.create_controller_from_name(shape_type)
         ctl = cmds.rename(ctl, ctl_name)
+
+        # get the existing shape data if it exists
         icarus.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
@@ -347,6 +349,14 @@ class RigModule(IcarusNode):
         if ctl_data:
             ctl_data = json.loads(ctl_data)
             shapeshifter.change_controller_shape(ctl, ctl_data)
+        
+        icarus.attributes.create_persistent_attribute(
+            ctl,
+            self.node_name,
+            longName='attributes_state',
+            dataType='string'
+        )
+
         icarus.dag.snap_first_to_last(ctl, dag_node)
         parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
         self.controllers.append(ctl)

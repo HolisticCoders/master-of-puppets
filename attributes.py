@@ -21,6 +21,24 @@ valid_data_types = [
     'vectorArray',
 ]
 
+attr_whitelist = [
+    'translateX',           'translateY',           'translateZ',
+    'rotateX',              'rotateY',              'rotateZ',
+    'scaleX',               'scaleY',               'scaleZ',
+    'maxTransXLimit',       'maxTransYLimit',       'maxTransZLimit',
+    'minTransXLimit',       'maxTransYLimit',       'maxTransZLimit',
+    'maxTransXLimitEnable', 'maxTransZLimitEnable', 'maxTransZLimitEnable',
+    'minTransXLimitEnable', 'minTransZLimitEnable', 'minTransZLimitEnable',
+    'maxRotXLimit',         'maxRotYLimit',         'maxRotZLimit',
+    'minRotXLimit',         'maxRotYLimit',         'maxRotZLimit',
+    'maxRotXLimitEnable',   'maxRotZLimitEnable',   'maxRotZLimitEnable',
+    'minRotXLimitEnable',   'minRotZLimitEnable',   'minRotZLimitEnable',
+    'maxScaleXLimit',       'maxScaleYLimit',       'maxScaleZLimit',
+    'minScaleXLimit',       'maxScaleYLimit',       'maxScaleZLimit',
+    'maxScaleXLimitEnable', 'maxScaleZLimitEnable', 'maxScaleZLimitEnable',
+    'minScaleXLimitEnable', 'minScaleZLimitEnable', 'minScaleZLimitEnable',
+]
+
 
 def create_persistent_attribute(node, module_node, *args, **kwargs):
     """Create an attribute that keeps its value when rebuilding."""
@@ -65,3 +83,48 @@ def create_persistent_attribute(node, module_node, *args, **kwargs):
         node + '.' + long_name,
         module_node + '.' + module_attr_name
     )
+
+
+def get_attributes_state(node):
+    """Get all the attribute data for the ``node``.
+
+    :param node: node to get the attribute data from
+    :param node: str
+    """
+    attributes_state = {}
+    for attr in cmds.listAttr(node):
+        if attr not in attr_whitelist:
+            continue
+        attr_name = node + '.' + attr
+        attr_state = {}
+        attr_state['lock'] = cmds.getAttr(
+            attr_name,
+            lock=True
+        )
+        attr_state['keyable'] = cmds.getAttr(
+            attr_name,
+            keyable=True
+        )
+        attr_state['channelBox'] = cmds.getAttr(
+            attr_name,
+            channelBox=True
+        )
+        attr_state['value'] = cmds.getAttr(attr_name)
+        attributes_state[attr] = attr_state
+    return attributes_state
+
+
+def set_attributes_state(node, attributes_state):
+    for attr in cmds.listAttr(node):
+        if attr not in attributes_state:
+            continue
+        attr_name = node + '.' + attr
+        attr_state = attributes_state[attr]
+        value = attr_state.pop('value')
+        cmds.setAttr(attr_name, keyable=attr_state['keyable'])
+        cmds.setAttr(attr_name, lock=attr_state['lock'])
+        cmds.setAttr(attr_name, channelBox=attr_state['channelBox'])
+        try:
+            cmds.setAttr(attr_name, value)
+        except:
+            pass

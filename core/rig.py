@@ -143,6 +143,14 @@ class Rig(IcarusNode):
         for module in self.rig_modules:
             logger.info("Building: " + module.node_name)
             module._build()
+
+            # set the attributes state back to what it was before unbuilding
+            for ctl in module.controllers.get():
+                attributes_state = cmds.getAttr(ctl + '.attributes_state')
+                if attributes_state:
+                    attributes_state = json.loads(attributes_state)
+                    icarus.attributes.set_attributes_state(ctl, attributes_state)
+
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
 
@@ -157,15 +165,26 @@ class Rig(IcarusNode):
     def unbuild(self):
         icarus.postscript.run_scripts('pre_unbuild')
 
+        self.reset_pose()
+
         for module in self.rig_modules:
             for ctl in module.controllers.get():
                 try:
                     shape_data = shapeshifter.get_shape_data(ctl)
-                    cmds.setAttr(ctl + '.shape_data', json.dumps(shape_data), type='string')
+                    cmds.setAttr(
+                        ctl + '.shape_data',
+                        json.dumps(shape_data),
+                        type='string'
+                    )
                 except:
                     pass
+                attributes_state = icarus.attributes.get_attributes_state(ctl)
+                cmds.setAttr(
+                    ctl + '.attributes_state',
+                    json.dumps(attributes_state),
+                    type='string'
+                )
 
-        self.reset_pose()
         for node in self.skeleton:
             for attribute in ['.translate', '.rotate', '.scale']:
                 attr = node + attribute
