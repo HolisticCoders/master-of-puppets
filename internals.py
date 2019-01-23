@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 import maya.cmds as cmds
@@ -69,5 +70,35 @@ def incremental_save():
     except ValueError as err:
         logger.error(str(err))
         return
+    cmds.file(rename=new_path)
+    cmds.file(save=True, force=True)
+
+
+def save_publish():
+    """Save the current file in its published directory
+
+    This takes publish versions into account.
+    """
+    import icarus
+    path = cmds.file(query=True, location=True)
+    work_dir = os.path.dirname(path)
+    publish_dir = os.path.join(work_dir, 'release')
+
+    highest_publish = None
+    highest_version = -1 
+
+    for f in os.listdir(publish_dir):
+        ext = os.path.splitext(f)[-1]
+        if ext == '.ma':
+            pattern = r'v(?P<version>\d{3})'
+            regex = re.compile(pattern)
+            match = regex.search(f)
+            if match:
+                version = int(match.group('version'))
+                if version > highest_version:
+                    highest_version = version
+                    highest_publish = f
+
+    new_path = icarus.increment_version(os.path.join(publish_dir, highest_publish))
     cmds.file(rename=new_path)
     cmds.file(save=True, force=True)

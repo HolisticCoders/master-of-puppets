@@ -197,6 +197,14 @@ class Rig(IcarusNode):
         self.is_built.set(False)
         icarus.postscript.run_scripts('post_unbuild')
 
+    def publish(self):
+        icarus.postscript.run_scripts('pre_publish')
+        cmds.setAttr(self.skeleton_group.get() + '.visibility', False)
+        for module in self.rig_modules:
+            logger.info("Publishing: " + module.node_name)
+            module.publish()
+        icarus.postscript.run_scripts('post_publish')
+
     @undoable
     def reset_pose(self):
         for control in cmds.ls('*_ctl'):

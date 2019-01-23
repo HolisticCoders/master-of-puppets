@@ -119,9 +119,6 @@ class Chain(RigModule):
                     twist + '.rotate'
                 )
 
-    def publish(self):
-        pass
-
     def _add_chain_deform_joint(self):
         deform_chain = self.deform_chain.get()
         if deform_chain:

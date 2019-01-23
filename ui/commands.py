@@ -60,3 +60,13 @@ def unbuild_rig():
     rig = Rig()
     rig.unbuild()
 
+
+def publish_rig():
+    """Publish the current scene rig."""
+    from icarus.core.rig import Rig
+    import icarus
+    icarus.incremental_save()
+    rig = Rig()
+    rig.publish()
+    icarus.save_publish()
+

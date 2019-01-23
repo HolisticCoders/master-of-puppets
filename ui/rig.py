@@ -3,7 +3,7 @@ from weakref import WeakKeyDictionary
 from icarus.vendor.Qt import QtWidgets, QtCore
 from icarus.core.rig import Rig
 from icarus.ui.signals import publish, subscribe
-from icarus.ui.commands import build_rig, unbuild_rig
+from icarus.ui.commands import build_rig, unbuild_rig, publish_rig
 
 
 class RigPanel(QtWidgets.QWidget):
@@ -34,14 +34,17 @@ class RigPanel(QtWidgets.QWidget):
         refresh_button = QtWidgets.QPushButton('Refresh')
         build_button = QtWidgets.QPushButton('Build Rig')
         unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
+        publish_button = QtWidgets.QPushButton('Publish Rig')
 
         actions_layout.addWidget(refresh_button)
         actions_layout.addWidget(build_button)
         actions_layout.addWidget(unbuild_button)
+        actions_layout.addWidget(publish_button)
 
         refresh_button.released.connect(self._refresh_model)
         build_button.released.connect(build_rig)
         unbuild_button.released.connect(unbuild_rig)
+        publish_button.released.connect(publish_rig)
 
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)

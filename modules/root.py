@@ -25,8 +25,5 @@ class Root(RigModule):
                 "because some of the joints are connected to a skinCluster."
             )
 
-    def publish(self):
-        pass
-
 
 exported_rig_modules = [Root]

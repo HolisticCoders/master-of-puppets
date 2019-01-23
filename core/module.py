@@ -253,9 +253,8 @@ class RigModule(IcarusNode):
         Nothing in there should change how the rig works.
         It's meant to hide some stuff that the rigger would need after the build
         maybe lock some attributes, set some default values, etc.
-        You need to overwrite this method in your subclasses.
         """
-        raise NotImplementedError
+        cmds.setAttr(self.extras_group.get() + '.visibility', False)
 
     def _add_deform_joint(self, name=None, parent=None):
         """Creates a new deform joint for this module.

@@ -10,4 +10,5 @@ sys.path.append(vendor)
 
 increment_version = icarus.internals.increment_version
 incremental_save = icarus.internals.incremental_save
+save_publish = icarus.internals.save_publish
 
