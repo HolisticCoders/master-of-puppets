@@ -26,17 +26,17 @@ attr_whitelist = [
     'rotateX',              'rotateY',              'rotateZ',
     'scaleX',               'scaleY',               'scaleZ',
     'maxTransXLimit',       'maxTransYLimit',       'maxTransZLimit',
-    'minTransXLimit',       'maxTransYLimit',       'maxTransZLimit',
-    'maxTransXLimitEnable', 'maxTransZLimitEnable', 'maxTransZLimitEnable',
-    'minTransXLimitEnable', 'minTransZLimitEnable', 'minTransZLimitEnable',
+    'minTransXLimit',       'minTransYLimit',       'minTransZLimit',
+    'maxTransXLimitEnable', 'maxTransYLimitEnable', 'maxTransZLimitEnable',
+    'minTransXLimitEnable', 'minTransYLimitEnable', 'minTransZLimitEnable',
     'maxRotXLimit',         'maxRotYLimit',         'maxRotZLimit',
-    'minRotXLimit',         'maxRotYLimit',         'maxRotZLimit',
-    'maxRotXLimitEnable',   'maxRotZLimitEnable',   'maxRotZLimitEnable',
-    'minRotXLimitEnable',   'minRotZLimitEnable',   'minRotZLimitEnable',
+    'minRotXLimit',         'minRotYLimit',         'minRotZLimit',
+    'maxRotXLimitEnable',   'maxRotYLimitEnable',   'maxRotZLimitEnable',
+    'minRotXLimitEnable',   'minRotYLimitEnable',   'minRotZLimitEnable',
     'maxScaleXLimit',       'maxScaleYLimit',       'maxScaleZLimit',
-    'minScaleXLimit',       'maxScaleYLimit',       'maxScaleZLimit',
-    'maxScaleXLimitEnable', 'maxScaleZLimitEnable', 'maxScaleZLimitEnable',
-    'minScaleXLimitEnable', 'minScaleZLimitEnable', 'minScaleZLimitEnable',
+    'minScaleXLimit',       'minScaleYLimit',       'minScaleZLimit',
+    'maxScaleXLimitEnable', 'maxScaleYLimitEnable', 'maxScaleZLimitEnable',
+    'minScaleXLimitEnable', 'minScaleYLimitEnable', 'minScaleZLimitEnable',
 ]
 
 
@@ -124,7 +124,9 @@ def set_attributes_state(node, attributes_state):
         cmds.setAttr(attr_name, keyable=attr_state['keyable'])
         cmds.setAttr(attr_name, lock=attr_state['lock'])
         cmds.setAttr(attr_name, channelBox=attr_state['channelBox'])
-        try:
+
+        is_locked = cmds.getAttr(attr_name, lock=True)
+        is_connected = bool(cmds.listConnections(attr_name, source=True))
+
+        if not is_locked and not is_connected:
             cmds.setAttr(attr_name, value)
-        except:
-            pass
