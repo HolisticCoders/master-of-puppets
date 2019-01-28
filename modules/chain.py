@@ -36,6 +36,7 @@ class Chain(RigModule):
     driving_twists = ObjectListField()
 
     def initialize(self):
+        super(Chain, self).initialize()
         for i in range(self.joint_count.get()):
             new_joint = self._add_chain_deform_joint()
             if i > 0:

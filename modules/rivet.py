@@ -12,6 +12,7 @@ class Rivet(RigModule):
     )
 
     def initialize(self, *args, **kwargs):
+        super(Rivet, self).initialize()
         self._add_deform_joint()
 
     def build(self):

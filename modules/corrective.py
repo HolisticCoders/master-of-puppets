@@ -27,6 +27,7 @@ class Corrective(RigModule):
     orig_pose_vector_tip_loc = ObjectField()
 
     def initialize(self):
+        super(Corrective, self).initialize()
         for i in xrange(self.joint_count.get()):
             self._add_deform_joint()
         self.vector_base.set(self.parent_joint.get())

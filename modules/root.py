@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class Root(RigModule):
 
     def initialize(self):
+        super(Root, self).initialize()
         self._add_deform_joint()
 
     def build(self):

@@ -38,6 +38,9 @@ class RigModule(IcarusNode):
 
     module_type = StringField()
 
+    # group holding all this module's placement nodes
+    placement_group = ObjectField()
+
     # group holding all this module's controls
     controls_group = ObjectField()
 
@@ -49,6 +52,9 @@ class RigModule(IcarusNode):
 
     # list of all of this module's deform joints
     deform_joints = ObjectListField()
+
+    # list of all of this module's placement_locators
+    placement_locators = ObjectListField()
 
     controllers = ObjectListField()
 
@@ -111,7 +117,19 @@ class RigModule(IcarusNode):
         Will be called automatically when creating the module.
         You need to overwrite this method in your subclasses.
         """
-        raise NotImplementedError
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'grp',
+            'description': 'placement'
+        }
+
+        placement_group_name = icarus.metadata.name_from_metadata(metadata)
+        self.placement_group.set(cmds.createNode(
+            'transform',
+            name=placement_group_name,
+            parent=self.node_name
+        ))
 
     def update(self):
         """Update the maya scene based on the module's fields
@@ -192,7 +210,6 @@ class RigModule(IcarusNode):
             raise RuntimeError(
                 "Module {} is already built!".format(self.node_name)
             )
-        
         metadata = {
             'base_name': self.name.get(),
             'side': self.side.get(),
@@ -282,7 +299,7 @@ class RigModule(IcarusNode):
             parent = self.rig.skeleton_group.get()
 
         cmds.parent(new_joint, parent)
-        
+
         for transform in ['translate', 'rotate', 'scale', 'jointOrient']:
             if transform == 'scale':
                 value = 1
@@ -294,6 +311,38 @@ class RigModule(IcarusNode):
 
         self.deform_joints.append(new_joint)
         return new_joint
+
+    def _add_placement_locator(self, name=None, parent=None):
+        """Creates a new placement locator for this module.
+
+        A placement locator is a way to get placement data without polluting
+        the deform skeleton.
+        """
+        object_id = len(self.placement_locators)
+        if name is None:
+            metadata = {
+                'base_name': self.name.get(),
+                'side': self.side.get(),
+                'role': 'placement',
+                'id': object_id
+            }
+            name = icarus.metadata.name_from_metadata(metadata)
+        locator = cmds.spaceLocator(name=name)[0]
+        if not parent:
+            parent = self.placement_group.get()
+        cmds.parent(locator, parent)
+
+        for transform in ['translate', 'rotate', 'scale']:
+            if transform == 'scale':
+                value = 1
+            else:
+                value = 0
+            for axis in 'XYZ':
+                attr = transform + axis
+                cmds.setAttr(locator + '.' + attr, value)
+
+        self.placement_locators.append(locator)
+        return locator
 
     def create_driving_joints(self):
         deform_joints = self.deform_joints.get()
@@ -348,7 +397,7 @@ class RigModule(IcarusNode):
         if ctl_data:
             ctl_data = json.loads(ctl_data)
             shapeshifter.change_controller_shape(ctl, ctl_data)
-        
+
         icarus.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
