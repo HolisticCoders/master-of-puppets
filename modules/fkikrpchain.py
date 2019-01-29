@@ -24,6 +24,9 @@ class FkIkRPChain(ChainSwitcher):
 
     # list containing the IK controls.
     ik_controls = ObjectListField()
+    ik_start_ctl = ObjectField()
+    ik_end_ctl = ObjectField()
+    ik_pv_ctl = ObjectField()
 
     # group containing all the FK controls
     fk_controls_group = ObjectField()
@@ -81,7 +84,7 @@ class FkIkRPChain(ChainSwitcher):
         }
         fk_controls_group_name = icarus.metadata.name_from_metadata(metadata)
         self.fk_controls_group.set(
-             cmds.createNode('transform', name=fk_controls_group_name)
+            cmds.createNode('transform', name=fk_controls_group_name)
         )
         cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.fk_controls_group.get())
@@ -127,6 +130,7 @@ class FkIkRPChain(ChainSwitcher):
             'cube'
         )
         self.ik_controls.append(end_ctl)
+        self.ik_end_ctl.set(end_ctl)
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(
@@ -151,6 +155,7 @@ class FkIkRPChain(ChainSwitcher):
             'cube'
         )
         self.ik_controls.append(start_ctl)
+        self.ik_start_ctl.set(start_ctl)
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(
@@ -172,18 +177,24 @@ class FkIkRPChain(ChainSwitcher):
             'sphere'
         )
         self.ik_controls.append(pole_vector_ctl)
+        self.ik_pv_ctl.set(pole_vector_ctl)
         self._place_pole_vector(parent_group)
         cmds.xform(parent_group, rotation=[0, 0, 0], worldSpace=True)
         cmds.parent(parent_group, self.ik_controls_group.get())
 
+        self._create_ik_handle()
+
+    def _create_ik_handle(self):
+        ik_chain = self.chain_b.get()
         ik_handle, effector = cmds.ikHandle(
             startJoint=ik_chain[0],
             endEffector=ik_chain[2]
         )
+        self.ik_handle.set(ik_handle)
         cmds.parent(ik_handle, self.extras_group.get())
-        cmds.poleVectorConstraint(pole_vector_ctl, ik_handle)
+        cmds.poleVectorConstraint(self.ik_pv_ctl.get(), ik_handle)
         icarus.dag.matrix_constraint(
-            end_ctl,
+            self.ik_end_ctl.get(),
             ik_handle,
             maintain_offset=True
         )

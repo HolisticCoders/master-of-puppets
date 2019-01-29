@@ -37,7 +37,11 @@ class ChainSwitcher(Chain):
 
     def _create_chains(self):
         self.chain_a.set(
-            cmds.duplicate(self.driving_chain.get(), renameChildren=True)
+            cmds.duplicate(
+                self.driving_chain.get(),
+                renameChildren=True,
+                parentOnly=True
+            )
         )
         cmds.parent(self.chain_a[0], self.extras_group.get())
         for joint in self.chain_a.get():
@@ -50,7 +54,11 @@ class ChainSwitcher(Chain):
             cmds.rename(joint, new_name)
 
         self.chain_b.set(
-            cmds.duplicate(self.driving_chain.get(), renameChildren=True)
+            cmds.duplicate(
+                self.driving_chain.get(),
+                renameChildren=True,
+                parentOnly=True
+            )
         )
         cmds.parent(self.chain_b[0], self.extras_group.get())
         for joint in self.chain_b.get():
@@ -72,7 +80,8 @@ class ChainSwitcher(Chain):
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl, buffer_grp = self.add_control(
             self.driving_chain[2],
-            ctl_name
+            ctl_name,
+            shape_type='cogwheel'
         )
         self.settings_ctl.set(ctl)
         cmds.parent(buffer_grp, self.controls_group.get())
