@@ -2,7 +2,9 @@ import collections
 import json
 import logging
 
+import maya.api.OpenMaya as om2
 import maya.cmds as cmds
+import maya.mel
 
 from icarus.utils.case import title
 
@@ -87,17 +89,30 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
             pass
 
     def __getitem__(self, index):
-        val = cmds.getAttr('{}[{}]'.format(self.attr_name, index))
+        logical_index = self._logical_indices()[index]
+        val = cmds.getAttr('{}[{}]'.format(self.attr_name, logical_index))
         return self.field.cast_from_attr(val)
 
     def __setitem__(self, index, value):
+        logical_index = self._logical_indices()[index]
         casted_item = self.field.cast_to_attr(value)
-        attrName = '{}[{}]'.format(self.attr_name, index)
+        attrName = '{}[{}]'.format(self.attr_name, logical_index)
         cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
     def __delitem__(self, index):
+        logical_index = self._logical_indices()[index]
+        target = '{}[{}]'.format(self.attr_name, logical_index)
+        sources = cmds.listConnections(
+            target,
+            source=True,
+            plugs=True
+        ) or []
+
+        for source in sources:
+            cmds.disconnectAttr(source, target)
+
         cmds.removeMultiInstance(
-            '{}[{}]'.format(self.attr_name, index),
+            target,
             b=True
         )
 
@@ -105,9 +120,19 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
         return len(cmds.getAttr('{}[*]'.format(self.attr_name)))
 
     def insert(self, index, value):
+        logical_index = self._logical_indices()[index]
         casted_item = self.field.cast_to_attr(value)
-        attrName = '{}[{}]'.format(self.attr_name, index)
+        attrName = '{}[{}]'.format(self.attr_name, logical_index)
         cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
+
+    def _logical_indices(self):
+        sel = om2.MSelectionList()
+        node_name, _, plug_name = self.attr_name.partition('.')
+        sel.add(node_name)
+        mobj = sel.getDependNode(0)
+        mfn = om2.MFnDependencyNode(mobj)
+        plug = mfn.findPlug(plug_name, 0)
+        return plug.getExistingArrayAttributeIndices()
 
 
 class MessageMultiAttribute(MultiAttribute):
