@@ -10,7 +10,7 @@ from icarus.common.foot import build_foot
 class BipedLeg(FkIkRPChain):
 
     joint_count = IntField(
-        defaultValue=1,
+        defaultValue=5,
         hasMinValue=True,
         minValue=5,
         hasMaxValue=True,
@@ -84,6 +84,15 @@ class BipedLeg(FkIkRPChain):
     def build(self):
         super(BipedLeg, self).build()
         build_foot(self)
+        cmds.setAttr(
+            self.settings_ctl.get() + '.' + self.switch_long_name.get(),
+            1
+        )
+        cmds.addAttr(
+            self.settings_ctl.get() + '.' + self.switch_long_name.get(),
+            edit=True,
+            defaultValue=1
+        )
 
     def _create_ik_handle(self):
         """Overriden to NOT constrain the ik handle.
