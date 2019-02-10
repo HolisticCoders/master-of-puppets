@@ -1,18 +1,53 @@
 import maya.cmds as cmds
 
 from icarus.modules.fkikspringchain import FkIkSpringChain
-from icarus.core.fields import IntField
+from icarus.core.fields import IntField, ObjectField, ObjectListField
+import icarus.metadata
 
 
 class QuadrupedLeg(FkIkSpringChain):
 
     joint_count = IntField(
-        defaultValue=4,
+        defaultValue=5,
         hasMinValue=True,
-        minValue=4,
+        minValue=5,
         hasMaxValue=True,
-        maxValue=4,
+        maxValue=5,
     )
+
+    foot_driving_joints = ObjectListField()
+
+    heel_placement = ObjectField()
+    ball_placement = ObjectField()
+    tip_placement = ObjectField()
+
+    heel_pivot = ObjectField()
+    ball_pivot = ObjectField()
+    tip_pivot = ObjectField()
+
+    def initialize(self):
+        super(QuadrupedLeg, self).initialize()
+        self.ik_start_description.set('IK_ankle')
+        self.ik_end_description.set('IK_hip')
+
+        name_list = ['hip', 'knee', 'ankle', 'foot_ball', 'foot_tip']
+
+        for deform, name in zip(self.deform_chain.get(), name_list):
+            metadata = {
+                'base_name': self.name.get(),
+                'side': self.side.get(),
+                'role': 'deform',
+                'description': name
+            }
+            deform_name = icarus.metadata.name_from_metadata(metadata)
+            deform = cmds.rename(deform, deform_name)
+
+    def create_driving_joints(self):
+        super(QuadrupedLeg, self).create_driving_joints()
+        foot_joints = [self.driving_chain[-1]]
+        self.foot_driving_joints.set(foot_joints)
+        for joint in foot_joints:
+            self.driving_chain.remove(joint)
 
     def build(self):
         super(QuadrupedLeg, self).build()
