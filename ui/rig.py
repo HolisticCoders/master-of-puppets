@@ -1,4 +1,5 @@
 import json
+import random
 import pdb
 from collections import defaultdict
 from weakref import WeakKeyDictionary, WeakSet
@@ -7,6 +8,7 @@ from icarus.vendor.Qt import QtCore, QtGui, QtWidgets
 from icarus.core.rig import Rig
 from icarus.ui.signals import publish, subscribe
 from icarus.ui.commands import build_rig, unbuild_rig, publish_rig
+from icarus.ui.utils import hsv_to_rgb
 
 
 class RigPanel(QtWidgets.QWidget):
@@ -26,10 +28,17 @@ class RigPanel(QtWidgets.QWidget):
         layout.addWidget(self.actions_group)
 
         modules_layout = QtWidgets.QVBoxLayout()
+        options_layout = QtWidgets.QHBoxLayout()
         actions_layout = QtWidgets.QHBoxLayout()
 
         self.modules_group.setLayout(modules_layout)
         self.actions_group.setLayout(actions_layout)
+
+        modules_layout.addLayout(options_layout)
+        show_colors = QtWidgets.QCheckBox('Show Colors')
+        options_layout.addWidget(show_colors)
+
+        show_colors.toggled.connect(self._on_show_colors_toggled)
 
         self.tree_view = ModulesTree()
         modules_layout.addWidget(self.tree_view)
@@ -110,6 +119,14 @@ class RigPanel(QtWidgets.QWidget):
             if _index:
                 return _index
 
+    def _on_show_colors_toggled(self, checked):
+        if not self.model:
+            return
+        if checked:
+            self.model.show_colors()
+        else:
+            self.model.hide_colors()
+
     def _on_current_changed(self, current, previous):
         pointer = current.internalPointer()
         publish('selected-module-changed', pointer)
@@ -138,12 +155,14 @@ class ModulesModel(QtCore.QAbstractItemModel):
     def __init__(self, parent=None):
         super(ModulesModel, self).__init__(parent)
         self.invalidate_cache()
+        self._show_colors = False
 
     def invalidate_cache(self):
         """Refresh the cache."""
         rig = Rig()
         self.modules = rig.rig_modules
 
+        self._module_colors = {}
         self._top_level_modules = []
         self._joints_parent_module = {}
         self._joints_child_modules = defaultdict(list)
@@ -151,6 +170,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
         self._modules_child_joints = defaultdict(list)
 
         for module in self.modules:
+            self._module_colors[module] = random.random()
             parent = module.parent_joint.get()
             self._modules_parent_joint[module] = parent
             self._joints_child_modules[parent].append(module)
@@ -159,6 +179,24 @@ class ModulesModel(QtCore.QAbstractItemModel):
             for joint in module.deform_joints:
                 self._joints_parent_module[joint] = module
                 self._modules_child_joints[module].append(joint)
+
+    def show_colors(self):
+        self._show_colors = True
+        parent = QtCore.QModelIndex()
+        self.dataChanged.emit(
+            self.index(0, 0, parent),
+            self.index(self.rowCount(parent), 0, parent),
+            [QtCore.Qt.ForegroundRole],
+        )
+
+    def hide_colors(self):
+        self._show_colors = False
+        parent = QtCore.QModelIndex()
+        self.dataChanged.emit(
+            self.index(0, 0, parent),
+            self.index(self.rowCount(parent), 0, parent),
+            [QtCore.Qt.ForegroundRole],
+        )
 
     def rowCount(self, parent):
         if not parent.isValid():
@@ -188,6 +226,15 @@ class ModulesModel(QtCore.QAbstractItemModel):
             if isinstance(pointer, basestring):
                 return QtGui.QIcon(':kinJoint.png')
             return QtGui.QIcon(':out_transform.png')
+        elif role == QtCore.Qt.ForegroundRole:
+            if not self._show_colors:
+                return
+            if isinstance(pointer, basestring):
+                module = index.parent().internalPointer()
+            else:
+                module = index.internalPointer()
+            color = hsv_to_rgb(self._module_colors[module], .3, .80)
+            return QtGui.QBrush(QtGui.QColor(*color))
 
     def index(self, row, column, parent):
         if not parent.isValid():
