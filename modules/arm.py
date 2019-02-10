@@ -1,5 +1,4 @@
 import maya.cmds as cmds
-import maya.api.OpenMaya as om2
 
 from icarus.modules.fkikrpchain import FkIkRPChain
 from icarus.core.fields import IntField, ObjectListField, ObjectField

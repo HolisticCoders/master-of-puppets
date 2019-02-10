@@ -79,13 +79,13 @@ class ChainSwitcher(Chain):
         }
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl, buffer_grp = self.add_control(
-            self.driving_chain[2],
+            self.driving_chain[-1],
             ctl_name,
             shape_type='cogwheel'
         )
         self.settings_ctl.set(ctl)
         cmds.parent(buffer_grp, self.controls_group.get())
-        icarus.dag.matrix_constraint(self.driving_chain[2], buffer_grp)
+        icarus.dag.matrix_constraint(self.driving_chain[-1], buffer_grp)
 
         for attr in ['translate', 'rotate', 'scale']:
             for axis in 'XYZ':
