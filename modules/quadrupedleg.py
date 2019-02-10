@@ -17,13 +17,17 @@ class QuadrupedLeg(FkIkSpringChain):
 
     foot_driving_joints = ObjectListField()
 
+    twist_placement = ObjectField()
     heel_placement = ObjectField()
-    ball_placement = ObjectField()
     tip_placement = ObjectField()
+    bank_ext_placement = ObjectField()
+    bank_int_placement = ObjectField()
 
+    twist_pivot = ObjectField()
     heel_pivot = ObjectField()
-    ball_pivot = ObjectField()
     tip_pivot = ObjectField()
+    bank_ext_pivot = ObjectField()
+    bank_int_pivot = ObjectField()
 
     def initialize(self):
         super(QuadrupedLeg, self).initialize()
@@ -42,6 +46,56 @@ class QuadrupedLeg(FkIkSpringChain):
             deform_name = icarus.metadata.name_from_metadata(metadata)
             deform = cmds.rename(deform, deform_name)
 
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'placement',
+            'description': 'foot_twist'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self._add_placement_locator(name=name)
+        self.twist_placement.set(name)
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'placement',
+            'description': 'foot_heel'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self._add_placement_locator(name=name)
+        self.heel_placement.set(name)
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'placement',
+            'description': 'foot_tip'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self._add_placement_locator(name=name)
+        self.tip_placement.set(name)
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'placement',
+            'description': 'foot_bank_ext'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self._add_placement_locator(name=name)
+        self.bank_ext_placement.set(name)
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'placement',
+            'description': 'foot_bank_int'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self._add_placement_locator(name=name)
+        self.bank_int_placement.set(name)
+
     def create_driving_joints(self):
         super(QuadrupedLeg, self).create_driving_joints()
         foot_joints = [self.driving_chain[-1]]
@@ -49,9 +103,21 @@ class QuadrupedLeg(FkIkSpringChain):
         for joint in foot_joints:
             self.driving_chain.remove(joint)
 
+    def _create_ik_handle(self):
+        ik_chain = self.chain_b.get()
+        ik_handle, effector = cmds.ikHandle(
+            startJoint=ik_chain[0],
+            endEffector=ik_chain[-1],
+            solver='ikSpringSolver'
+        )
+        self.ik_handle.set(ik_handle)
+        cmds.parent(ik_handle, self.extras_group.get())
+        cmds.poleVectorConstraint(self.ik_pv_ctl.get(), ik_handle)
+
     def build(self):
         super(QuadrupedLeg, self).build()
         self._setup_leg_angle()
+        self._setup_foot()
 
         # set the leg in IK by default
         cmds.setAttr(
@@ -97,6 +163,181 @@ class QuadrupedLeg(FkIkSpringChain):
         cmds.connectAttr(
             reverse + '.outputX',
             self.ik_handle.get() + '.springAngleBias[1].springAngleBias_FloatValue'
+        )
+
+    def _setup_foot(self):
+        self._add_foot_attributes()
+        self._create_foot_pivots()
+        self._connect_attrs_to_pivots()
+        icarus.dag.matrix_constraint(
+            self.bank_int_pivot.get(),
+            self.ik_handle.get(),
+            maintain_offset=True
+        )
+        tip_ik_handle, effector = cmds.ikHandle(
+            startJoint=self.driving_chain[-1],  # ankle joint
+            endEffector=self.foot_driving_joints[-1],  # ball joint 
+            sol='ikSCsolver'
+        )
+        cmds.parent(tip_ik_handle, self.bank_int_pivot.get())
+
+    def _add_foot_attributes(self):
+        ctl = self.ik_end_ctl.get()
+        cmds.addAttr(
+            ctl,
+            longName='footRoll',
+            attributeType='double',
+            hasMinValue=True,
+            minValue=-180,
+            hasMaxValue=True,
+            maxValue=180,
+            keyable=True
+        )
+        cmds.addAttr(
+            ctl,
+            longName='footTwist',
+            attributeType='double',
+            keyable=True
+        )
+        cmds.addAttr(
+            ctl,
+            longName='footBank',
+            attributeType='double',
+            hasMinValue=True,
+            minValue=-180,
+            hasMaxValue=True,
+            maxValue=180,
+            keyable=True
+        )
+
+    def _create_foot_pivots(self):
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'grp',
+            'description': 'foot_pivots'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        pivots_grp = cmds.createNode('transform', name=name)
+        icarus.dag.snap_first_to_last(pivots_grp, self.extras_group.get())
+        cmds.parent(pivots_grp, self.extras_group.get())
+        icarus.dag.matrix_constraint(self.ik_end_ctl.get(), pivots_grp, maintain_offset=True)
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'pivot',
+            'description': 'twist'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self.twist_pivot.set(cmds.spaceLocator(name=name)[0])
+        icarus.dag.snap_first_to_last(
+            self.twist_pivot.get(),
+            self.twist_placement.get()
+        )
+        cmds.parent(self.twist_pivot.get(), pivots_grp)
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'pivot',
+            'description': 'heel'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self.heel_pivot.set(cmds.spaceLocator(name=name)[0])
+        icarus.dag.snap_first_to_last(
+            self.heel_pivot.get(),
+            self.heel_placement.get()
+        )
+        cmds.parent(self.heel_pivot.get(), self.twist_pivot.get())
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'pivot',
+            'description': 'tip'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self.tip_pivot.set(cmds.spaceLocator(name=name)[0])
+        icarus.dag.snap_first_to_last(
+            self.tip_pivot.get(),
+            self.tip_placement.get()
+        )
+        cmds.parent(self.tip_pivot.get(), self.heel_pivot.get())
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'pivot',
+            'description': 'bank_ext'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self.bank_ext_pivot.set(cmds.spaceLocator(name=name)[0])
+        icarus.dag.snap_first_to_last(
+            self.bank_ext_pivot.get(),
+            self.bank_ext_placement.get()
+        )
+        cmds.parent(self.bank_ext_pivot.get(), self.tip_pivot.get())
+
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': 'pivot',
+            'description': 'bank_int'
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        self.bank_int_pivot.set(cmds.spaceLocator(name=name)[0])
+        icarus.dag.snap_first_to_last(
+            self.bank_int_pivot.get(),
+            self.bank_int_placement.get()
+        )
+        cmds.parent(self.bank_int_pivot.get(), self.bank_ext_pivot.get())
+
+    def _connect_attrs_to_pivots(self):
+        clamp_tip = cmds.createNode('clamp')
+        clamp_heel = cmds.createNode('clamp')
+        cmds.connectAttr(
+            self.ik_end_ctl.get() + '.footRoll',
+            clamp_tip + '.inputR' 
+        )
+        cmds.connectAttr(
+            self.ik_end_ctl.get() + '.footRoll',
+            clamp_heel + '.inputR' 
+        )
+        cmds.setAttr(clamp_heel + '.minR', -180)
+        cmds.setAttr(clamp_tip + '.maxR', 180)
+        cmds.connectAttr(
+            clamp_heel + '.outputR',
+            self.heel_pivot.get() + '.rotateX'
+        )
+        cmds.connectAttr(
+            clamp_tip + '.outputR',
+            self.tip_pivot.get() + '.rotateX'
+        )
+
+        cmds.connectAttr(
+            self.ik_end_ctl.get() + '.footTwist',
+            self.twist_pivot.get() + '.rotateY'
+        )
+        clamp_int = cmds.createNode('clamp')
+        clamp_ext = cmds.createNode('clamp')
+        cmds.connectAttr(
+            self.ik_end_ctl.get() + '.footBank',
+            clamp_int + '.inputR'
+        )
+        cmds.connectAttr(
+            self.ik_end_ctl.get() + '.footBank',
+            clamp_ext + '.inputR'
+        )
+        cmds.setAttr(clamp_int + '.minR', -180)
+        cmds.setAttr(clamp_ext + '.maxR', 180)
+        cmds.connectAttr(
+            clamp_int + '.outputR',
+            self.bank_ext_pivot.get() + '.rotateZ',
+        )
+        cmds.connectAttr(
+            clamp_ext + '.outputR',
+            self.bank_int_pivot.get() + '.rotateZ',
         )
 
 
