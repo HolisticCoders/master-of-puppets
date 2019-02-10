@@ -14,17 +14,7 @@ class Root(RigModule):
         self._add_deform_joint()
 
     def build(self):
-        try:
-            cmds.makeIdentity(
-                self.deform_joints.get()[0],
-                apply=True,
-                rotate=True
-            )
-        except RuntimeError:
-            logger.warning(
-                "couldn't bake the joints' rotation to the jointOrient "
-                "because some of the joints are connected to a skinCluster."
-            )
+        pass
 
 
 exported_rig_modules = [Root]
