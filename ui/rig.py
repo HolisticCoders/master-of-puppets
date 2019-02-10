@@ -1,3 +1,4 @@
+import json
 import pdb
 from collections import defaultdict
 from weakref import WeakKeyDictionary, WeakSet
@@ -30,7 +31,7 @@ class RigPanel(QtWidgets.QWidget):
         self.modules_group.setLayout(modules_layout)
         self.actions_group.setLayout(actions_layout)
 
-        self.tree_view = QtWidgets.QTreeView()
+        self.tree_view = ModulesTree()
         modules_layout.addWidget(self.tree_view)
 
         refresh_button = QtWidgets.QPushButton('Refresh')
@@ -112,6 +113,19 @@ class RigPanel(QtWidgets.QWidget):
     def _on_current_changed(self, current, previous):
         pointer = current.internalPointer()
         publish('selected-module-changed', pointer)
+
+
+class ModulesTree(QtWidgets.QTreeView):
+    """A tree view for modules and their deform joints.
+
+    You can drag and drop a module on a joint to parent it.
+    """
+
+    def __init__(self, parent=None):
+        super(ModulesTree, self).__init__(parent)
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
 
 
 class ModulesModel(QtCore.QAbstractItemModel):
@@ -222,3 +236,84 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
         row = great_children.index(parent_pointer)
         return self.createIndex(row, 0, parent_pointer)
+
+    def flags(self, index):
+        default_flags = super(ModulesModel, self).flags(index)
+        if index.isValid():
+            if not isinstance(index.internalPointer(), basestring):
+                # Only allow modules to be dragged.
+                return (QtCore.Qt.ItemIsDragEnabled
+                        | QtCore.Qt.ItemIsDropEnabled
+                        | default_flags)
+        return QtCore.Qt.ItemIsDropEnabled | default_flags
+
+    def supportedDropActions(self):
+        return QtCore.Qt.MoveAction
+
+    def mimeTypes(self):
+        return ['application/text']
+
+    def mimeData(self, indices):
+        data = QtCore.QMimeData()
+        names = []
+        for index in indices:
+            if not index.isValid():
+                continue
+            names.append(self.data(index, QtCore.Qt.DisplayRole))
+        data.setData('application/text', json.dumps(names))
+        return data
+
+    def canDropMimeData(self, data, action, row, column, parent):
+        if not data.hasFormat('application/text'):
+            return False
+        if column > 0:
+            return False
+        if not parent.isValid():
+            return False
+        if not isinstance(parent.internalPointer(), basestring):
+            # Only allow modules to be dropped on joints.
+            return False
+        return True
+
+    def dropMimeData(self, data, action, row, column, parent):
+        if not self.canDropMimeData(data, action, row, column, parent):
+            return False
+        if action == QtCore.Qt.IgnoreAction:
+            return True
+
+        names = json.loads(data.data('application/text').data())
+
+        parent_pointer = None
+        if parent.isValid():
+            parent_pointer = parent.internalPointer()
+
+        drop_row = 0
+        if row != -1:
+            drop_row = row
+        elif parent.isValid():
+            drop_row = parent.row()
+        else:
+            drop_row = self.rowCount(QtCore.QModelIndex())
+
+        if parent_pointer and not isinstance(parent_pointer, basestring):
+            # We hit a parent module, selected module has been dropped
+            # after the deform joint and not on it, so select the deform
+            # joint just before `drop_row`.
+            joint_index = self.index(drop_row - 1, column, parent)
+        else:
+            joint_index = parent
+
+        joint = None
+        if joint_index.isValid():
+            joint = joint_index.internalPointer()
+
+        rig = Rig()
+        last_module = None
+        for name in names:
+            module = rig.get_module(name)
+            module.parent_joint.set(joint)
+            last_module = module
+
+        publish('module-updated', last_module)
+
+        return True
