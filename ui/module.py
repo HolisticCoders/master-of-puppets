@@ -50,9 +50,17 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         subscribe('selected-module-changed', self._on_module_selected)
 
-    def _on_module_selected(self, module):
-        """Update the module to edit."""
-        self.module = module
+    def _on_module_selected(self, pointer):
+        """Update the module to edit.
+
+        :param pointer: Data to the selected module.
+                        It can be either a module or a joint.
+        :type pointer: icarus.core.module.RigModule or str
+        """
+        if isinstance(pointer, basestring):
+            self.module = None
+        else:
+            self.module = pointer
         self._update_ui()
 
     def _update_module(self):

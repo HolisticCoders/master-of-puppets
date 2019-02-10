@@ -1,4 +1,6 @@
-from weakref import WeakKeyDictionary
+import pdb
+from collections import defaultdict
+from weakref import WeakKeyDictionary, WeakSet
 
 from icarus.vendor.Qt import QtWidgets, QtCore
 from icarus.core.rig import Rig
@@ -106,68 +108,115 @@ class RigPanel(QtWidgets.QWidget):
                 return _index
 
     def _on_current_changed(self, current, previous):
-        module = current.internalPointer()
-        publish('selected-module-changed', module)
+        pointer = current.internalPointer()
+        publish('selected-module-changed', pointer)
 
 
 class ModulesModel(QtCore.QAbstractItemModel):
-    def __init__(self):
-        super(ModulesModel, self).__init__()
-        self._parent_modules_cache = WeakKeyDictionary()
+    """A model storing modules and their deform joints.
+
+    In this model, joints are stored as :class:`str` instances,
+    and modules as :class:`icarus.core.module.RigModule`.
+    """
+
+    def __init__(self, parent=None):
+        super(ModulesModel, self).__init__(parent)
         self.invalidate_cache()
 
     def invalidate_cache(self):
         """Refresh the cache."""
         rig = Rig()
         self.modules = rig.rig_modules
+
+        self._top_level_modules = []
+        self._joints_parent_module = {}
+        self._joints_child_modules = defaultdict(list)
+        self._modules_parent_joint = {}
+        self._modules_child_joints = defaultdict(list)
+
         for module in self.modules:
-            self._parent_modules_cache[module] = module.parent_module
+            parent = module.parent_joint.get()
+            self._modules_parent_joint[module] = parent
+            self._joints_child_modules[parent].append(module)
+            if parent is None:
+                self._top_level_modules.append(module)
+            for joint in module.deform_joints:
+                self._joints_parent_module[joint] = module
+                self._modules_child_joints[module].append(joint)
 
     def rowCount(self, parent):
         if not parent.isValid():
-            return len([
-                m for m in self.modules
-                if self._parent_modules_cache[m] is None
-            ])
+            return len(self._top_level_modules)
         else:
-            parent_module = parent.internalPointer()
-            children = [
-                m for m in self.modules
-                if self._parent_modules_cache[m] is parent_module
-            ]
-            return len(children)
+            pointer = parent.internalPointer()
+            if isinstance(pointer, basestring):
+                # We got ourselves a joint.
+                return len(self._joints_child_modules[pointer])
+            elif pointer:
+                # We found a module.
+                return len(self._modules_child_joints[pointer])
+        return 0
 
     def columnCount(self, parent):
         return 1
 
     def data(self, index, role):
-        module = index.internalPointer()
+        if not index.isValid():
+            return None
+        pointer = index.internalPointer()
         if role == QtCore.Qt.DisplayRole:
-            return module.node_name
+            if isinstance(pointer, basestring):
+                return pointer
+            return pointer.node_name
 
     def index(self, row, column, parent):
-        parent_module = parent.internalPointer() if parent.isValid() else None
-        children = [
-            m for m in self.modules
-            if self._parent_modules_cache[m] is parent_module
-        ]
+        if not parent.isValid():
+            # We have a top level module.
+            try:
+                module = self._top_level_modules[row]
+            except IndexError:
+                return QtCore.QModelIndex()
+            return self.createIndex(row, column, module)
+
+        parent_pointer = parent.internalPointer()
+        if isinstance(parent_pointer, basestring):
+            children = self._joints_child_modules[parent_pointer]
+        elif parent_pointer:
+            children = self._modules_child_joints[parent_pointer]
+
         try:
-            module = children[row]
+            pointer = children[row]
         except IndexError:
             return QtCore.QModelIndex()
-        return self.createIndex(row, column, module)
+
+        return self.createIndex(row, column, pointer)
 
     def parent(self, index):
-        module = index.internalPointer()
-        parent_module = self._parent_modules_cache[module]
-
-        if not parent_module:
+        if not index.isValid():
             return QtCore.QModelIndex()
 
-        great_parent_module = self._parent_modules_cache[parent_module]
-        great_children = [
-            m for m in self.modules
-            if self._parent_modules_cache[m] is great_parent_module
-        ]
-        row = great_children.index(parent_module)
-        return self.createIndex(row, 0, parent_module)
+        pointer = index.internalPointer()
+        if isinstance(pointer, basestring):
+            # We got a joint, so the parent pointer
+            # will be a module.
+            # We must find the module 
+            parent_pointer = self._joints_parent_module[pointer]
+        elif pointer:
+            parent_pointer = self._modules_parent_joint[pointer]
+            if not parent_pointer:
+                # We hit a top-level module.
+                return QtCore.QModelIndex()
+
+        if isinstance(parent_pointer, basestring):
+            great_parent_pointer = self._joints_parent_module[parent_pointer]
+            great_children = self._modules_child_joints[great_parent_pointer]
+        elif parent_pointer:
+            great_parent_pointer = self._modules_parent_joint[parent_pointer]
+            if not great_parent_pointer:
+                # We hit a top-level module.
+                row = self._top_level_modules.index(parent_pointer)
+                return self.createIndex(row, 0, self._top_level_modules[row])
+            great_children = self._joints_child_modules[great_parent_pointer]
+
+        row = great_children.index(parent_pointer)
+        return self.createIndex(row, 0, parent_pointer)
