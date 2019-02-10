@@ -101,8 +101,10 @@ class RigPanel(QtWidgets.QWidget):
         name = module.node_name
         for i in xrange(self.model.rowCount(index)):
             child = self.model.index(i, 0, index)
-            if child.internalPointer().node_name == name:
-                return child
+            pointer = child.internalPointer()
+            if not isinstance(pointer, basestring):
+                if pointer.node_name == name:
+                    return child
             _index = self._find_index(module, child)
             if _index:
                 return _index
@@ -199,7 +201,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
         if isinstance(pointer, basestring):
             # We got a joint, so the parent pointer
             # will be a module.
-            # We must find the module 
+            # We must find the module
             parent_pointer = self._joints_parent_module[pointer]
         elif pointer:
             parent_pointer = self._modules_parent_joint[pointer]
