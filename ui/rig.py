@@ -3,7 +3,7 @@ import pdb
 from collections import defaultdict
 from weakref import WeakKeyDictionary, WeakSet
 
-from icarus.vendor.Qt import QtWidgets, QtCore
+from icarus.vendor.Qt import QtCore, QtGui, QtWidgets
 from icarus.core.rig import Rig
 from icarus.ui.signals import publish, subscribe
 from icarus.ui.commands import build_rig, unbuild_rig, publish_rig
@@ -184,6 +184,10 @@ class ModulesModel(QtCore.QAbstractItemModel):
             if isinstance(pointer, basestring):
                 return pointer
             return pointer.node_name
+        elif role == QtCore.Qt.DecorationRole:
+            if isinstance(pointer, basestring):
+                return QtGui.QIcon(':kinJoint.png')
+            return QtGui.QIcon(':out_transform.png')
 
     def index(self, row, column, parent):
         if not parent.isValid():
