@@ -239,6 +239,8 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
     def flags(self, index):
         default_flags = super(ModulesModel, self).flags(index)
+        if Rig().is_built.get():
+            return default_flags
         if index.isValid():
             if not isinstance(index.internalPointer(), basestring):
                 # Only allow modules to be dragged.
@@ -264,6 +266,8 @@ class ModulesModel(QtCore.QAbstractItemModel):
         return data
 
     def canDropMimeData(self, data, action, row, column, parent):
+        if Rig().is_built.get():
+            return False
         if not data.hasFormat('application/text'):
             return False
         if column > 0:
