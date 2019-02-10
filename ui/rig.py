@@ -312,6 +312,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
         for name in names:
             module = rig.get_module(name)
             module.parent_joint.set(joint)
+            module.update()
             last_module = module
 
         publish('module-updated', last_module)
