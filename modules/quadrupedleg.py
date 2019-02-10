@@ -136,9 +136,9 @@ class QuadrupedLeg(FkIkSpringChain):
             longName='legBendAngle',
             attributeType='double',
             hasMinValue=True,
-            minValue=-1,
+            minValue=-10,
             hasMaxValue=True,
-            maxValue=1,
+            maxValue=10,
             keyable=True
         )
 
@@ -148,8 +148,8 @@ class QuadrupedLeg(FkIkSpringChain):
             self.ik_end_ctl.get() + '.legBendAngle',
             set_range + '.valueX'
         )
-        cmds.setAttr(set_range + '.oldMinX', -1)
-        cmds.setAttr(set_range + '.oldMaxX', 1)
+        cmds.setAttr(set_range + '.oldMinX', -10)
+        cmds.setAttr(set_range + '.oldMaxX', 10)
         cmds.setAttr(set_range + '.minX', 0)
         cmds.setAttr(set_range + '.maxX', 1)
         cmds.connectAttr(
