@@ -40,9 +40,22 @@ class CreationPanel(QtWidgets.QDockWidget):
 
     def _create_module(self, module_type):
         rig = Rig()
+        name = module_type.lower()
+        for module in rig.rig_modules:
+            if module.name.get() == name:
+                _ = QtWidgets.QMessageBox.critical(
+                    self,
+                    'Icarus - Create Module',
+                    'A module named "%s" already exists, please '
+                    'rename it or choose another name.' % name,
+                    QtWidgets.QMessageBox.Ok,
+                    QtWidgets.QMessageBox.Ok
+                )
+                return
+
         module = rig.add_module(
             module_type,
-            name=module_type.lower(),
+            name=name,
             parent_joint='root_M_000_deform'
         )
 
