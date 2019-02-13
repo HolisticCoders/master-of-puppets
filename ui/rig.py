@@ -225,7 +225,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
         elif role == QtCore.Qt.DecorationRole:
             if isinstance(pointer, basestring):
                 return QtGui.QIcon(':kinJoint.png')
-            return QtGui.QIcon(':advancedSettings.png')
+            return QtGui.QIcon(':QR_settings.png')
         elif role == QtCore.Qt.ForegroundRole:
             if not self._show_colors:
                 return
