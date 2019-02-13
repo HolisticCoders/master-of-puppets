@@ -17,11 +17,7 @@ class Corrective(RigModule):
         minValue=1
     )
 
-    vector_base = ObjectField(
-        displayable=True,
-        editable=True,
-    ) 
-
+    vector_base = ObjectField() 
     vector_base_loc = ObjectField()
     vector_tip_loc = ObjectField()
     orig_pose_vector_tip_loc = ObjectField()
@@ -30,7 +26,6 @@ class Corrective(RigModule):
         super(Corrective, self).initialize()
         for i in xrange(self.joint_count.get()):
             self._add_deform_joint()
-        self.vector_base.set(self.parent_joint.get())
 
     def update(self):
         super(Corrective, self).update()
@@ -55,6 +50,7 @@ class Corrective(RigModule):
             cmds.delete(joints_to_delete)
 
     def build(self):
+        self.vector_base.set(self.parent_joint.get())
         self.create_locators()
         value_range = self._build_angle_reader()
         for joint in self.driving_joints:
