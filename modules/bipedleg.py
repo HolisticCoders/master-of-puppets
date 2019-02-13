@@ -3,11 +3,11 @@ import maya.cmds as cmds
 import icarus.metadata
 
 from icarus.core.fields import IntField, ObjectListField, ObjectField
-from icarus.modules.fkikrpchain import FkIkRPChain
+from icarus.modules.fkikrpchain import FkIkRotatePlaneChain
 # from icarus.common.foot import build_foot
 
 
-class BipedLeg(FkIkRPChain):
+class BipedLeg(FkIkRotatePlaneChain):
 
     joint_count = IntField(
         defaultValue=5,

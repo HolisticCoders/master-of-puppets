@@ -11,7 +11,7 @@ from icarus.core.fields import (
 import icarus.metadata
 
 
-class FkIkRPChain(FkIkChain):
+class FkIkRotatePlaneChain(FkIkChain):
 
     joint_count = IntField(
         defaultValue=3,
@@ -74,4 +74,4 @@ class FkIkRPChain(FkIkChain):
         cmds.xform(buffer_group, worldSpace=1, translation=pv_control_vec)
 
 
-exported_rig_modules = [FkIkRPChain]
+exported_rig_modules = [FkIkRotatePlaneChain]
