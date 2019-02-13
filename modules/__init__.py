@@ -1,5 +1,6 @@
 import os
 import importlib
+from collections import OrderedDict
 
 
 all_rig_modules = {}
@@ -15,3 +16,5 @@ for mod in os.listdir(current_dir):
     current_mod = importlib.import_module(mod_name)
     for rig_module in current_mod.exported_rig_modules:
         all_rig_modules[rig_module.__name__] = rig_module
+
+all_rig_modules = OrderedDict(sorted(all_rig_modules.items()))
