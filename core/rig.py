@@ -150,6 +150,7 @@ class Rig(IcarusNode):
                 if attributes_state:
                     attributes_state = json.loads(attributes_state)
                     icarus.attributes.set_attributes_state(ctl, attributes_state)
+            cmds.setAttr(module.placement_group.get() + '.visibility', False)
 
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
@@ -184,6 +185,7 @@ class Rig(IcarusNode):
                     json.dumps(attributes_state),
                     type='string'
                 )
+            cmds.setAttr(module.placement_group.get() + '.visibility', True)
 
         for node in self.skeleton:
             for attribute in ['.translate', '.rotate', '.scale']:
