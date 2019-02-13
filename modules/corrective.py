@@ -17,11 +17,7 @@ class Corrective(RigModule):
         minValue=1
     )
 
-    vector_base = ObjectField(
-        displayable=True,
-        editable=True,
-    ) 
-
+    vector_base = ObjectField() 
     vector_base_loc = ObjectField()
     vector_tip_loc = ObjectField()
     orig_pose_vector_tip_loc = ObjectField()
@@ -30,7 +26,6 @@ class Corrective(RigModule):
         super(Corrective, self).initialize()
         for i in xrange(self.joint_count.get()):
             self._add_deform_joint()
-        self.vector_base.set(self.parent_joint.get())
 
     def update(self):
         super(Corrective, self).update()
@@ -55,6 +50,7 @@ class Corrective(RigModule):
             cmds.delete(joints_to_delete)
 
     def build(self):
+        self.vector_base.set(self.parent_joint.get())
         self.create_locators()
         value_range = self._build_angle_reader()
         for joint in self.driving_joints:
@@ -251,10 +247,9 @@ class Corrective(RigModule):
         ctl, parent_group = self.add_control(joint)
 
         icarus.dag.snap_first_to_last(parent_group, joint)
-        cmds.parent(ctl, self.controls_group.get())
+        cmds.parent(parent_group, self.controls_group.get())
 
         offset_group = icarus.dag.add_parent_group(ctl, 'offset')
-        icarus.dag.add_parent_group(ctl, 'buffer')
         icarus.dag.matrix_constraint(ctl, joint)
 
         icarus.attributes.create_persistent_attribute(
