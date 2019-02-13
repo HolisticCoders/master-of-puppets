@@ -251,10 +251,9 @@ class Corrective(RigModule):
         ctl, parent_group = self.add_control(joint)
 
         icarus.dag.snap_first_to_last(parent_group, joint)
-        cmds.parent(ctl, self.controls_group.get())
+        cmds.parent(parent_group, self.controls_group.get())
 
         offset_group = icarus.dag.add_parent_group(ctl, 'offset')
-        icarus.dag.add_parent_group(ctl, 'buffer')
         icarus.dag.matrix_constraint(ctl, joint)
 
         icarus.attributes.create_persistent_attribute(
