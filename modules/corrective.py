@@ -310,14 +310,14 @@ class Corrective(RigModule):
                 ctl,
                 self.node_name,
                 ln='offset' + 'Positive' + axis,
-                attributeType='long',
+                attributeType='double',
                 keyable=True
             )
             icarus.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
                 ln='offset' + 'Negative' + axis,
-                attributeType='long',
+                attributeType='double',
                 keyable=True
             )
 
