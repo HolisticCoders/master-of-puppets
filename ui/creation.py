@@ -60,7 +60,6 @@ class CreationPanel(QtWidgets.QDockWidget):
                 parent_joint='root_M_000_deform'
             )
         except RuntimeError as err:
-            print err
             QtWidgets.QMessageBox.critical(
                 self,
                 'Icarus - Create Module',
