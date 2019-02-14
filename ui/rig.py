@@ -35,10 +35,10 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
-        show_colors = QtWidgets.QCheckBox('Show Colors')
-        options_layout.addWidget(show_colors)
+        random_colors = QtWidgets.QCheckBox('Random Colors')
+        options_layout.addWidget(random_colors)
 
-        show_colors.toggled.connect(self._on_show_colors_toggled)
+        random_colors.toggled.connect(self._on_random_colors_toggled)
 
         self.tree_view = ModulesTree()
         modules_layout.addWidget(self.tree_view)
@@ -119,13 +119,13 @@ class RigPanel(QtWidgets.QWidget):
             if _index:
                 return _index
 
-    def _on_show_colors_toggled(self, checked):
+    def _on_random_colors_toggled(self, checked):
         if not self.model:
             return
         if checked:
-            self.model.show_colors()
+            self.model.random_colors_on()
         else:
-            self.model.hide_colors()
+            self.model.random_colors_off()
 
     def _on_current_changed(self, current, previous):
         pointer = current.internalPointer()
@@ -154,8 +154,8 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
     def __init__(self, parent=None):
         super(ModulesModel, self).__init__(parent)
+        self._random_colors = False
         self.invalidate_cache()
-        self._show_colors = False
 
     def invalidate_cache(self):
         """Refresh the cache."""
@@ -180,8 +180,8 @@ class ModulesModel(QtCore.QAbstractItemModel):
                 self._joints_parent_module[joint] = module
                 self._modules_child_joints[module].append(joint)
 
-    def show_colors(self):
-        self._show_colors = True
+    def random_colors_on(self):
+        self._random_colors = True
         parent = QtCore.QModelIndex()
         self.dataChanged.emit(
             self.index(0, 0, parent),
@@ -189,8 +189,8 @@ class ModulesModel(QtCore.QAbstractItemModel):
             [QtCore.Qt.ForegroundRole],
         )
 
-    def hide_colors(self):
-        self._show_colors = False
+    def random_colors_off(self):
+        self._random_colors = False
         parent = QtCore.QModelIndex()
         self.dataChanged.emit(
             self.index(0, 0, parent),
@@ -227,7 +227,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
                 return QtGui.QIcon(':kinJoint.png')
             return QtGui.QIcon(':QR_settings.png')
         elif role == QtCore.Qt.ForegroundRole:
-            if not self._show_colors:
+            if not self._random_colors:
                 return
             if isinstance(pointer, basestring):
                 module = index.parent().internalPointer()
