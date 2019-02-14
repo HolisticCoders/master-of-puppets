@@ -93,8 +93,11 @@ class Rig(IcarusNode):
 
     @undoable
     def add_module(self, module_type, *args, **kwargs):
+        if self.is_built.get():
+            raise RuntimeError('Cannot add module when the rig is built.')
+
         if module_type not in all_rig_modules:
-            raise Exception("Module Type {} is not valid".format(module_type))
+            raise ValueError("Module Type {} is not valid".format(module_type))
 
         # instantiate the new module from the list of possible modules.
         kwargs['rig'] = self

@@ -43,7 +43,7 @@ class CreationPanel(QtWidgets.QDockWidget):
         name = module_type.lower()
         for module in rig.rig_modules:
             if module.name.get() == name:
-                _ = QtWidgets.QMessageBox.critical(
+                QtWidgets.QMessageBox.critical(
                     self,
                     'Icarus - Create Module',
                     'A module named "%s" already exists, please '
@@ -53,10 +53,20 @@ class CreationPanel(QtWidgets.QDockWidget):
                 )
                 return
 
-        module = rig.add_module(
-            module_type,
-            name=name,
-            parent_joint='root_M_000_deform'
-        )
+        try:
+            module = rig.add_module(
+                module_type,
+                name=name,
+                parent_joint='root_M_000_deform'
+            )
+        except RuntimeError as err:
+            print err
+            QtWidgets.QMessageBox.critical(
+                self,
+                'Icarus - Create Module',
+                str(err),
+                QtWidgets.QMessageBox.Ok,
+                QtWidgets.QMessageBox.Ok
+            )
 
         publish('module-created', module)
