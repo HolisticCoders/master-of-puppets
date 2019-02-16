@@ -21,7 +21,8 @@ class RigModule(IcarusNode):
     name = StringField(
         displayable=True,
         editable=True,
-        gui_order=-2  # make sure it's always on top
+        gui_order=-2,  # make sure it's always on top
+        unique=True,
     )
     side = StringField(
         displayable=True,
