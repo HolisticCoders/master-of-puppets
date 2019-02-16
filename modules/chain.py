@@ -126,18 +126,15 @@ class Chain(RigModule):
             parent = deform_chain[-1]
         else:
             parent = self.parent_joint.get()
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'deform',
-            'id': len(self.deform_chain)
-        }
-        joint_name = icarus.metadata.name_from_metadata(metadata)
-        joint = self._add_deform_joint(name=joint_name, parent=parent)
+        joint = self._add_deform_joint(
+            parent=parent,
+            object_id=len(self.deform_chain)
+        )
         self.deform_chain.append(joint)
         return joint
 
     def _add_twist_deform_joints(self, parent, index):
+        # construct the description to include the parent joint's id
         metadata = icarus.metadata.metadata_from_name(parent)
         description_data = []
         if metadata['description']:
@@ -145,10 +142,13 @@ class Chain(RigModule):
         if metadata['id'] is not None:
             description_data.append(str(metadata['id']).zfill(3))
         description_data.append('twist')
-        metadata['description'] = '_'.join(description_data)
-        metadata['id'] = index
+
         name = icarus.metadata.name_from_metadata(metadata)
-        twist_joint = self._add_deform_joint(name=name, parent=parent)
+        twist_joint = self._add_deform_joint(
+            parent=parent,
+            object_id=index,
+            description='_'.join(description_data)
+        )
         self.deform_twists.append(twist_joint)
 
     def _update_chain_joint_count(self):

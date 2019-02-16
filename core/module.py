@@ -29,6 +29,8 @@ class RigModule(IcarusNode):
         gui_order=-2  # make sure it's always on top
     )
 
+    owned_nodes = ObjectListField()
+
     # Joint of the rig skeleton under which the deform joints will be parented.
     parent_joint = ObjectField()
 
@@ -269,25 +271,73 @@ class RigModule(IcarusNode):
         """
         cmds.setAttr(self.extras_group.get() + '.visibility', False)
 
-    def _add_deform_joint(self, name=None, parent=None):
+    def add_node(
+        self,
+        node_type,
+        role,
+        object_id=None,
+        description=None,
+        *args,
+        **kwargs
+    ):
+        """Add a node to this `IcarusNode`.
+
+        args and kwargs will directly be passed to ``cmds.createNode()``
+
+        :param node_type: type of the node to create, will be passed to ``cmds.createNode()``.
+        :type node_type: str
+        :param role: role of the node (this will be the last part of its name).
+        :type role: str
+        :param object_id: optional index for the node.
+        :type object_id: int
+        :param description: optional description for the node
+        :type object_id: str
+        """
+        print args
+        print kwargs
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': role,
+            'description': description,
+            'id': object_id
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        if cmds.objExists(name):
+            raise ValueError("A node with the name `{}` already exists".format(name))
+        node = cmds.createNode(node_type, name=name, *args, **kwargs)
+        cmds.addAttr(
+            node,
+            longName='module',
+            attributeType = 'message'
+        )
+        cmds.connectAttr(
+            self.node_name + '.message',
+            node + '.module'
+        )
+        self.owned_nodes.append(node)
+        return node
+
+    def _add_deform_joint(
+        self,
+        parent=None,
+        object_id=None,
+        description=None,
+    ):
         """Creates a new deform joint for this module.
 
         Args:
-            name (str): name of the joint, in case you don't want the default one.
             parent (str): node under which the new joint will be parented
         """
-        object_id = len(self.deform_joints)
-        if name is not None:
-            new_joint = name
-        else:
-            metadata = {
-                'base_name': self.name.get(),
-                'side': self.side.get(),
-                'role': 'deform',
-                'id': object_id
-            }
-            new_joint = icarus.metadata.name_from_metadata(metadata)
-        cmds.createNode('joint', name=new_joint)
+        if not object_id:
+            object_id = len(self.deform_joints)
+
+        new_joint = self.add_node(
+            'joint',
+            role='deform',
+            object_id=object_id,
+            description=description
+        )
 
         if not parent:
             parent = self.parent_joint.get()
