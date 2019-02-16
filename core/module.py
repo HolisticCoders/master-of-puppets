@@ -90,6 +90,7 @@ class RigModule(IcarusNode):
                 icarus.dag.matrix_constraint(parent_joint, self.node_name)
 
             self.initialize()
+            self.update()
             self.is_initialized.set(True)
 
     @property

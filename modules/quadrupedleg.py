@@ -1,7 +1,7 @@
 import maya.cmds as cmds
 
 from icarus.modules.fkikspringchain import FkIkSpringChain
-from icarus.core.fields import IntField, ObjectField, ObjectListField
+from icarus.core.fields import IntField, ObjectField, ObjectListField, EnumField
 import icarus.metadata
 
 
@@ -31,6 +31,7 @@ class QuadrupedLeg(FkIkSpringChain):
 
     def initialize(self):
         super(QuadrupedLeg, self).initialize()
+        self.side.set('L')
         self.ik_start_description.set('IK_ankle')
         self.ik_end_description.set('IK_hip')
 

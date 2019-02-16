@@ -2,7 +2,7 @@ import maya.cmds as cmds
 
 import icarus.metadata
 
-from icarus.core.fields import IntField, ObjectListField, ObjectField
+from icarus.core.fields import IntField, ObjectListField, ObjectField, EnumField
 from icarus.modules.fkikrpchain import FkIkRotatePlaneChain
 # from icarus.common.foot import build_foot
 
@@ -35,6 +35,7 @@ class BipedLeg(FkIkRotatePlaneChain):
 
     def initialize(self):
         super(BipedLeg, self).initialize()
+        self.side.set('L')
         self.ik_start_description.set('IK_ankle')
         self.ik_end_description.set('IK_hip')
 
