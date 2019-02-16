@@ -63,8 +63,8 @@ class RigPanel(QtWidgets.QWidget):
         publish_button.released.connect(publish_rig)
 
         subscribe('module-created', self._refresh_model)
-        subscribe('module-updated', self._refresh_model)
-        subscribe('module-deleted', self._refresh_model)
+        subscribe('modules-updated', self._refresh_model)
+        subscribe('modules-deleted', self._refresh_model)
 
     def _refresh_model(self, module=None):
         self.model = ModulesModel()
@@ -72,7 +72,7 @@ class RigPanel(QtWidgets.QWidget):
         self.tree_view.expandAll()
 
         selection = self.tree_view.selectionModel()
-        selection.currentChanged.connect(self._on_current_changed)
+        selection.selectionChanged.connect(self._on_selection_changed)
 
         # Find the index of the new module.
         # NOTE: maybe optimize this part, and keep the same
@@ -81,7 +81,7 @@ class RigPanel(QtWidgets.QWidget):
         if module:
             index = self._find_index(module)
             if index:
-                self.tree_view.selectionModel().setCurrentIndex(
+                selection.setCurrentIndex(
                     index,
                     QtCore.QItemSelectionModel.SelectCurrent,
                 )
@@ -124,9 +124,11 @@ class RigPanel(QtWidgets.QWidget):
         else:
             self.model.random_colors_off()
 
-    def _on_current_changed(self, current, previous):
-        pointer = current.internalPointer()
-        publish('selected-module-changed', pointer)
+    def _on_selection_changed(self, selected, deselected):
+        selection = self.tree_view.selectionModel()
+        selected = selection.selectedRows()
+        pointer = [index.internalPointer() for index in selected]
+        publish('selected-modules-changed', pointer)
 
 
 class ModulesTree(QtWidgets.QTreeView):
@@ -140,6 +142,9 @@ class ModulesTree(QtWidgets.QTreeView):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
+        self.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
 
 
 class ModulesModel(QtCore.QAbstractItemModel):
@@ -386,6 +391,6 @@ class ModulesModel(QtCore.QAbstractItemModel):
             module.update()
             last_module = module
 
-        publish('module-updated', last_module)
+        publish('modules-updated', last_module)
 
         return True

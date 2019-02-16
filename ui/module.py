@@ -48,64 +48,87 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.delete_button.released.connect(self._delete_module)
         self.delete_button.hide()
 
-        subscribe('selected-module-changed', self._on_module_selected)
+        subscribe('selected-modules-changed', self._on_selection_changed)
 
-    def _on_module_selected(self, pointer):
+    def _on_selection_changed(self, modules):
         """Update the module to edit.
 
+        ``modules`` argument is a :class:`list` of
+        :class:`icarus.core.module.RigModule` and/or :class:`str`
+        instances.
+
         :param pointer: Data to the selected module.
-                        It can be either a module or a joint.
-        :type pointer: icarus.core.module.RigModule or str
+                        It is a list of modules and/or joints.
+        :type pointer: list
         """
-        if isinstance(pointer, basestring):
-            self.module = None
-        else:
-            self.module = pointer
+
+        def is_module(module):
+            return not isinstance(module, basestring)
+
+        self.modules = filter(is_module, modules)
         self._update_ui()
 
     def _update_module(self):
         """Update the Maya module."""
-        if not self.module:
+        if not self.modules:
             return
-        for name, widget in self._module_widgets.iteritems():
-            field = getattr(self.module, name)
-            value = widget.get()
-            field.set(value)
-        self.module.update()
-        publish('module-updated', self.module)
+        for module in self.modules:
+            for name, widget in self._module_widgets.iteritems():
+                field = getattr(module, name)
+                value = widget.get()
+                field.set(value)
+            module.update()
+        publish('modules-updated', self.modules)
 
     def _delete_module(self):
         """Delete the selected module."""
-        if not self.module:
+        if not self.modules:
             return
         button = QtWidgets.QMessageBox.warning(
             self,
             'Icarus - Delete Module',
-            'You are about to delete module %s. Continue ?' % self.module.node_name,
+            'You are about to delete %d module(s). Continue ?' % len(self.modules),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
         )
         if button != QtWidgets.QMessageBox.Yes:
             return
         rig = Rig()
-        rig.delete_module(self.module.node_name)
-        publish('module-deleted')
+        for module in self.modules:
+            rig.delete_module(module.node_name)
+        publish('modules-deleted', self.modules)
 
     def _update_ui(self):
         clear_layout(self.form)
-        if not self.module:
+        if not self.modules:
             self.apply_button.hide()
             self.delete_button.hide()
             return
-        if self.module.is_built.get():
+
+        # If one of the module is built, disable actions.
+        is_built = False
+        for module in self.modules:
+            if module.is_built.get():
+                is_built = True
+        
+        if is_built:
             self.apply_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
             self.apply_button.setEnabled(True)
             self.delete_button.setEnabled(True)
+
         self.apply_button.show()
         self.delete_button.show()
+
+        # Only show fields shared by all selected modules.
+        field_names = set([f.name for f in self.modules[-1].fields])
+        for other in self.modules[:-1]:
+            other_names = set([f.name for f in other.fields])
+            field_names = field_names.intersection(other_names)
+
+        fields = [f for f in self.modules[-1].fields if f.name in field_names]
         ordered_fields = sorted(
-            self.module.fields,
+            fields,
             key=attrgetter('gui_order')
         )
         for field in ordered_fields:
@@ -118,12 +141,12 @@ class ModulePanel(QtWidgets.QDockWidget):
                 map_field_to_widget['StringField']
             )
             widget = widget_data(field)
-            value = getattr(self.module, field.name).get()
+            value = getattr(self.modules[-1], field.name).get()
             widget.set(value)
 
             self._module_widgets[field.name] = widget
 
             self.form.addRow(field.display_name, widget)
 
-            if not field.editable or self.module.is_built.get():
+            if not field.editable or is_built:
                 widget.setEnabled(False)
