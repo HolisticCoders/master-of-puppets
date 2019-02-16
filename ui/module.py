@@ -126,6 +126,14 @@ class ModulePanel(QtWidgets.QDockWidget):
             other_names = set([f.name for f in other.fields])
             field_names = field_names.intersection(other_names)
 
+        # Filter out fields that must be unique, so users cannot
+        # edit them on multiple modules at once.
+        for field in self.modules[-1].fields:
+            if not field.unique:
+                continue
+            if field.name in field_names and len(self.modules) > 1:
+                field_names.remove(field.name)
+
         fields = [f for f in self.modules[-1].fields if f.name in field_names]
         ordered_fields = sorted(
             fields,
