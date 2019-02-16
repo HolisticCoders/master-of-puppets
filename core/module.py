@@ -105,11 +105,7 @@ class RigModule(IcarusNode):
     def parent_module(self):
         parent_joint = self.parent_joint.get()
         if parent_joint:
-            parent_module = '_'.join([
-                parent_joint.split('_')[0],
-                parent_joint.split('_')[1],
-                'mod'
-            ])
+            parent_module = cmds.listConnections(parent_joint + '.module', source=True)[0]
             module_type = cmds.getAttr(parent_module + '.module_type')
             parent_module = all_rig_modules[module_type](parent_module, rig=self.rig)
             return parent_module
