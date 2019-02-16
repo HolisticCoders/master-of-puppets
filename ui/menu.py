@@ -17,6 +17,11 @@ MENU_ITEMS = [
         'label': 'Open Icarus',
     },
     {
+        'name': 'icarus_open_parent_spaces_menu_item',
+        'command': 'from icarus.ui.commands import open_parent_spaces;open_parent_spaces()',
+        'label': 'Open Parent Spaces',
+    },
+    {
         'name': 'icarus_build_menu_item',
         'command': 'from icarus.ui.commands import build_rig;build_rig()',
         'label': 'Build Rig',

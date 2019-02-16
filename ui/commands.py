@@ -43,6 +43,13 @@ def open_icarus():
     icarus.ui.show()
 
 
+def open_parent_spaces():
+    """Open the `icarus` GUI."""
+    import icarus.ui.parents
+    win = icarus.ui.parents.IcarusParentSpaces()
+    win.show()
+
+
 def build_rig():
     """Build the current scene rig."""
     from icarus.core.rig import Rig
