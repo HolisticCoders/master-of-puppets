@@ -346,14 +346,20 @@ class ModulesModel(QtCore.QAbstractItemModel):
     def flags(self, index):
         default_flags = super(ModulesModel, self).flags(index)
         if Rig().is_built.get():
-            return default_flags
-        if index.isValid():
             if not isinstance(index.internalPointer(), basestring):
-                # Only allow modules to be dragged.
-                return (QtCore.Qt.ItemIsDragEnabled
-                        | QtCore.Qt.ItemIsDropEnabled
-                        | default_flags)
-        return QtCore.Qt.ItemIsDropEnabled | default_flags
+                return default_flags
+            return QtCore.Qt.ItemIsEnabled
+
+        if not index.isValid():
+            return default_flags
+
+        if not isinstance(index.internalPointer(), basestring):
+            # Only allow modules to be dragged.
+            return (QtCore.Qt.ItemIsDragEnabled
+                    | QtCore.Qt.ItemIsDropEnabled
+                    | default_flags)
+
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDropEnabled
 
     def supportedDropActions(self):
         return QtCore.Qt.MoveAction
