@@ -1,5 +1,6 @@
 import json
 import logging
+from collections import OrderedDict
 
 from maya.app.general.mayaMixin import MayaQWidgetBaseMixin
 import maya.cmds as cmds
@@ -103,8 +104,17 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         and fill the parents list if the control already have parents set.
 
         :param control: Name of the control node to select.
+        :type control: str
         """
         self.child.setText(control)
+        data = cmds.getAttr(control + '.parent_space_data')
+        spaces = json.loads(data, object_pairs_hook=OrderedDict)
+        if not hasattr(spaces, 'get'):
+            # Data is either corrupt or serialization method has changed.
+            return
+
+        parents = spaces.get('parents', [])
+        self.model.setStringList(parents)
 
     def add_parent(self):
         """Add a parent from Maya's selection."""
