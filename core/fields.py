@@ -89,16 +89,16 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
             pass
 
     def __getitem__(self, index):
-        val = cmds.getAttr('{}[{}]'.format(self.attr_name, self.logical_index(index)))
+        val = cmds.getAttr('{}[{}]'.format(self.attr_name, self._logical_index(index)))
         return self.field.cast_from_attr(val)
 
     def __setitem__(self, index, value):
         casted_item = self.field.cast_to_attr(value)
-        attrName = '{}[{}]'.format(self.attr_name, self.logical_index(index))
+        attrName = '{}[{}]'.format(self.attr_name, self._logical_index(index))
         cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
     def __delitem__(self, index):
-        target = '{}[{}]'.format(self.attr_name, self.logical_index(index))
+        target = '{}[{}]'.format(self.attr_name, self._logical_index(index))
         sources = cmds.listConnections(
             target,
             source=True,
