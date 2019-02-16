@@ -69,22 +69,28 @@ class Rig(IcarusNode):
 
     def _create_basic_hierarchy(self):
         if not cmds.objExists('MODULES'):
-            self.modules_group.set(cmds.createNode(
-                'transform',
-                name='MODULES',
-            ))
+            self.modules_group.set(
+                cmds.createNode(
+                    'transform',
+                    name='MODULES',
+                )
+            )
             cmds.parent(self.modules_group.get(), 'RIG')
         if not cmds.objExists('EXTRAS'):
-            self.extras_group.set(cmds.createNode(
-                'transform',
-                name='EXTRAS',
-            ))
+            self.extras_group.set(
+                cmds.createNode(
+                    'transform',
+                    name='EXTRAS',
+                )
+            )
             cmds.parent(self.extras_group.get(), 'RIG')
         if not cmds.objExists('SKELETON'):
-            self.skeleton_group.set(cmds.createNode(
-                'transform',
-                name='SKELETON',
-            ))
+            self.skeleton_group.set(
+                cmds.createNode(
+                    'transform',
+                    name='SKELETON',
+                )
+            )
             cmds.parent(self.skeleton_group.get(), 'RIG')
 
     def _add_default_modules(self):
