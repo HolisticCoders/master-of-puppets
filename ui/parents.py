@@ -32,6 +32,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.remove_parents_button = QtWidgets.QPushButton('Remove')
 
         self.update_button = QtWidgets.QPushButton('Update')
+        self.delete_button = QtWidgets.QPushButton('Delete All')
 
         self.setCentralWidget(self.content)
 
@@ -61,12 +62,14 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         layout.addLayout(actions_layout)
 
         actions_layout.addWidget(self.update_button)
+        actions_layout.addWidget(self.delete_button)
 
         self.child.setEnabled(False)
         self.parents.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.add_parent_button.setEnabled(False)
         self.remove_parents_button.setEnabled(False)
         self.update_button.setEnabled(False)
+        self.delete_button.setEnabled(False)
 
         child_layout.setContentsMargins(0, 0, 0, 0)
         parents_layout.setContentsMargins(0, 0, 0, 0)
@@ -78,6 +81,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.add_parent_button.released.connect(self.add_parent)
         self.remove_parents_button.released.connect(self.remove_parents)
         self.update_button.released.connect(self.update)
+        self.delete_button.released.connect(self.delete_all)
 
     def pick_child(self):
         """Pick the child from Maya's selection."""
@@ -90,6 +94,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.add_parent_button.setEnabled(True)
         self.remove_parents_button.setEnabled(True)
         self.update_button.setEnabled(True)
+        self.delete_button.setEnabled(True)
 
     def set_child(self, control):
         """Set ``control`` as the child for the parent space operation.
@@ -140,3 +145,25 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
             'parents': self.model.stringList(),
         })
         cmds.setAttr(ctl + '.parent_space_data', data, type='string')
+
+    def delete_all(self):
+        """Deletes all parent spaces set on the selected control."""
+        ctl = self.child.text()
+        if not ctl:
+            logger.warning('Please pick a child control first.')
+            return
+
+        button = QtWidgets.QMessageBox.warning(
+            self,
+            'Icarus - Delete Parent Spaces',
+            'You are about to delete all parent spaces '
+            'set on %s, continue ?' % ctl,
+            QtWidgets.QMessageBox.Yes
+            | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes
+        )
+        if button != QtWidgets.QMessageBox.Yes:
+            return
+
+        self.model.setStringList([])
+        cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
