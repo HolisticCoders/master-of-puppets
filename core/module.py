@@ -178,8 +178,8 @@ class RigModule(IcarusNode):
             new_name = self._update_node_name(self.node_name)
             self.node_name = new_name
 
-            # rename the deform joints
-            for node in self.deform_joints.get():
+            # rename the owned nodes
+            for node in self.owned_nodes.get():
                 self._update_node_name(node)
 
             # rename the persistent attributes
