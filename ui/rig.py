@@ -6,6 +6,7 @@ from weakref import WeakKeyDictionary, WeakSet
 
 from icarus.vendor.Qt import QtCore, QtGui, QtWidgets
 from icarus.core.rig import Rig
+from icarus.ui.settings import get_settings
 from icarus.ui.signals import publish, subscribe
 from icarus.ui.commands import build_rig, unbuild_rig, publish_rig
 from icarus.ui.utils import hsv_to_rgb
@@ -18,11 +19,18 @@ class RigPanel(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('Rig Panel')
 
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
-
         self.modules_group = QtWidgets.QGroupBox('Modules')
         self.actions_group = QtWidgets.QGroupBox('Actions')
+
+        show_colors = QtWidgets.QCheckBox('Show Colors')
+        self.tree_view = ModulesTree()
+        refresh_button = QtWidgets.QPushButton('Refresh')
+        build_button = QtWidgets.QPushButton('Build Rig')
+        unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
+        publish_button = QtWidgets.QPushButton('Publish Rig')
+
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
 
         layout.addWidget(self.modules_group)
         layout.addWidget(self.actions_group)
@@ -35,35 +43,25 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
-        show_colors = QtWidgets.QCheckBox('Show Colors')
+
         options_layout.addWidget(show_colors)
 
-        show_colors.toggled.connect(self._on_show_colors_toggled)
-
-        self.tree_view = ModulesTree()
         modules_layout.addWidget(self.tree_view)
-
-        refresh_button = QtWidgets.QPushButton('Refresh')
-        build_button = QtWidgets.QPushButton('Build Rig')
-        unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
-        publish_button = QtWidgets.QPushButton('Publish Rig')
 
         actions_layout.addWidget(refresh_button)
         actions_layout.addWidget(build_button)
         actions_layout.addWidget(unbuild_button)
         actions_layout.addWidget(publish_button)
 
+        self._refresh_model()
+        if self.model.is_colored:
+            show_colors.setChecked(True)
+
+        show_colors.toggled.connect(self._on_show_colors_toggled)
         refresh_button.released.connect(self._refresh_model)
         build_button.released.connect(build_rig)
         unbuild_button.released.connect(unbuild_rig)
         publish_button.released.connect(publish_rig)
-
-        self.model = ModulesModel()
-        self.tree_view.setModel(self.model)
-        self.tree_view.expandAll()
-
-        selection = self.tree_view.selectionModel()
-        selection.currentChanged.connect(self._on_current_changed)
 
         subscribe('module-created', self._refresh_model)
         subscribe('module-updated', self._refresh_model)
@@ -88,7 +86,7 @@ class RigPanel(QtWidgets.QWidget):
                     index,
                     QtCore.QItemSelectionModel.SelectCurrent,
                 )
-
+        
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.
 
@@ -157,6 +155,11 @@ class ModulesModel(QtCore.QAbstractItemModel):
         self.invalidate_cache()
         self._show_colors = False
 
+        settings = get_settings()
+        show_colors = bool(int(settings.value('modules/show_colors') or 0))
+        if show_colors:
+            self.show_colors()
+
     def invalidate_cache(self):
         """Refresh the cache."""
         rig = Rig()
@@ -180,6 +183,14 @@ class ModulesModel(QtCore.QAbstractItemModel):
                 self._joints_parent_module[joint] = module
                 self._modules_child_joints[module].append(joint)
 
+    @property
+    def is_colored(self):
+        """Return ``True`` if this model is randomly colored.
+
+        :rtype: bool
+        """
+        return self._show_colors
+
     def show_colors(self):
         self._show_colors = True
         parent = QtCore.QModelIndex()
@@ -189,6 +200,9 @@ class ModulesModel(QtCore.QAbstractItemModel):
             [QtCore.Qt.ForegroundRole],
         )
 
+        settings = get_settings()
+        settings.setValue('modules/show_colors', 1)
+
     def hide_colors(self):
         self._show_colors = False
         parent = QtCore.QModelIndex()
@@ -197,6 +211,9 @@ class ModulesModel(QtCore.QAbstractItemModel):
             self.index(self.rowCount(parent), 0, parent),
             [QtCore.Qt.ForegroundRole],
         )
+
+        settings = get_settings()
+        settings.setValue('modules/show_colors', 0)
 
     def rowCount(self, parent):
         if not parent.isValid():
