@@ -22,7 +22,7 @@ class RigPanel(QtWidgets.QWidget):
         self.modules_group = QtWidgets.QGroupBox('Modules')
         self.actions_group = QtWidgets.QGroupBox('Actions')
 
-        show_colors = QtWidgets.QCheckBox('Show Colors')
+        random_colors = QtWidgets.QCheckBox('Random Colors')
         self.tree_view = ModulesTree()
         refresh_button = QtWidgets.QPushButton('Refresh')
         build_button = QtWidgets.QPushButton('Build Rig')
@@ -43,8 +43,7 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
-
-        options_layout.addWidget(show_colors)
+        options_layout.addWidget(random_colors)
 
         modules_layout.addWidget(self.tree_view)
 
@@ -55,9 +54,9 @@ class RigPanel(QtWidgets.QWidget):
 
         self._refresh_model()
         if self.model.is_colored:
-            show_colors.setChecked(True)
+            random_colors.setChecked(True)
 
-        show_colors.toggled.connect(self._on_show_colors_toggled)
+        random_colors.toggled.connect(self._on_random_colors_toggled)
         refresh_button.released.connect(self._refresh_model)
         build_button.released.connect(build_rig)
         unbuild_button.released.connect(unbuild_rig)
@@ -117,13 +116,13 @@ class RigPanel(QtWidgets.QWidget):
             if _index:
                 return _index
 
-    def _on_show_colors_toggled(self, checked):
+    def _on_random_colors_toggled(self, checked):
         if not self.model:
             return
         if checked:
-            self.model.show_colors()
+            self.model.random_colors_on()
         else:
-            self.model.hide_colors()
+            self.model.random_colors_off()
 
     def _on_current_changed(self, current, previous):
         pointer = current.internalPointer()
@@ -152,13 +151,13 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
     def __init__(self, parent=None):
         super(ModulesModel, self).__init__(parent)
+        self._random_colors = False
         self.invalidate_cache()
-        self._show_colors = False
 
         settings = get_settings()
-        show_colors = bool(int(settings.value('modules/show_colors') or 0))
-        if show_colors:
-            self.show_colors()
+        random_colors = bool(int(settings.value('modules/random_colors') or 0))
+        if random_colors:
+            self.random_colors_on()
 
     def invalidate_cache(self):
         """Refresh the cache."""
@@ -189,10 +188,10 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
         :rtype: bool
         """
-        return self._show_colors
+        return self._random_colors
 
-    def show_colors(self):
-        self._show_colors = True
+    def random_colors_on(self):
+        self._random_colors = True
         parent = QtCore.QModelIndex()
         self.dataChanged.emit(
             self.index(0, 0, parent),
@@ -201,10 +200,10 @@ class ModulesModel(QtCore.QAbstractItemModel):
         )
 
         settings = get_settings()
-        settings.setValue('modules/show_colors', 1)
+        settings.setValue('modules/random_colors', 1)
 
-    def hide_colors(self):
-        self._show_colors = False
+    def random_colors_off(self):
+        self._random_colors = False
         parent = QtCore.QModelIndex()
         self.dataChanged.emit(
             self.index(0, 0, parent),
@@ -213,7 +212,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
         )
 
         settings = get_settings()
-        settings.setValue('modules/show_colors', 0)
+        settings.setValue('modules/random_colors', 0)
 
     def rowCount(self, parent):
         if not parent.isValid():
@@ -242,9 +241,9 @@ class ModulesModel(QtCore.QAbstractItemModel):
         elif role == QtCore.Qt.DecorationRole:
             if isinstance(pointer, basestring):
                 return QtGui.QIcon(':kinJoint.png')
-            return QtGui.QIcon(':advancedSettings.png')
+            return QtGui.QIcon(':QR_settings.png')
         elif role == QtCore.Qt.ForegroundRole:
-            if not self._show_colors:
+            if not self._random_colors:
                 return
             if isinstance(pointer, basestring):
                 module = index.parent().internalPointer()

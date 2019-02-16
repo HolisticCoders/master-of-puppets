@@ -93,8 +93,11 @@ class Rig(IcarusNode):
 
     @undoable
     def add_module(self, module_type, *args, **kwargs):
+        if self.is_built.get():
+            raise RuntimeError('Cannot add module when the rig is built.')
+
         if module_type not in all_rig_modules:
-            raise Exception("Module Type {} is not valid".format(module_type))
+            raise ValueError("Module Type {} is not valid".format(module_type))
 
         # instantiate the new module from the list of possible modules.
         kwargs['rig'] = self
@@ -150,6 +153,7 @@ class Rig(IcarusNode):
                 if attributes_state:
                     attributes_state = json.loads(attributes_state)
                     icarus.attributes.set_attributes_state(ctl, attributes_state)
+            cmds.setAttr(module.placement_group.get() + '.visibility', False)
 
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
@@ -184,6 +188,7 @@ class Rig(IcarusNode):
                     json.dumps(attributes_state),
                     type='string'
                 )
+            cmds.setAttr(module.placement_group.get() + '.visibility', True)
 
         for node in self.skeleton:
             for attribute in ['.translate', '.rotate', '.scale']:

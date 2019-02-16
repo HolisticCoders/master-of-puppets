@@ -4,6 +4,7 @@ from icarus.core.module import RigModule
 from icarus.core.fields import ObjectField
 import icarus.dag
 
+
 class Rivet(RigModule):
 
     surface = ObjectField(
@@ -19,13 +20,14 @@ class Rivet(RigModule):
         joint = self.driving_joints[0]
         ctl, parent_group = self.add_control(joint)
         icarus.dag.snap_first_to_last(parent_group, joint)
-        cmds.parent(ctl, self.controls_group.get())
+        cmds.parent(parent_group, self.controls_group.get())
         icarus.dag.matrix_constraint(ctl, joint)
 
         if cmds.nodeType(self.surface.get()) == 'transform':
             self.surface.set(cmds.listRelatives(self.surface.get(), shapes=True)[0]) 
         follicle = cmds.createNode('follicle')
         follicle_transform = cmds.listRelatives(follicle, parent=True)[0]
+        cmds.parent(follicle_transform, self.extras_group.get())
         cmds.connectAttr(
             follicle + '.outTranslate',
             follicle_transform + '.translate'
@@ -34,8 +36,6 @@ class Rivet(RigModule):
             follicle + '.outRotate',
             follicle_transform + '.rotate'
         )
-        # u_value = 0
-        # v_value = 0
         if cmds.nodeType(self.surface.get()) == 'mesh':
             cmds.connectAttr(
                 self.surface.get() + '.outMesh',
@@ -64,6 +64,7 @@ class Rivet(RigModule):
         )
         cmds.setAttr(follicle + '.parameterU', u_value)
         cmds.setAttr(follicle + '.parameterV', v_value)
+        print follicle_transform, parent_group
         icarus.dag.matrix_constraint(
             follicle_transform,
             parent_group,

@@ -1,12 +1,12 @@
 import maya.cmds as cmds
 
-from icarus.modules.fkikrpchain import FkIkRPChain
+from icarus.modules.fkikrpchain import FkIkRotatePlaneChain
 from icarus.core.fields import IntField, ObjectListField, ObjectField
 import icarus.dag
 import icarus.metadata
 
 
-class Arm(FkIkRPChain):
+class Arm(FkIkRotatePlaneChain):
     def initialize(self):
         super(Arm, self).initialize()
         self.ik_start_description.set('IK_shoulder')
