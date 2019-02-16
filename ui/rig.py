@@ -25,9 +25,9 @@ class RigPanel(QtWidgets.QWidget):
         random_colors = QtWidgets.QCheckBox('Random Colors')
         self.tree_view = ModulesTree()
         refresh_button = QtWidgets.QPushButton('Refresh')
-        build_button = QtWidgets.QPushButton('Build Rig')
-        unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
-        publish_button = QtWidgets.QPushButton('Publish Rig')
+        self.build_button = QtWidgets.QPushButton('Build Rig')
+        self.unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
+        self.publish_button = QtWidgets.QPushButton('Publish Rig')
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
@@ -48,19 +48,21 @@ class RigPanel(QtWidgets.QWidget):
         modules_layout.addWidget(self.tree_view)
 
         actions_layout.addWidget(refresh_button)
-        actions_layout.addWidget(build_button)
-        actions_layout.addWidget(unbuild_button)
-        actions_layout.addWidget(publish_button)
+        actions_layout.addWidget(self.build_button)
+        actions_layout.addWidget(self.unbuild_button)
+        actions_layout.addWidget(self.publish_button)
 
         self._refresh_model()
         if self.model.is_colored:
             random_colors.setChecked(True)
 
+        self._update_buttons_enabled()
+
         random_colors.toggled.connect(self._on_random_colors_toggled)
         refresh_button.released.connect(self._refresh_model)
-        build_button.released.connect(build_rig)
-        unbuild_button.released.connect(unbuild_rig)
-        publish_button.released.connect(publish_rig)
+        self.build_button.released.connect(self._on_build_rig)
+        self.unbuild_button.released.connect(self._on_unbuild_rig)
+        self.publish_button.released.connect(self._on_publish_rig)
 
         subscribe('modules-created', self._refresh_model)
         subscribe('modules-updated', self._refresh_model)
@@ -95,7 +97,7 @@ class RigPanel(QtWidgets.QWidget):
                 indices[-1],
                 QtCore.QItemSelectionModel.Current,
             )
-        
+
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.
 
@@ -133,6 +135,28 @@ class RigPanel(QtWidgets.QWidget):
             self.model.random_colors_on()
         else:
             self.model.random_colors_off()
+
+    def _on_build_rig(self):
+        build_rig()
+        self._update_buttons_enabled()
+
+    def _on_unbuild_rig(self):
+        unbuild_rig()
+        self._update_buttons_enabled()
+
+    def _on_publish_rig(self):
+        publish_rig()
+        self._update_buttons_enabled()
+
+    def _update_buttons_enabled(self):
+        if Rig().is_built.get():
+            self.build_button.setEnabled(False)
+            self.unbuild_button.setEnabled(True)
+            self.publish_button.setEnabled(True)
+        else:
+            self.build_button.setEnabled(True)
+            self.unbuild_button.setEnabled(False)
+            self.publish_button.setEnabled(False)
 
     def _on_selection_changed(self, selected, deselected):
         selection = self.tree_view.selectionModel()
