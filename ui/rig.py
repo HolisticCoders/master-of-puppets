@@ -394,13 +394,13 @@ class ModulesModel(QtCore.QAbstractItemModel):
             joint = joint_index.internalPointer()
 
         rig = Rig()
-        last_module = None
+        modules = []
         for name in names:
             module = rig.get_module(name)
             module.parent_joint.set(joint)
             module.update()
-            last_module = module
+            modules.append(module)
 
-        publish('modules-updated', last_module)
+        publish('modules-updated', modules)
 
         return True
