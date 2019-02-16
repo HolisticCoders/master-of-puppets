@@ -64,7 +64,6 @@ class Rivet(RigModule):
         )
         cmds.setAttr(follicle + '.parameterU', u_value)
         cmds.setAttr(follicle + '.parameterV', v_value)
-        print follicle_transform, parent_group
         icarus.dag.matrix_constraint(
             follicle_transform,
             parent_group,
