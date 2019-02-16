@@ -3,7 +3,12 @@ import logging
 
 import maya.cmds as cmds
 
-from icarus.core.fields import ObjectField, StringField, ObjectListField
+from icarus.core.fields import (
+    EnumField,
+    ObjectField,
+    StringField,
+    ObjectListField,
+)
 from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
 import icarus.attributes
@@ -24,7 +29,8 @@ class RigModule(IcarusNode):
         gui_order=-2,  # make sure it's always on top
         unique=True,
     )
-    side = StringField(
+    side = EnumField(
+        choices=['M', 'L', 'R'],
         displayable=True,
         editable=True,
         gui_order=-2  # make sure it's always on top

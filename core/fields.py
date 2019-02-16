@@ -36,7 +36,8 @@ class Attribute(AttributeBase):
         cmds.setAttr(self.attr_name, casted_value, **self.field.set_attr_args)
 
     def get(self):
-        return self.field.cast_from_attr(cmds.getAttr(self.attr_name))
+        value = cmds.getAttr(self.attr_name, **self.field.get_attr_args)
+        return self.field.cast_from_attr(value)
 
 
 class MessageAttribute(AttributeBase):
@@ -216,6 +217,7 @@ class FieldContainerMeta(type):
 class Field(object):
     create_attr_args = {}
     set_attr_args = {}
+    get_attr_args = {}
 
     def __init__(
         self,
@@ -302,6 +304,35 @@ class StringField(Field):
 
     def cast_to_attr(self, value):
         return str(value)
+
+
+class EnumField(Field):
+    """A field for enum values.
+
+    You can set the enum values using the ``choices`` argument.
+
+    This argument must be a list of strings.
+    """
+    create_attr_args = {
+        'attributeType': 'enum'
+    }
+    get_attr_args = {
+        'asString': True
+    }
+    
+    def __init__(self, **kwargs):
+        self.choices = kwargs.pop('choices', [])
+        super(EnumField, self).__init__(**kwargs)
+        self.create_attr_args['enumName'] = ':'.join(self.choices)
+
+    def cast_to_attr(self, value):
+        """Cast to the :class:`int` value of ``value``.
+
+        :param value: Enum name to set.
+        :type value: str
+        :rtype: int
+        """
+        return self.choices.index(value)
 
 
 class JSONField(StringField):
