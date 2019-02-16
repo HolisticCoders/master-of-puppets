@@ -117,10 +117,14 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
         return len(cmds.getAttr('{}[*]'.format(self.attr_name)))
 
     def insert(self, index, value):
-        logical_index = self._logical_indices()[index]
         casted_item = self.field.cast_to_attr(value)
-        attrName = '{}[{}]'.format(self.attr_name, logical_index)
+        attrName = '{}[{}]'.format(self.attr_name, index)
         cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
+
+    def append(self, value):
+        """Append to the very last plug of the multi attribute."""
+        index = cmds.getAttr('{}'.format(self.attr_name), size=True)
+        self.insert(index, value)
 
     def _logical_indices(self):
         sel = om2.MSelectionList()
@@ -166,6 +170,8 @@ class MessageMultiAttribute(MultiAttribute):
             cmds.connectAttr(casted_item + '.message', attrName)
 
     def __getitem__(self, index):
+        # not using logical indices since listConnections only returns
+        # existing connections
         val = cmds.listConnections(
             '{}'.format(self.attr_name),
             source=True
