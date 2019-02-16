@@ -62,29 +62,39 @@ class RigPanel(QtWidgets.QWidget):
         unbuild_button.released.connect(unbuild_rig)
         publish_button.released.connect(publish_rig)
 
-        subscribe('module-created', self._refresh_model)
+        subscribe('modules-created', self._refresh_model)
         subscribe('modules-updated', self._refresh_model)
         subscribe('modules-deleted', self._refresh_model)
 
-    def _refresh_model(self, module=None):
+    def _refresh_model(self, modules=None):
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
         self.tree_view.expandAll()
 
-        selection = self.tree_view.selectionModel()
-        selection.selectionChanged.connect(self._on_selection_changed)
+        selection_model = self.tree_view.selectionModel()
+        selection_model.selectionChanged.connect(self._on_selection_changed)
 
-        # Find the index of the new module.
+        # Restore selection.
         # NOTE: maybe optimize this part, and keep the same
         # model for the whole session, instead of discarding
         # it for any module added/deleted/changed.
-        if module:
-            index = self._find_index(module)
-            if index:
-                selection.setCurrentIndex(
-                    index,
-                    QtCore.QItemSelectionModel.SelectCurrent,
-                )
+        indices = []
+        if modules:
+            # Filter in case we stumble upon deleted module.
+            # In this case, they won't have any index in the tree.
+            indices = filter(None, map(self._find_index, modules))
+            selection = QtCore.QItemSelection()
+            selection_model.clear()
+            for index in indices:
+                selection.select(index, index)
+            selection_model.select(
+                selection,
+                QtCore.QItemSelectionModel.Select,
+            )
+            selection_model.setCurrentIndex(
+                indices[-1],
+                QtCore.QItemSelectionModel.Current,
+            )
         
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.

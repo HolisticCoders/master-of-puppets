@@ -68,4 +68,4 @@ class CreationPanel(QtWidgets.QDockWidget):
                 QtWidgets.QMessageBox.Ok
             )
 
-        publish('module-created', module)
+        publish('modules-created', [module])

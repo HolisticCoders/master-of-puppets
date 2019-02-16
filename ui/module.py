@@ -1,3 +1,4 @@
+from functools import partial
 from operator import attrgetter
 from weakref import WeakValueDictionary
 
@@ -17,18 +18,21 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.setWindowTitle('Module Panel')
 
         self._module_widgets = WeakValueDictionary()
+        self._modified_fields = set()
+        self._initial_values = {}
 
         self.setWidget(QtWidgets.QWidget())
-
-        layout = QtWidgets.QVBoxLayout()
-        self.widget().setLayout(layout)
 
         self.settings_group = QtWidgets.QGroupBox('Settings')
         self.form = QtWidgets.QFormLayout()
         self.apply_button = QtWidgets.QPushButton('Apply')
+        self.reset_button = QtWidgets.QPushButton('Reset')
 
         self.actions_group = QtWidgets.QGroupBox('Actions')
         self.delete_button = QtWidgets.QPushButton('Delete')
+
+        layout = QtWidgets.QVBoxLayout()
+        self.widget().setLayout(layout)
 
         layout.addWidget(self.settings_group)
         layout.addStretch()
@@ -37,16 +41,24 @@ class ModulePanel(QtWidgets.QDockWidget):
         settings_layout = QtWidgets.QVBoxLayout()
         self.settings_group.setLayout(settings_layout)
         settings_layout.addLayout(self.form)
-        settings_layout.addWidget(self.apply_button)
+
+        settings_actions_layout = QtWidgets.QHBoxLayout()
+        settings_layout.addLayout(settings_actions_layout)
+
+        settings_actions_layout.addWidget(self.apply_button)
+        settings_actions_layout.addWidget(self.reset_button)
 
         actions_layout = QtWidgets.QVBoxLayout()
         self.actions_group.setLayout(actions_layout)
         actions_layout.addWidget(self.delete_button)
 
-        self.apply_button.released.connect(self._update_module)
         self.apply_button.hide()
-        self.delete_button.released.connect(self._delete_module)
+        self.reset_button.hide()
         self.delete_button.hide()
+
+        self.apply_button.released.connect(self._update_module)
+        self.reset_button.released.connect(self._update_ui)
+        self.delete_button.released.connect(self._delete_module)
 
         subscribe('selected-modules-changed', self._on_selection_changed)
 
@@ -68,12 +80,30 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.modules = filter(is_module, modules)
         self._update_ui()
 
+    def _on_field_edited(self, widget, *args):
+        label = self.form.labelForField(widget)
+        if widget.get() != self._initial_values[widget]:
+            self._modified_fields.add(widget)
+            label.setStyleSheet('font-weight: bold')
+        else:
+            self._modified_fields.remove(widget)
+            label.setStyleSheet('')
+
+        if self._modified_fields:
+            self.apply_button.setEnabled(True)
+            self.reset_button.setEnabled(True)
+        else:
+            self.apply_button.setEnabled(False)
+            self.reset_button.setEnabled(False)
+
     def _update_module(self):
         """Update the Maya module."""
         if not self.modules:
             return
         for module in self.modules:
             for name, widget in self._module_widgets.iteritems():
+                if widget not in self._modified_fields:
+                    continue
                 field = getattr(module, name)
                 value = widget.get()
                 field.set(value)
@@ -98,9 +128,12 @@ class ModulePanel(QtWidgets.QDockWidget):
         publish('modules-deleted', self.modules)
 
     def _update_ui(self):
+        self._modified_fields = set()
+        self._initial_values = {}
         clear_layout(self.form)
         if not self.modules:
             self.apply_button.hide()
+            self.reset_button.hide()
             self.delete_button.hide()
             return
 
@@ -111,13 +144,16 @@ class ModulePanel(QtWidgets.QDockWidget):
                 is_built = True
         
         if is_built:
-            self.apply_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
-            self.apply_button.setEnabled(True)
             self.delete_button.setEnabled(True)
 
+        # Enable apply and reset button only when a field has
+        # been modified.
+        self.apply_button.setEnabled(False)
+        self.reset_button.setEnabled(False)
         self.apply_button.show()
+        self.reset_button.show()
         self.delete_button.show()
 
         # Only show fields shared by all selected modules.
@@ -151,8 +187,10 @@ class ModulePanel(QtWidgets.QDockWidget):
             widget = widget_data(field)
             value = getattr(self.modules[-1], field.name).get()
             widget.set(value)
+            self._initial_values[widget] = value
 
             self._module_widgets[field.name] = widget
+            widget.signal().connect(partial(self._on_field_edited, widget))
 
             self.form.addRow(field.display_name, widget)
 
