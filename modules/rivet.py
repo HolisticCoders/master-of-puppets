@@ -25,7 +25,7 @@ class Rivet(RigModule):
 
         if cmds.nodeType(self.surface.get()) == 'transform':
             self.surface.set(cmds.listRelatives(self.surface.get(), shapes=True)[0]) 
-        follicle = cmds.createNode('follicle')
+        follicle = self.add_node('follicle')
         follicle_transform = cmds.listRelatives(follicle, parent=True)[0]
         cmds.parent(follicle_transform, self.extras_group.get())
         cmds.connectAttr(
@@ -58,6 +58,7 @@ class Rivet(RigModule):
             )
             u_value = cmds.getAttr(closest_point_node + '.result.parameterU')
             v_value = cmds.getAttr(closest_point_node + '.result.parameterV')
+            cmds.delete(closest_point_node)
         cmds.connectAttr(
             self.surface.get() + '.worldMatrix[0]',
             follicle + '.inputWorldMatrix'
