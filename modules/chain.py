@@ -197,7 +197,6 @@ class Chain(RigModule):
         for chain_joint in self.deform_chain[:-1]:
             twists = [t for t in cmds.listRelatives(chain_joint) if 'twist' in t]
             current_twist_count = len(twists)
-            print "current_twist_count:", current_twist_count
             diff = exptected_twist_count - current_twist_count
             if diff > 0:
                 for i in xrange(diff):
