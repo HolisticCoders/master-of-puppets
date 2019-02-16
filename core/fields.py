@@ -89,19 +89,16 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
             pass
 
     def __getitem__(self, index):
-        logical_index = self._logical_indices()[index]
-        val = cmds.getAttr('{}[{}]'.format(self.attr_name, logical_index))
+        val = cmds.getAttr('{}[{}]'.format(self.attr_name, self.logical_index(index)))
         return self.field.cast_from_attr(val)
 
     def __setitem__(self, index, value):
-        logical_index = self._logical_indices()[index]
         casted_item = self.field.cast_to_attr(value)
-        attrName = '{}[{}]'.format(self.attr_name, logical_index)
+        attrName = '{}[{}]'.format(self.attr_name, self.logical_index(index))
         cmds.setAttr(attrName, casted_item, **self.field.set_attr_args)
 
     def __delitem__(self, index):
-        logical_index = self._logical_indices()[index]
-        target = '{}[{}]'.format(self.attr_name, logical_index)
+        target = '{}[{}]'.format(self.attr_name, self.logical_index(index))
         sources = cmds.listConnections(
             target,
             source=True,
@@ -133,6 +130,16 @@ class MultiAttribute(AttributeBase, collections.MutableSequence):
         mfn = om2.MFnDependencyNode(mobj)
         plug = mfn.findPlug(plug_name, 0)
         return plug.getExistingArrayAttributeIndices()
+
+    def _logical_index(self, index):
+        logical_indices = self._logical_indices()
+        if logical_indices:
+            try:
+                return logical_indices[index]
+            except IndexError:
+                return max(logical_indices) + 1
+        else:
+            return 0
 
 
 class MessageMultiAttribute(MultiAttribute):
