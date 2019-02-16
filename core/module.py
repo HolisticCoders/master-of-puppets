@@ -432,6 +432,21 @@ class RigModule(IcarusNode):
             dataType='string'
         )
 
+        icarus.attributes.create_persistent_attribute(
+            ctl,
+            self.node_name,
+            longName='parent_space_data',
+            dataType='string',
+        )
+
+        # We cannot set a default value on strings, so set the persistent
+        # attribute after its creation.
+        # It is mandatory to set a default value here, without a value
+        # the attribute returns `None` when rebuilt and this crashes
+        # the `setAttr` command.
+        if not cmds.getAttr(ctl + '.parent_space_data'):
+            cmds.setAttr(ctl + '.parent_space_data', '[]', type='string')
+
         icarus.dag.snap_first_to_last(ctl, dag_node)
         parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
         self.controllers.append(ctl)

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from collections import OrderedDict
 
 import maya.cmds as cmds
 
@@ -163,6 +164,20 @@ class Rig(IcarusNode):
 
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
+
+        for module in self.rig_modules:
+            for ctl in module.controllers.get():
+                parent_spaces = cmds.getAttr(ctl + '.parent_space_data')
+                if parent_spaces:
+                    # Restore parent spaces.
+                    # We use an OrderedDict to load saved data
+                    # in order to preserve the parents ordering.
+                    parents = json.loads(
+                        parent_spaces,
+                        object_pairs_hook=OrderedDict
+                    )
+                    if parents:
+                        icarus.dag.create_parent_space(ctl, parents)
 
         icarus.postscript.run_scripts('post_build')
 
