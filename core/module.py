@@ -445,7 +445,7 @@ class RigModule(IcarusNode):
         # the attribute returns `None` when rebuilt and this crashes
         # the `setAttr` command.
         if not cmds.getAttr(ctl + '.parent_space_data'):
-            cmds.setAttr(ctl + '.parent_space_data', '[]', type='string')
+            cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
 
         icarus.dag.snap_first_to_last(ctl, dag_node)
         parent_group = icarus.dag.add_parent_group(ctl, 'buffer')

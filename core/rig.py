@@ -168,16 +168,30 @@ class Rig(IcarusNode):
         for module in self.rig_modules:
             for ctl in module.controllers.get():
                 parent_spaces = cmds.getAttr(ctl + '.parent_space_data')
-                if parent_spaces:
-                    # Restore parent spaces.
-                    # We use an OrderedDict to load saved data
-                    # in order to preserve the parents ordering.
-                    parents = json.loads(
-                        parent_spaces,
-                        object_pairs_hook=OrderedDict
-                    )
-                    if parents:
-                        icarus.dag.create_parent_space(ctl, parents)
+                if not parent_spaces:
+                    continue
+
+                # Restore parent spaces.
+                # We use an OrderedDict to load saved data
+                # in order to preserve the parents ordering.
+                spaces = json.loads(
+                    parent_spaces,
+                    object_pairs_hook=OrderedDict
+                )
+                if not hasattr(spaces, 'get'):
+                    # In case serialized data is bad or serialization
+                    # changes along the way.
+                    continue
+
+                parents = spaces.get('parents', [])
+                orients = spaces.get('orients', [])
+                points = spaces.get('points', [])
+                if parents:
+                    icarus.dag.create_parent_space(ctl, parents)
+                if orients:
+                    icarus.dag.create_orient_space(ctl, orients)
+                if points:
+                    icarus.dag.create_point_space(ctl, points)
 
         icarus.postscript.run_scripts('post_build')
 

@@ -136,5 +136,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         if not ctl:
             logger.warning('Please pick a child control first.')
             return
-        data = json.dumps(self.model.stringList())
+        data = json.dumps({
+            'parents': self.model.stringList(),
+        })
         cmds.setAttr(ctl + '.parent_space_data', data, type='string')
