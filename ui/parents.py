@@ -66,7 +66,10 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         actions_layout.addWidget(self.delete_button)
 
         self.child.setEnabled(False)
+
         self.parents.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.parents.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+
         self.add_parent_button.setEnabled(False)
         self.remove_parents_button.setEnabled(False)
         self.update_button.setEnabled(False)
