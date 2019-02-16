@@ -69,9 +69,22 @@ class Chain(RigModule):
 
         for joint, next_joint in zip(self.driving_chain[:-1], self.driving_chain[1:]):
             twists = [j for j in cmds.listRelatives(joint) if 'twist' in j]
-            mult_mat = cmds.createNode('multMatrix')
-            decomp_mat = cmds.createNode('decomposeMatrix')
-            quat_to_euler = cmds.createNode('quatToEuler')
+            metadata = icarus.metadata.metadata_from_name(next_joint)
+            mult_mat = self.add_node(
+                'multMatrix',
+                object_id=metadata['id'],
+                description=metadata['description'],
+            )
+            decomp_mat = self.add_node(
+                'decomposeMatrix',
+                object_id=metadata['id'],
+                description=metadata['description'],
+            )
+            quat_to_euler = self.add_node(
+                'quatToEuler',
+                object_id=metadata['id'],
+                description=metadata['description'],
+            )
             cmds.connectAttr(
                 next_joint + '.worldMatrix[0]',
                 mult_mat + '.matrixIn[0]'
@@ -102,7 +115,13 @@ class Chain(RigModule):
             for i, twist in enumerate(twists):
                 current_factor = (i + 1) * factor
                 current_factor_reverse = 1 - current_factor
-                anim_blend = cmds.createNode('animBlendNodeAdditiveRotation')
+                metadata = icarus.metadata.metadata_from_name(twist)
+                anim_blend = self.add_node(
+                    'animBlendNodeAdditiveRotation',
+                    role='blend',
+                    description=metadata['description'],
+                    object_id=metadata['id'],
+                )
                 cmds.setAttr(
                     anim_blend + '.weightA',
                     current_factor
@@ -178,6 +197,7 @@ class Chain(RigModule):
         for chain_joint in self.deform_chain[:-1]:
             twists = [t for t in cmds.listRelatives(chain_joint) if 'twist' in t]
             current_twist_count = len(twists)
+            print "current_twist_count:", current_twist_count
             diff = exptected_twist_count - current_twist_count
             if diff > 0:
                 for i in xrange(diff):

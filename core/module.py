@@ -115,19 +115,42 @@ class RigModule(IcarusNode):
         Will be called automatically when creating the module.
         You need to overwrite this method in your subclasses.
         """
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'placement'
-        }
+        self.placement_group.set(
+            self.add_node(
+                'transform',
+                'grp',
+                description='placement',
+                parent=self.node_name
+            )
+        )
+        self.controls_group.set(
+            self.add_node(
+                'transform',
+                role='grp',
+                description='controls',
+                parent = self.node_name
+            )
+        )
 
-        placement_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.placement_group.set(cmds.createNode(
-            'transform',
-            name=placement_group_name,
-            parent=self.node_name
-        ))
+        self.driving_group.set(
+            self.add_node(
+                'transform',
+                role='grp',
+                description='driving',
+                parent = self.node_name
+            )
+        )
+        cmds.setAttr(self.driving_group.get() + '.visibility', False)
+
+        self.extras_group.set(
+            self.add_node(
+                'transform',
+                role='grp',
+                description='extras',
+                parent = self.node_name
+            )
+        )
+        cmds.setAttr(self.extras_group.get() + '.visibility', False)
 
     def update(self):
         """Update the maya scene based on the module's fields
@@ -204,52 +227,6 @@ class RigModule(IcarusNode):
         Call this method instead of `build()` to make sure
         everything is setup properly
         """
-        if self.is_built.get():
-            raise RuntimeError(
-                "Module {} is already built!".format(self.node_name)
-            )
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'controls'
-        }
-
-        controls_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.controls_group.set(cmds.createNode(
-            'transform',
-            name=controls_group_name,
-            parent=self.node_name
-        ))
-
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'driving'
-        }
-        driving_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.driving_group.set(cmds.createNode(
-            'transform',
-            name=driving_group_name,
-            parent=self.node_name
-        ))
-        cmds.setAttr(self.driving_group.get() + '.visibility', False)
-
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'extras'
-        }
-        extras_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.extras_group.set(cmds.createNode(
-            'transform',
-            name=extras_group_name,
-            parent=self.node_name
-        ))
-        cmds.setAttr(self.extras_group.get() + '.visibility', False)
-
         self.create_driving_joints()
         self.build()
         self.is_built.set(True)
@@ -274,7 +251,7 @@ class RigModule(IcarusNode):
     def add_node(
         self,
         node_type,
-        role,
+        role=None,
         object_id=None,
         description=None,
         *args,
@@ -293,8 +270,8 @@ class RigModule(IcarusNode):
         :param description: optional description for the node
         :type object_id: str
         """
-        print args
-        print kwargs
+        if not role:
+            role = node_type
         metadata = {
             'base_name': self.name.get(),
             'side': self.side.get(),
@@ -329,7 +306,7 @@ class RigModule(IcarusNode):
         Args:
             parent (str): node under which the new joint will be parented
         """
-        if not object_id:
+        if object_id is None:
             object_id = len(self.deform_joints)
 
         new_joint = self.add_node(
