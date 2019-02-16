@@ -3,6 +3,7 @@ import weakref
 import maya.cmds as cmds
 
 from icarus.core.fields import FieldContainerMeta, BoolField
+import icarus.metadata
 
 
 class IcarusNode(object):

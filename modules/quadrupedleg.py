@@ -142,8 +142,8 @@ class QuadrupedLeg(FkIkSpringChain):
             keyable=True
         )
 
-        set_range = cmds.createNode('setRange')
-        reverse = cmds.createNode('reverse')
+        set_range = self.add_node('setRange', description='legBendAngle')
+        reverse = self.add_node('reverse', description='legBendAngle')
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.legBendAngle',
             set_range + '.valueX'
@@ -211,14 +211,11 @@ class QuadrupedLeg(FkIkSpringChain):
         )
 
     def _create_foot_pivots(self):
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'foot_pivots'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        pivots_grp = cmds.createNode('transform', name=name)
+        pivots_grp = self.add_node(
+            'transform',
+            role='grp',
+            description='foot_pivots'
+        )
         icarus.dag.snap_first_to_last(pivots_grp, self.extras_group.get())
         cmds.parent(pivots_grp, self.extras_group.get())
         icarus.dag.matrix_constraint(self.ik_end_ctl.get(), pivots_grp, maintain_offset=True)
@@ -294,8 +291,8 @@ class QuadrupedLeg(FkIkSpringChain):
         cmds.parent(self.bank_int_pivot.get(), self.bank_ext_pivot.get())
 
     def _connect_attrs_to_pivots(self):
-        clamp_tip = cmds.createNode('clamp')
-        clamp_heel = cmds.createNode('clamp')
+        clamp_tip = self.add_node('clamp', description='tip')
+        clamp_heel = self.add_node('clamp', description='heel')
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.footRoll',
             clamp_tip + '.inputR' 
@@ -319,8 +316,8 @@ class QuadrupedLeg(FkIkSpringChain):
             self.ik_end_ctl.get() + '.footTwist',
             self.twist_pivot.get() + '.rotateY'
         )
-        clamp_int = cmds.createNode('clamp')
-        clamp_ext = cmds.createNode('clamp')
+        clamp_int = self.add_node('clamp', description='int')
+        clamp_ext = self.add_node('clamp', description='ext')
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.footBank',
             clamp_int + '.inputR'
