@@ -123,7 +123,10 @@ def set_attributes_state(node, attributes_state):
         value = attr_state.pop('value')
         cmds.setAttr(attr_name, keyable=attr_state['keyable'])
         cmds.setAttr(attr_name, lock=attr_state['lock'])
-        cmds.setAttr(attr_name, channelBox=attr_state['channelBox'])
+
+        if not attr_state['keyable']:
+            # maya throws a warning if the attribute is keyable
+            cmds.setAttr(attr_name, channelBox=attr_state['channelBox'])
 
         is_locked = cmds.getAttr(attr_name, lock=True)
         is_connected = bool(cmds.listConnections(attr_name, source=True))
