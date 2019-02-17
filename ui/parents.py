@@ -17,6 +17,12 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
     ui_name = 'icarus_parent_spaces'
 
+    space_types = OrderedDict((
+        ('Parent', 'parent'),
+        ('Orient', 'orient'),
+        ('Point', 'point'),
+    ))
+
     def __init__(self, parent=None):
         super(IcarusParentSpaces, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -28,12 +34,14 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.child = QtWidgets.QLineEdit()
         self.pick_child_button = QtWidgets.QPushButton('Pick Selected')
 
+        self.space_type = QtWidgets.QComboBox()
+
         self.parents_content = QtWidgets.QWidget()
         self.parents = QtWidgets.QListView()
         self.add_parent_button = QtWidgets.QPushButton('Add Selected')
         self.remove_parents_button = QtWidgets.QPushButton('Remove')
 
-        self.update_button = QtWidgets.QPushButton('Update')
+        self.update_button = QtWidgets.QPushButton('Create')
         self.delete_button = QtWidgets.QPushButton('Delete All')
 
         self.setCentralWidget(self.content)
@@ -58,6 +66,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         parents_actions_layout.addWidget(self.remove_parents_button)
 
         form.addRow('Child Control:', self.child_content)
+        form.addRow('Space Type:', self.space_type)
         form.addRow('Parent Transforms:', self.parents_content)
 
         actions_layout = QtWidgets.QHBoxLayout()
@@ -67,6 +76,9 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         actions_layout.addWidget(self.delete_button)
 
         self.child.setEnabled(False)
+
+        self.space_type.addItems(self.space_types.keys())
+        self.space_type.setEnabled(False)
 
         self.parents.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.parents.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
@@ -96,6 +108,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
             return
         control = selection[-1]
         self.set_child(control)
+        self.space_type.setEnabled(True)
         self.add_parent_button.setEnabled(True)
         self.remove_parents_button.setEnabled(True)
         self.update_button.setEnabled(True)
@@ -111,14 +124,21 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         :type control: str
         """
         self.child.setText(control)
-        data = cmds.getAttr(control + '.parent_space_data')
-        spaces = json.loads(data, object_pairs_hook=OrderedDict)
-        if not hasattr(spaces, 'get'):
-            # Data is either corrupt or serialization method has changed.
-            return
 
-        parents = spaces.get('parents', [])
-        self.model.setStringList(parents)
+        # If the control has a parent, orient or point space,
+        # Then set the Space Type field and lock it.
+        # Also load the current space drivers.
+        space_type, drivers = self._control_configuration()
+        if space_type and drivers:
+            # Get the nice name of this space
+            name = {v: k for k, v in self.space_types.iteritems()}[space_type]
+            self.model.setStringList(drivers)
+            self.space_type.setCurrentText(name)
+        else:
+            self.model.setStringList([])
+            self.space_type.setCurrentText(self.space_types.keys()[0])
+
+        self._update_ui_state()
 
     def add_parent(self):
         """Add a parent from Maya's selection."""
@@ -155,14 +175,26 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         if not ctl:
             logger.warning('Please pick a child control first.')
             return
-        parents = self.model.stringList()
-        space_type = 'parent' # TODO: dynamically set this to parent/orient/point
+
+        previous_space_type, previous_drivers = self._control_configuration()
+
+        drivers = self.model.stringList()
+        name = self.space_type.currentText()
+        space_type = self.space_types[name]
+
+        if space_type != previous_space_type or drivers != previous_drivers:
+            if previous_drivers:
+                icarus.dag.remove_parent_spaces(ctl)
+
+        if drivers:
+            icarus.dag.create_space_switching(ctl, drivers, space_type)
+
         data = json.dumps({
-            'parents': parents,
+            space_type: drivers,
         })
         cmds.setAttr(ctl + '.parent_space_data', data, type='string')
-        if parents:
-            icarus.dag.create_space_switching(ctl, parents, space_type)
+
+        self._update_ui_state()
 
     def delete_all(self):
         """Deletes all parent spaces set on the selected control."""
@@ -183,6 +215,34 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         if button != QtWidgets.QMessageBox.Yes:
             return
 
+        icarus.dag.remove_parent_spaces(ctl)
         self.model.setStringList([])
         cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
-        icarus.dag.remove_parent_spaces(ctl)
+
+        self._update_ui_state()
+
+    def _update_ui_state(self):
+        """Update some ui elements depending on the control and parents."""
+        if self.model.stringList():
+            self.update_button.setText('Update')
+        else:
+            self.update_button.setText('Create')
+
+    def _control_configuration(self):
+        """Return selected control current spaces data."""
+        ctl = self.child.text()
+        if not ctl:
+            return None, []
+
+        data = cmds.getAttr(ctl + '.parent_space_data')
+        spaces = json.loads(data, object_pairs_hook=OrderedDict)
+        if not hasattr(spaces, 'get'):
+            # Data is either corrupt or serialization method has changed.
+            return
+
+        for space_type in self.space_types.values():
+            drivers = spaces.get(space_type, [])
+            if drivers:
+                return space_type, drivers
+
+        return None, []
