@@ -6,7 +6,6 @@ import maya.api.OpenMaya as om2
 from icarus.core.module import RigModule
 from icarus.core.fields import IntField, ObjectListField
 import icarus.dag
-import icarus.utils.shape as _shapeutils
 
 
 class Chain(RigModule):

@@ -14,6 +14,7 @@ from icarus.modules import all_rig_modules
 import icarus.attributes
 import icarus.dag
 import icarus.metadata
+import icarus.config
 
 from shapeshifter import shapeshifter
 
@@ -420,6 +421,16 @@ class RigModule(IcarusNode):
             ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl = shapeshifter.create_controller_from_name(shape_type)
         ctl = cmds.rename(ctl, ctl_name)
+
+        # update the controller color based on its side
+        current_data = shapeshifter.get_shape_data(ctl)
+        new_data = []
+        side_color = icarus.config.controller_colors[self.side.get()]
+        for shape_data in current_data:
+            new_shape_data = shape_data.copy()
+            new_shape_data.update(side_color)
+            new_data.append(new_shape_data)
+        shapeshifter.change_controller_shape(ctl, new_data)
 
         # get the existing shape data if it exists
         icarus.attributes.create_persistent_attribute(
