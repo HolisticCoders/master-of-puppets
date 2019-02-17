@@ -8,6 +8,7 @@ import maya.cmds as cmds
 from icarus.ui.settings import get_settings
 from icarus.ui.signals import clear_all_signals, publish, subscribe
 from icarus.vendor.Qt import QtWidgets, QtCore
+import icarus.dag
 
 logger = logging.getLogger(__name__)
 
@@ -154,10 +155,14 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         if not ctl:
             logger.warning('Please pick a child control first.')
             return
+        parents = self.model.stringList()
+        space_type = 'parent' # TODO: dynamically set this to parent/orient/point
         data = json.dumps({
-            'parents': self.model.stringList(),
+            'parents': parents,
         })
         cmds.setAttr(ctl + '.parent_space_data', data, type='string')
+        if parents:
+            icarus.dag.create_space_switching(ctl, parents, space_type)
 
     def delete_all(self):
         """Deletes all parent spaces set on the selected control."""
@@ -180,3 +185,4 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         self.model.setStringList([])
         cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
+        icarus.dag.remove_parent_spaces(ctl)

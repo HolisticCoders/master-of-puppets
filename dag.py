@@ -1,5 +1,6 @@
 import maya.cmds as cmds
 import icarus.metadata
+import icarus.utils.dg as _dgutils
 
 
 def hierarchy_to_dict(parent, tree, nodes=[]):
@@ -296,11 +297,12 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
 
     todel = []
     for i, driver in enumerate(drivers):
-        cmds.addAttr(
-            driven,
-            longName = driver + '_offset',
-            attributeType='matrix'
-        )
+        if not cmds.attributeQuery(driver + '_offset', node=driven, exists=True):
+            cmds.addAttr(
+                driven,
+                longName = driver + '_offset',
+                attributeType='matrix'
+            )
         # get the offset between the driven and driver
         mult_mat_offset = cmds.createNode('multMatrix')
         todel.append(mult_mat_offset)
@@ -435,5 +437,51 @@ def create_point_space(driven, drivers):
     )
     cmds.delete(todel)
 
+
 def create_orient_space(driven, drivers):
     create_parent_space(driven, drivers, translate=False, rotate=True)
+
+
+def create_space_switching(driven, drivers, space_type):
+    with _dgutils.CatchCreatedNodes() as ps_nodes:
+        if space_type == 'parent':
+            create_parent_space(driven, drivers)
+        elif space_type == 'point':
+            create_point_space(driven, drivers)
+        elif space_type == 'orient':
+            create_orient_space(driven, drivers)
+    if ps_nodes:
+        if not cmds.attributeQuery('ps_nodes', node=driven, exists=True):
+            cmds.addAttr(
+                driven,
+                longName='ps_nodes',
+                attributeType='message',
+                multi=True,
+                indexMatters=False
+            )
+        for node in ps_nodes:
+            cmds.connectAttr(
+                node + '.message',
+                driven + '.ps_nodes',
+                nextAvailable=True
+            )
+
+
+def remove_parent_spaces(transform):
+    """Delete all the nodes related to parent spaces of the transform."""
+    parent_space_nodes = cmds.listConnections(
+        transform + '.ps_nodes',
+        source=True
+    )
+    for node in parent_space_nodes:
+        if cmds.nodeType(node) == 'transform':
+            # reparent the controller to its original parent
+            # if we don't do that, the controller will get deleted
+            parent = cmds.listRelatives(node, parent=True)[0]
+            child = cmds.listRelatives(node)[0]
+            cmds.parent(child, parent)
+    cmds.delete(parent_space_nodes)
+
+    if cmds.attributeQuery('space', node=transform, exists=True):
+        cmds.deleteAttr(attribute='space', name=transform)
+
