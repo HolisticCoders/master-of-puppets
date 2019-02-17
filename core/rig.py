@@ -184,14 +184,9 @@ class Rig(IcarusNode):
                     continue
 
                 parents = spaces.get('parents', [])
-                orients = spaces.get('orients', [])
-                points = spaces.get('points', [])
+                space_type = spaces.get('space_type', 'parent')
                 if parents:
-                    icarus.dag.create_parent_space(ctl, parents)
-                if orients:
-                    icarus.dag.create_orient_space(ctl, orients)
-                if points:
-                    icarus.dag.create_point_space(ctl, points)
+                    icarus.dag.create_space_switching(ctl, parents, space_type)
 
         icarus.postscript.run_scripts('post_build')
 
