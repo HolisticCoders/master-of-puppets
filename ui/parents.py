@@ -25,6 +25,10 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
         super(IcarusParentSpaces, self).__init__(parent)
+
+        self._nice_names = {}
+        self._current_driver = None
+
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('Icarus - Parent Spaces')
 
@@ -40,6 +44,8 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.parents = QtWidgets.QListView()
         self.add_parent_button = QtWidgets.QPushButton('Add Selected')
         self.remove_parents_button = QtWidgets.QPushButton('Remove')
+
+        self.nice_name = QtWidgets.QLineEdit()
 
         self.update_button = QtWidgets.QPushButton('Create')
         self.delete_button = QtWidgets.QPushButton('Delete All')
@@ -68,6 +74,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         form.addRow('Child Control:', self.child_content)
         form.addRow('Space Type:', self.space_type)
         form.addRow('Parent Transforms:', self.parents_content)
+        form.addRow('Nice Name:', self.nice_name)
 
         actions_layout = QtWidgets.QHBoxLayout()
         layout.addLayout(actions_layout)
@@ -83,6 +90,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.parents.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.parents.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
 
+        self.nice_name.setEnabled(False)
         self.add_parent_button.setEnabled(False)
         self.remove_parents_button.setEnabled(False)
         self.update_button.setEnabled(False)
@@ -95,6 +103,8 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.parents.setModel(self.model)
 
         self.pick_child_button.released.connect(self.pick_child)
+        self.parents.selectionModel().currentChanged.connect(self._on_current_parent_changed)
+        self.nice_name.textChanged.connect(self._on_nice_name_changed)
         self.add_parent_button.released.connect(self.add_parent)
         self.remove_parents_button.released.connect(self.remove_parents)
         self.update_button.released.connect(self.update)
@@ -109,6 +119,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         control = selection[-1]
         self.set_child(control)
         self.space_type.setEnabled(True)
+        self.nice_name.setEnabled(True)
         self.add_parent_button.setEnabled(True)
         self.remove_parents_button.setEnabled(True)
         self.update_button.setEnabled(True)
@@ -124,6 +135,8 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         :type control: str
         """
         self.child.setText(control)
+        self._current_driver = None
+        self._nice_names = {}
 
         # If the control has a parent, orient or point space,
         # Then set the Space Type field and lock it.
@@ -132,7 +145,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         if space_type and drivers:
             # Get the nice name of this space
             name = {v: k for k, v in self.space_types.iteritems()}[space_type]
-            self.model.setStringList(drivers)
+            self.model.setStringList(drivers.values())
             self.space_type.setCurrentText(name)
         else:
             self.model.setStringList([])
@@ -176,15 +189,23 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
             logger.warning('Please pick a child control first.')
             return
 
-        previous_space_type, previous_drivers = self._control_configuration()
+        prev_space_type, prev_drivers = self._control_configuration()
 
         drivers = self.model.stringList()
         name = self.space_type.currentText()
         space_type = self.space_types[name]
 
-        if space_type != previous_space_type or drivers != previous_drivers:
-            if previous_drivers:
-                icarus.dag.remove_parent_spaces(ctl)
+        # Transform the list of drivers to a mapping of
+        # nice name: transform name.
+        _drivers = OrderedDict()
+        for driver in drivers:
+            _drivers[self._nice_names.get(driver, driver)] = driver
+        drivers = _drivers
+
+        space_changed = space_type != prev_space_type
+        drivers_changed = drivers != prev_drivers.values()
+        if prev_drivers and (space_changed or drivers_changed):
+            icarus.dag.remove_parent_spaces(ctl)
 
         if drivers:
             icarus.dag.create_space_switching(ctl, drivers, space_type)
@@ -232,7 +253,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """Return selected control current spaces data."""
         ctl = self.child.text()
         if not ctl:
-            return None, []
+            return None, {}
 
         data = cmds.getAttr(ctl + '.parent_space_data')
         spaces = json.loads(data, object_pairs_hook=OrderedDict)
@@ -241,8 +262,27 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
             return
 
         for space_type in self.space_types.values():
-            drivers = spaces.get(space_type, [])
+            drivers = spaces.get(space_type, {})
             if drivers:
                 return space_type, drivers
 
-        return None, []
+        return None, {}
+
+    def _on_current_parent_changed(self, index):
+        """Update the nice name field.
+
+        :param index: New current index.
+        :type index: PySide2.QtCore.QModelIndex
+        """
+        driver = self.model.data(index, QtCore.Qt.DisplayRole)
+        self._current_driver = driver
+        name = self._nice_names.get(driver, driver)
+        self.nice_name.setText(name)
+
+    def _on_nice_name_changed(self, name):
+        """Update the internal nice name data.
+
+        :param name: New name to set on the current parent.
+        :type name: str
+        """
+        self._nice_names[self._current_driver] = name

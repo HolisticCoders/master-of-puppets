@@ -274,6 +274,7 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
 
     if cmds.attributeQuery('space', node=driven, exists=True):
         cmds.deleteAttr(attribute='space', name=driven)
+
     cmds.addAttr(
         driven,
         longName='space',
@@ -364,12 +365,19 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
 def create_point_space(driven, drivers):
     if cmds.attributeQuery('space', node=driven, exists=True):
         cmds.deleteAttr(attribute='space', name=driven)
+
+    if isinstance(drivers, dict):
+        names = drivers.keys()
+        drivers = drivers.values()
+    else:
+        names = drivers
+
     cmds.addAttr(
         driven,
         longName='space',
         shortName='Point_Space',
         attributeType="enum",
-        enumName=':'.join(drivers) + ':',
+        enumName=':'.join(names) + ':',
         keyable=True
     )
 
