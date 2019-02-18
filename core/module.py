@@ -299,7 +299,6 @@ class RigModule(IcarusNode):
             node = cmds.spaceLocator(name=name)[0]
         else:
             node = cmds.createNode(node_type, name=name, *args, **kwargs)
-        print node
         cmds.addAttr(
             node,
             longName='module',
