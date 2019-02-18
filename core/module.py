@@ -295,7 +295,11 @@ class RigModule(IcarusNode):
         name = icarus.metadata.name_from_metadata(metadata)
         if cmds.objExists(name):
             raise ValueError("A node with the name `{}` already exists".format(name))
-        node = cmds.createNode(node_type, name=name, *args, **kwargs)
+        if node_type == 'locator':
+            node = cmds.spaceLocator(name=name)[0]
+        else:
+            node = cmds.createNode(node_type, name=name, *args, **kwargs)
+        print node
         cmds.addAttr(
             node,
             longName='module',
@@ -348,22 +352,18 @@ class RigModule(IcarusNode):
         self.deform_joints.append(new_joint)
         return new_joint
 
-    def _add_placement_locator(self, name=None, parent=None):
+    def _add_placement_locator(self, description=None, object_id=None, parent=None):
         """Creates a new placement locator for this module.
 
         A placement locator is a way to get placement data without polluting
         the deform skeleton.
         """
-        object_id = len(self.placement_locators)
-        if name is None:
-            metadata = {
-                'base_name': self.name.get(),
-                'side': self.side.get(),
-                'role': 'placement',
-                'id': object_id
-            }
-            name = icarus.metadata.name_from_metadata(metadata)
-        locator = cmds.spaceLocator(name=name)[0]
+        locator = self.add_node(
+            'locator',
+            role='placement',
+            object_id=object_id,
+            description=description
+        )
         if not parent:
             parent = self.placement_group.get()
         cmds.parent(locator, parent)
