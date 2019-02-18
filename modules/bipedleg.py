@@ -51,65 +51,29 @@ class BipedLeg(FkIkRotatePlaneChain):
             deform_name = icarus.metadata.name_from_metadata(metadata)
             deform = cmds.rename(deform, deform_name)
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_ball'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.ball_placement.set(name)
+        self.ball_placement.set(
+            self._add_placement_locator(description='foot_ball')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_twist'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.twist_placement.set(name)
+        self.twist_placement.set(
+            self._add_placement_locator(description='foot_twist')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_tip'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.tip_placement.set(name)
+        self.tip_placement.set(
+            self._add_placement_locator(description='foot_tip')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_heel'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.heel_placement.set(name)
+        self.heel_placement.set(
+            self._add_placement_locator(description='foot_heel')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_bank_ext'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.bank_ext_placement.set(name)
+        self.bank_ext_placement.set(
+            self._add_placement_locator(description='foot_bank_ext')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_bank_int'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.bank_int_placement.set(name)
+        self.bank_int_placement.set(
+            self._add_placement_locator(description='foot_bank_int')
+        )
 
     def create_driving_joints(self):
         super(BipedLeg, self).create_driving_joints()
