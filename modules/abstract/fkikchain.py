@@ -70,15 +70,12 @@ class FkIkChain(ChainSwitcher):
         self._setup_switch_vis()
 
     def _setup_fk(self):
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'FK_controls',
-        }
-        fk_controls_group_name = icarus.metadata.name_from_metadata(metadata)
         self.fk_controls_group.set(
-            cmds.createNode('transform', name=fk_controls_group_name)
+            self.add_node(
+                'transform',
+                role='grp',
+                description='FK_controls',
+            )
         )
         cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.fk_controls_group.get())
@@ -98,15 +95,12 @@ class FkIkChain(ChainSwitcher):
 
     def _setup_ik(self):
         ik_chain = self.chain_b.get()
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'IK_controls',
-        }
-        ik_controls_group_name = icarus.metadata.name_from_metadata(metadata)
         self.ik_controls_group.set(
-             cmds.createNode('transform', name=ik_controls_group_name)
+            self.add_node(
+                'transform',
+                role='grp',
+                description='IK_controls',
+            )
         )
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
         icarus.dag.reset_node(self.ik_controls_group.get())

@@ -57,9 +57,26 @@ class CheckBox(QtWidgets.QCheckBox):
         return self.stateChanged
 
 
+class ComboBox(QtWidgets.QComboBox):
+    def __init__(self, field, *args, **kwargs):
+        super(ComboBox, self).__init__(*args, **kwargs)
+        self.field = field
+        self.addItems(field.choices)
+    
+    def set(self, value):
+        self.setCurrentText(value)
+
+    def get(self):
+        return self.currentText()
+    
+    def signal(self):
+        return self.currentTextChanged
+
+
 map_field_to_widget = {
     'BoolField': CheckBox,
     'IntField': SpinBox,
     'StringField': LineEdit,
     'ObjectField': LineEdit,
+    'EnumField': ComboBox,
 }

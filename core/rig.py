@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from collections import OrderedDict
 
 import maya.cmds as cmds
 
@@ -69,22 +70,28 @@ class Rig(IcarusNode):
 
     def _create_basic_hierarchy(self):
         if not cmds.objExists('MODULES'):
-            self.modules_group.set(cmds.createNode(
-                'transform',
-                name='MODULES',
-            ))
+            self.modules_group.set(
+                cmds.createNode(
+                    'transform',
+                    name='MODULES',
+                )
+            )
             cmds.parent(self.modules_group.get(), 'RIG')
         if not cmds.objExists('EXTRAS'):
-            self.extras_group.set(cmds.createNode(
-                'transform',
-                name='EXTRAS',
-            ))
+            self.extras_group.set(
+                cmds.createNode(
+                    'transform',
+                    name='EXTRAS',
+                )
+            )
             cmds.parent(self.extras_group.get(), 'RIG')
         if not cmds.objExists('SKELETON'):
-            self.skeleton_group.set(cmds.createNode(
-                'transform',
-                name='SKELETON',
-            ))
+            self.skeleton_group.set(
+                cmds.createNode(
+                    'transform',
+                    name='SKELETON',
+                )
+            )
             cmds.parent(self.skeleton_group.get(), 'RIG')
 
     def _add_default_modules(self):
@@ -93,8 +100,11 @@ class Rig(IcarusNode):
 
     @undoable
     def add_module(self, module_type, *args, **kwargs):
+        if self.is_built.get():
+            raise RuntimeError('Cannot add module when the rig is built.')
+
         if module_type not in all_rig_modules:
-            raise Exception("Module Type {} is not valid".format(module_type))
+            raise ValueError("Module Type {} is not valid".format(module_type))
 
         # instantiate the new module from the list of possible modules.
         kwargs['rig'] = self
@@ -150,9 +160,33 @@ class Rig(IcarusNode):
                 if attributes_state:
                     attributes_state = json.loads(attributes_state)
                     icarus.attributes.set_attributes_state(ctl, attributes_state)
+            cmds.setAttr(module.placement_group.get() + '.visibility', False)
 
         nodes_after_build = set(cmds.ls('*'))
         build_nodes = list(nodes_after_build - nodes_before_build)
+
+        for module in self.rig_modules:
+            for ctl in module.controllers.get():
+                parent_spaces = cmds.getAttr(ctl + '.parent_space_data')
+                if not parent_spaces:
+                    continue
+
+                # Restore parent spaces.
+                # We use an OrderedDict to load saved data
+                # in order to preserve the parents ordering.
+                spaces = json.loads(
+                    parent_spaces,
+                    object_pairs_hook=OrderedDict
+                )
+                if not hasattr(spaces, 'get'):
+                    # In case serialized data is bad or serialization
+                    # changes along the way.
+                    continue
+
+                parents = spaces.get('parents', [])
+                space_type = spaces.get('space_type', 'parent')
+                if parents:
+                    icarus.dag.create_space_switching(ctl, parents, space_type)
 
         icarus.postscript.run_scripts('post_build')
 
@@ -184,6 +218,7 @@ class Rig(IcarusNode):
                     json.dumps(attributes_state),
                     type='string'
                 )
+            cmds.setAttr(module.placement_group.get() + '.visibility', True)
 
         for node in self.skeleton:
             for attribute in ['.translate', '.rotate', '.scale']:

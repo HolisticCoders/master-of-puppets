@@ -56,10 +56,26 @@ class Corrective(RigModule):
         for joint in self.driving_joints:
             ctl = self._add_control(joint)
             condition_nodes = []
+            metadata = icarus.metadata.metadata_from_name(joint)
             for angleAxis in 'YZ':
-                positive_offset = cmds.createNode('multiplyDivide')
-                negative_offset = cmds.createNode('multiplyDivide')
-                value_opposite = cmds.createNode('multDoubleLinear')
+                positive_offset = self.add_node(
+                    'multiplyDivide',
+                    role='mult',
+                    description='positive_offset' + '_' + angleAxis,
+                    object_id=metadata['id']
+                )
+                negative_offset = self.add_node(
+                    'multiplyDivide',
+                    role='mult',
+                    description='negative_offset' + '_' + angleAxis,
+                    object_id=metadata['id']
+                )
+                value_opposite = self.add_node(
+                    'multDoubleLinear',
+                    role='mult',
+                    description='value_opposite' + '_' + angleAxis,
+                    object_id=metadata['id']
+                )
                 cmds.connectAttr(
                     value_range + '.output' + angleAxis,
                     value_opposite + '.input1'
@@ -82,7 +98,11 @@ class Corrective(RigModule):
                         ctl + '.offsetNegative' + axis,
                         negative_offset + '.input2' + axis
                     )
-                condition = cmds.createNode('condition')
+                condition = self.add_node(
+                    'condition',
+                    description=angleAxis,
+                    object_id=metadata['id']
+                )
                 cmds.setAttr(condition + '.operation', 3)  # 3 is >=
                 condition_nodes.append(condition)
                 cmds.connectAttr(
@@ -97,7 +117,11 @@ class Corrective(RigModule):
                     negative_offset + '.output',
                     condition + '.colorIfFalse'
                 )
-            affected_by_cond = cmds.createNode('condition')
+            affected_by_cond = self.add_node(
+                'condition',
+                description='affected_by',
+                object_id=metadata['id']
+            )
             cmds.connectAttr(
                 ctl + '.affectedBy',
                 affected_by_cond + '.firstTerm'
@@ -116,15 +140,9 @@ class Corrective(RigModule):
             )
 
     def create_locators(self):
-        locator_space_group = cmds.createNode('transform')
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'vectorsLocalSpace'
-        }
-        locator_space_group = cmds.rename(
-            locator_space_group,
-            icarus.metadata.name_from_metadata(metadata)
+        locator_space_group = self.add_node(
+            'transform',
+            role='vectorsLocalSpace'
         )
         cmds.parent(locator_space_group, self.extras_group.get())
         cmds.setAttr(locator_space_group + '.inheritsTransform', False)
@@ -137,9 +155,13 @@ class Corrective(RigModule):
             locator_space_group
         )
 
-        vector_base = cmds.listRelatives(cmds.createNode(
-            'locator',
-        ), parent=True)[0]
+        vector_base = cmds.listRelatives(
+            self.add_node(
+                'locator',
+                description='vector_base'
+            ),
+            parent=True
+        )[0]
         vector_base = cmds.rename(
             vector_base,
             self.vector_base.get() + '_vectorBase'
@@ -153,9 +175,13 @@ class Corrective(RigModule):
         cmds.parentConstraint(self.vector_base.get(), vector_base)
         self.vector_base_loc.set(vector_base)
 
-        vector_tip = cmds.listRelatives(cmds.createNode(
-            'locator',
-        ), parent=True)[0]
+        vector_tip = cmds.listRelatives(
+            self.add_node(
+                'locator',
+                description='vector_tip'
+            ),
+            parent=True
+        )[0]
         vector_tip = cmds.rename(
             vector_tip,
             self.vector_base.get() + '_vectorTip'
@@ -170,9 +196,13 @@ class Corrective(RigModule):
         cmds.parentConstraint(vector_base, vector_tip, maintainOffset=True)
         self.vector_tip_loc.set(vector_tip)
 
-        orig_pose_vector_tip = cmds.listRelatives(cmds.createNode(
-            'locator',
-        ), parent=True)[0]
+        orig_pose_vector_tip = cmds.listRelatives(
+            self.add_node(
+                'locator',
+                description='orig_pose_vector_tip'
+            ),
+            parent=True
+        )[0]
         orig_pose_vector_tip = cmds.rename(
             orig_pose_vector_tip,
             self.vector_base.get() + '_vectorTipOrig'
@@ -188,9 +218,17 @@ class Corrective(RigModule):
 
     def _build_angle_reader(self):
         # get the two vectors
-        source_vector = cmds.createNode('plusMinusAverage')
+        source_vector = self.add_node(
+            'plusMinusAverage',
+            role='vector',
+            description='source'
+        )
         cmds.setAttr(source_vector + '.operation', 2)
-        target_vector = cmds.createNode('plusMinusAverage')
+        target_vector = self.add_node(
+            'plusMinusAverage',
+            role='vector',
+            description='target'
+        )
         cmds.setAttr(target_vector + '.operation', 2)
         cmds.connectAttr(
             self.vector_tip_loc.get() + '.translate',
@@ -210,7 +248,7 @@ class Corrective(RigModule):
         )
 
         # get the angle between the two vectors
-        angle_between = cmds.createNode('angleBetween')
+        angle_between = self.add_node('angleBetween')
         cmds.connectAttr(
             source_vector + '.output3D',
             angle_between + '.vector1',
@@ -220,7 +258,11 @@ class Corrective(RigModule):
             angle_between + '.vector2',
         )
 
-        self.node_mult = cmds.createNode('multiplyDivide')
+        self.node_mult = self.add_node(
+            'multiplyDivide',
+            role='mult',
+            description='angle_times_axis'
+        )
         cmds.connectAttr(
             angle_between + '.axis',
             self.node_mult + '.input1',
@@ -230,7 +272,11 @@ class Corrective(RigModule):
                 angle_between + '.angle',
                 self.node_mult + '.input2' + axis,
             )
-        m1_to_p1_range = cmds.createNode('multiplyDivide')
+        m1_to_p1_range = self.add_node(
+            'multiplyDivide',
+            role='mult',
+            description='m1_to_p1_range'
+        )
         cmds.setAttr(m1_to_p1_range + '.operation', 2)  # 2 is division
         cmds.connectAttr(
             self.node_mult + '.output',
@@ -310,14 +356,14 @@ class Corrective(RigModule):
                 ctl,
                 self.node_name,
                 ln='offset' + 'Positive' + axis,
-                attributeType='long',
+                attributeType='double',
                 keyable=True
             )
             icarus.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
                 ln='offset' + 'Negative' + axis,
-                attributeType='long',
+                attributeType='double',
                 keyable=True
             )
 

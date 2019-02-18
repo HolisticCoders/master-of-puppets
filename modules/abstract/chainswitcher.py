@@ -115,7 +115,12 @@ class ChainSwitcher(Chain):
     def _setup_switch(self):
         """Create the necessary nodes to switch between the A and B chains"""
         settings_ctl = self.settings_ctl.get()
-        self.reverse_switch.set(cmds.createNode('reverse'))
+        self.reverse_switch.set(
+            self.add_node(
+                'reverse',
+                description='switch'
+            )
+        )
         cmds.connectAttr(
             settings_ctl + "." + self.switch_long_name.get(),
             self.reverse_switch.get() + ".inputX"
@@ -125,9 +130,22 @@ class ChainSwitcher(Chain):
             driving = self.driving_chain[i]
             a = self.chain_a[i]
             b = self.chain_b[i]
-            wt_add_mat = cmds.createNode('wtAddMatrix')
-            mult_mat = cmds.createNode('multMatrix')
-            decompose_mat = cmds.createNode('decomposeMatrix')
+            metadata = icarus.metadata.metadata_from_name(a)
+            wt_add_mat = self.add_node(
+                'wtAddMatrix',
+                description = metadata['description'],
+                object_id = metadata['id'],
+            )
+            mult_mat = self.add_node(
+                'multMatrix',
+                description = metadata['description'],
+                object_id = metadata['id'],
+            )
+            decompose_mat = self.add_node(
+                'decomposeMatrix',
+                description = metadata['description'],
+                object_id = metadata['id'],
+            )
             cmds.connectAttr(
                 a + ".worldMatrix[0]",
                 wt_add_mat + ".wtMatrix[0].matrixIn"
@@ -158,10 +176,26 @@ class ChainSwitcher(Chain):
             )
 
             # substract the driven's joint orient from the rotation
-            euler_to_quat = cmds.createNode('eulerToQuat')
-            quat_invert = cmds.createNode('quatInvert')
-            quat_prod = cmds.createNode('quatProd')
-            quat_to_euler = cmds.createNode('quatToEuler')
+            euler_to_quat = self.add_node(
+                'eulerToQuat',
+                description = metadata['description'],
+                object_id = metadata['id'],
+            )
+            quat_invert = self.add_node(
+                'quatInvert',
+                description = metadata['description'],
+                object_id = metadata['id'],
+            )
+            quat_prod = self.add_node(
+                'quatProd',
+                description = metadata['description'],
+                object_id = metadata['id'],
+            )
+            quat_to_euler = self.add_node(
+                'quatToEuler',
+                description = metadata['description'],
+                object_id = metadata['id'],
+            )
 
             cmds.connectAttr(
                 driving + '.jointOrient',

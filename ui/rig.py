@@ -6,6 +6,7 @@ from weakref import WeakKeyDictionary, WeakSet
 
 from icarus.vendor.Qt import QtCore, QtGui, QtWidgets
 from icarus.core.rig import Rig
+from icarus.ui.settings import get_settings
 from icarus.ui.signals import publish, subscribe
 from icarus.ui.commands import build_rig, unbuild_rig, publish_rig
 from icarus.ui.utils import hsv_to_rgb
@@ -18,11 +19,18 @@ class RigPanel(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('Rig Panel')
 
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
-
         self.modules_group = QtWidgets.QGroupBox('Modules')
         self.actions_group = QtWidgets.QGroupBox('Actions')
+
+        random_colors = QtWidgets.QCheckBox('Random Colors')
+        self.tree_view = ModulesTree()
+        refresh_button = QtWidgets.QPushButton('Refresh')
+        self.build_button = QtWidgets.QPushButton('Build Rig')
+        self.unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
+        self.publish_button = QtWidgets.QPushButton('Publish Rig')
+
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
 
         layout.addWidget(self.modules_group)
         layout.addWidget(self.actions_group)
@@ -35,59 +43,60 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
-        show_colors = QtWidgets.QCheckBox('Show Colors')
-        options_layout.addWidget(show_colors)
+        options_layout.addWidget(random_colors)
 
-        show_colors.toggled.connect(self._on_show_colors_toggled)
-
-        self.tree_view = ModulesTree()
         modules_layout.addWidget(self.tree_view)
 
-        refresh_button = QtWidgets.QPushButton('Refresh')
-        build_button = QtWidgets.QPushButton('Build Rig')
-        unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
-        publish_button = QtWidgets.QPushButton('Publish Rig')
-
         actions_layout.addWidget(refresh_button)
-        actions_layout.addWidget(build_button)
-        actions_layout.addWidget(unbuild_button)
-        actions_layout.addWidget(publish_button)
+        actions_layout.addWidget(self.build_button)
+        actions_layout.addWidget(self.unbuild_button)
+        actions_layout.addWidget(self.publish_button)
 
+        self._refresh_model()
+        if self.model.is_colored:
+            random_colors.setChecked(True)
+
+        self._update_buttons_enabled()
+
+        random_colors.toggled.connect(self._on_random_colors_toggled)
         refresh_button.released.connect(self._refresh_model)
-        build_button.released.connect(build_rig)
-        unbuild_button.released.connect(unbuild_rig)
-        publish_button.released.connect(publish_rig)
+        self.build_button.released.connect(self._on_build_rig)
+        self.unbuild_button.released.connect(self._on_unbuild_rig)
+        self.publish_button.released.connect(self._on_publish_rig)
 
+        subscribe('modules-created', self._refresh_model)
+        subscribe('modules-updated', self._refresh_model)
+        subscribe('modules-deleted', self._refresh_model)
+
+    def _refresh_model(self, modules=None):
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
         self.tree_view.expandAll()
 
-        selection = self.tree_view.selectionModel()
-        selection.currentChanged.connect(self._on_current_changed)
+        selection_model = self.tree_view.selectionModel()
+        selection_model.selectionChanged.connect(self._on_selection_changed)
 
-        subscribe('module-created', self._refresh_model)
-        subscribe('module-updated', self._refresh_model)
-        subscribe('module-deleted', self._refresh_model)
-
-    def _refresh_model(self, module=None):
-        self.model = ModulesModel()
-        self.tree_view.setModel(self.model)
-        self.tree_view.expandAll()
-
-        selection = self.tree_view.selectionModel()
-        selection.currentChanged.connect(self._on_current_changed)
-
-        # Find the index of the new module.
+        # Restore selection.
         # NOTE: maybe optimize this part, and keep the same
         # model for the whole session, instead of discarding
         # it for any module added/deleted/changed.
-        if module:
-            index = self._find_index(module)
-            if index:
-                self.tree_view.selectionModel().setCurrentIndex(
-                    index,
-                    QtCore.QItemSelectionModel.SelectCurrent,
-                )
+        indices = []
+        if modules:
+            # Filter in case we stumble upon deleted module.
+            # In this case, they won't have any index in the tree.
+            indices = filter(None, map(self._find_index, modules))
+            selection = QtCore.QItemSelection()
+            selection_model.clear()
+            for index in indices:
+                selection.select(index, index)
+            selection_model.select(
+                selection,
+                QtCore.QItemSelectionModel.Select,
+            )
+            selection_model.setCurrentIndex(
+                indices[-1],
+                QtCore.QItemSelectionModel.Current,
+            )
 
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.
@@ -119,17 +128,41 @@ class RigPanel(QtWidgets.QWidget):
             if _index:
                 return _index
 
-    def _on_show_colors_toggled(self, checked):
+    def _on_random_colors_toggled(self, checked):
         if not self.model:
             return
         if checked:
-            self.model.show_colors()
+            self.model.random_colors_on()
         else:
-            self.model.hide_colors()
+            self.model.random_colors_off()
 
-    def _on_current_changed(self, current, previous):
-        pointer = current.internalPointer()
-        publish('selected-module-changed', pointer)
+    def _on_build_rig(self):
+        build_rig()
+        self._update_buttons_enabled()
+
+    def _on_unbuild_rig(self):
+        unbuild_rig()
+        self._update_buttons_enabled()
+
+    def _on_publish_rig(self):
+        publish_rig()
+        self._update_buttons_enabled()
+
+    def _update_buttons_enabled(self):
+        if Rig().is_built.get():
+            self.build_button.setEnabled(False)
+            self.unbuild_button.setEnabled(True)
+            self.publish_button.setEnabled(True)
+        else:
+            self.build_button.setEnabled(True)
+            self.unbuild_button.setEnabled(False)
+            self.publish_button.setEnabled(False)
+
+    def _on_selection_changed(self, selected, deselected):
+        selection = self.tree_view.selectionModel()
+        selected = selection.selectedRows()
+        pointer = [index.internalPointer() for index in selected]
+        publish('selected-modules-changed', pointer)
 
 
 class ModulesTree(QtWidgets.QTreeView):
@@ -143,6 +176,9 @@ class ModulesTree(QtWidgets.QTreeView):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
+        self.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
 
 
 class ModulesModel(QtCore.QAbstractItemModel):
@@ -154,8 +190,13 @@ class ModulesModel(QtCore.QAbstractItemModel):
 
     def __init__(self, parent=None):
         super(ModulesModel, self).__init__(parent)
+        self._random_colors = False
         self.invalidate_cache()
-        self._show_colors = False
+
+        settings = get_settings()
+        random_colors = bool(int(settings.value('modules/random_colors') or 0))
+        if random_colors:
+            self.random_colors_on()
 
     def invalidate_cache(self):
         """Refresh the cache."""
@@ -180,8 +221,16 @@ class ModulesModel(QtCore.QAbstractItemModel):
                 self._joints_parent_module[joint] = module
                 self._modules_child_joints[module].append(joint)
 
-    def show_colors(self):
-        self._show_colors = True
+    @property
+    def is_colored(self):
+        """Return ``True`` if this model is randomly colored.
+
+        :rtype: bool
+        """
+        return self._random_colors
+
+    def random_colors_on(self):
+        self._random_colors = True
         parent = QtCore.QModelIndex()
         self.dataChanged.emit(
             self.index(0, 0, parent),
@@ -189,14 +238,20 @@ class ModulesModel(QtCore.QAbstractItemModel):
             [QtCore.Qt.ForegroundRole],
         )
 
-    def hide_colors(self):
-        self._show_colors = False
+        settings = get_settings()
+        settings.setValue('modules/random_colors', 1)
+
+    def random_colors_off(self):
+        self._random_colors = False
         parent = QtCore.QModelIndex()
         self.dataChanged.emit(
             self.index(0, 0, parent),
             self.index(self.rowCount(parent), 0, parent),
             [QtCore.Qt.ForegroundRole],
         )
+
+        settings = get_settings()
+        settings.setValue('modules/random_colors', 0)
 
     def rowCount(self, parent):
         if not parent.isValid():
@@ -225,9 +280,9 @@ class ModulesModel(QtCore.QAbstractItemModel):
         elif role == QtCore.Qt.DecorationRole:
             if isinstance(pointer, basestring):
                 return QtGui.QIcon(':kinJoint.png')
-            return QtGui.QIcon(':advancedSettings.png')
+            return QtGui.QIcon(':QR_settings.png')
         elif role == QtCore.Qt.ForegroundRole:
-            if not self._show_colors:
+            if not self._random_colors:
                 return
             if isinstance(pointer, basestring):
                 module = index.parent().internalPointer()
@@ -291,14 +346,20 @@ class ModulesModel(QtCore.QAbstractItemModel):
     def flags(self, index):
         default_flags = super(ModulesModel, self).flags(index)
         if Rig().is_built.get():
-            return default_flags
-        if index.isValid():
             if not isinstance(index.internalPointer(), basestring):
-                # Only allow modules to be dragged.
-                return (QtCore.Qt.ItemIsDragEnabled
-                        | QtCore.Qt.ItemIsDropEnabled
-                        | default_flags)
-        return QtCore.Qt.ItemIsDropEnabled | default_flags
+                return default_flags
+            return QtCore.Qt.ItemIsEnabled
+
+        if not index.isValid():
+            return default_flags
+
+        if not isinstance(index.internalPointer(), basestring):
+            # Only allow modules to be dragged.
+            return (QtCore.Qt.ItemIsDragEnabled
+                    | QtCore.Qt.ItemIsDropEnabled
+                    | default_flags)
+
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDropEnabled
 
     def supportedDropActions(self):
         return QtCore.Qt.MoveAction
@@ -363,13 +424,13 @@ class ModulesModel(QtCore.QAbstractItemModel):
             joint = joint_index.internalPointer()
 
         rig = Rig()
-        last_module = None
+        modules = []
         for name in names:
             module = rig.get_module(name)
             module.parent_joint.set(joint)
             module.update()
-            last_module = module
+            modules.append(module)
 
-        publish('module-updated', last_module)
+        publish('modules-updated', modules)
 
         return True

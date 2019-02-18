@@ -6,7 +6,6 @@ import maya.api.OpenMaya as om2
 from icarus.core.module import RigModule
 from icarus.core.fields import IntField, ObjectListField
 import icarus.dag
-import icarus.utils.shape as _shapeutils
 
 
 class Chain(RigModule):
@@ -69,9 +68,22 @@ class Chain(RigModule):
 
         for joint, next_joint in zip(self.driving_chain[:-1], self.driving_chain[1:]):
             twists = [j for j in cmds.listRelatives(joint) if 'twist' in j]
-            mult_mat = cmds.createNode('multMatrix')
-            decomp_mat = cmds.createNode('decomposeMatrix')
-            quat_to_euler = cmds.createNode('quatToEuler')
+            metadata = icarus.metadata.metadata_from_name(next_joint)
+            mult_mat = self.add_node(
+                'multMatrix',
+                object_id=metadata['id'],
+                description=metadata['description'],
+            )
+            decomp_mat = self.add_node(
+                'decomposeMatrix',
+                object_id=metadata['id'],
+                description=metadata['description'],
+            )
+            quat_to_euler = self.add_node(
+                'quatToEuler',
+                object_id=metadata['id'],
+                description=metadata['description'],
+            )
             cmds.connectAttr(
                 next_joint + '.worldMatrix[0]',
                 mult_mat + '.matrixIn[0]'
@@ -102,7 +114,13 @@ class Chain(RigModule):
             for i, twist in enumerate(twists):
                 current_factor = (i + 1) * factor
                 current_factor_reverse = 1 - current_factor
-                anim_blend = cmds.createNode('animBlendNodeAdditiveRotation')
+                metadata = icarus.metadata.metadata_from_name(twist)
+                anim_blend = self.add_node(
+                    'animBlendNodeAdditiveRotation',
+                    role='blend',
+                    description=metadata['description'],
+                    object_id=metadata['id'],
+                )
                 cmds.setAttr(
                     anim_blend + '.weightA',
                     current_factor
@@ -126,18 +144,15 @@ class Chain(RigModule):
             parent = deform_chain[-1]
         else:
             parent = self.parent_joint.get()
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'deform',
-            'id': len(self.deform_chain)
-        }
-        joint_name = icarus.metadata.name_from_metadata(metadata)
-        joint = self._add_deform_joint(name=joint_name, parent=parent)
+        joint = self._add_deform_joint(
+            parent=parent,
+            object_id=len(self.deform_chain)
+        )
         self.deform_chain.append(joint)
         return joint
 
     def _add_twist_deform_joints(self, parent, index):
+        # construct the description to include the parent joint's id
         metadata = icarus.metadata.metadata_from_name(parent)
         description_data = []
         if metadata['description']:
@@ -145,10 +160,13 @@ class Chain(RigModule):
         if metadata['id'] is not None:
             description_data.append(str(metadata['id']).zfill(3))
         description_data.append('twist')
-        metadata['description'] = '_'.join(description_data)
-        metadata['id'] = index
+
         name = icarus.metadata.name_from_metadata(metadata)
-        twist_joint = self._add_deform_joint(name=name, parent=parent)
+        twist_joint = self._add_deform_joint(
+            parent=parent,
+            object_id=index,
+            description='_'.join(description_data)
+        )
         self.deform_twists.append(twist_joint)
 
     def _update_chain_joint_count(self):

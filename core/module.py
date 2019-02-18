@@ -3,12 +3,18 @@ import logging
 
 import maya.cmds as cmds
 
-from icarus.core.fields import ObjectField, StringField, ObjectListField
+from icarus.core.fields import (
+    EnumField,
+    ObjectField,
+    StringField,
+    ObjectListField,
+)
 from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
 import icarus.attributes
 import icarus.dag
 import icarus.metadata
+import icarus.config
 
 from shapeshifter import shapeshifter
 
@@ -21,13 +27,17 @@ class RigModule(IcarusNode):
     name = StringField(
         displayable=True,
         editable=True,
-        gui_order=-2  # make sure it's always on top
+        gui_order=-2,  # make sure it's always on top
+        unique=True,
     )
-    side = StringField(
+    side = EnumField(
+        choices=['M', 'L', 'R'],
         displayable=True,
         editable=True,
         gui_order=-2  # make sure it's always on top
     )
+
+    owned_nodes = ObjectListField()
 
     # Joint of the rig skeleton under which the deform joints will be parented.
     parent_joint = ObjectField()
@@ -81,6 +91,7 @@ class RigModule(IcarusNode):
                 icarus.dag.matrix_constraint(parent_joint, self.node_name)
 
             self.initialize()
+            self.update()
             self.is_initialized.set(True)
 
     @property
@@ -96,11 +107,7 @@ class RigModule(IcarusNode):
     def parent_module(self):
         parent_joint = self.parent_joint.get()
         if parent_joint:
-            parent_module = '_'.join([
-                parent_joint.split('_')[0],
-                parent_joint.split('_')[1],
-                'mod'
-            ])
+            parent_module = cmds.listConnections(parent_joint + '.module', source=True)[0]
             module_type = cmds.getAttr(parent_module + '.module_type')
             parent_module = all_rig_modules[module_type](parent_module, rig=self.rig)
             return parent_module
@@ -113,19 +120,42 @@ class RigModule(IcarusNode):
         Will be called automatically when creating the module.
         You need to overwrite this method in your subclasses.
         """
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'placement'
-        }
+        self.placement_group.set(
+            self.add_node(
+                'transform',
+                'grp',
+                description='placement',
+                parent=self.node_name
+            )
+        )
+        self.controls_group.set(
+            self.add_node(
+                'transform',
+                role='grp',
+                description='controls',
+                parent = self.node_name
+            )
+        )
 
-        placement_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.placement_group.set(cmds.createNode(
-            'transform',
-            name=placement_group_name,
-            parent=self.node_name
-        ))
+        self.driving_group.set(
+            self.add_node(
+                'transform',
+                role='grp',
+                description='driving',
+                parent = self.node_name
+            )
+        )
+        cmds.setAttr(self.driving_group.get() + '.visibility', False)
+
+        self.extras_group.set(
+            self.add_node(
+                'transform',
+                role='grp',
+                description='extras',
+                parent = self.node_name
+            )
+        )
+        cmds.setAttr(self.extras_group.get() + '.visibility', False)
 
     def update(self):
         """Update the maya scene based on the module's fields
@@ -146,8 +176,8 @@ class RigModule(IcarusNode):
             new_name = self._update_node_name(self.node_name)
             self.node_name = new_name
 
-            # rename the deform joints
-            for node in self.deform_joints.get():
+            # rename the owned nodes
+            for node in self.owned_nodes.get():
                 self._update_node_name(node)
 
             # rename the persistent attributes
@@ -175,18 +205,26 @@ class RigModule(IcarusNode):
     def update_parent_joint(self):
         # delete the old constraint
         old_constraint_nodes = []
-        first_node = cmds.listConnections(
+
+        first_level_nodes = cmds.listConnections(
             self.node_name + '.translate',
             source=True
-        )[0]
-        second_node = cmds.listConnections(
-            first_node + '.inputMatrix',
-            source=True
-        )[0]
-        old_constraint_nodes.append(first_node)
-        old_constraint_nodes.append(second_node)
-        cmds.delete(old_constraint_nodes)
-        icarus.dag.matrix_constraint(self.parent_joint.get(), self.node_name)
+        ) or []
+        old_constraint_nodes.extend(first_level_nodes)
+
+        for node in first_level_nodes:
+            second_level_nodes = cmds.listConnections(
+                node + '.inputMatrix',
+                source=True
+            ) or []
+            old_constraint_nodes.extend(second_level_nodes)
+
+        if old_constraint_nodes:
+            cmds.delete(old_constraint_nodes)
+
+        parent = self.parent_joint.get()
+        if parent:
+            icarus.dag.matrix_constraint(parent, self.node_name)
 
     def _update_node_name(self, node):
         metadata = icarus.metadata.metadata_from_name(node)
@@ -202,52 +240,6 @@ class RigModule(IcarusNode):
         Call this method instead of `build()` to make sure
         everything is setup properly
         """
-        if self.is_built.get():
-            raise RuntimeError(
-                "Module {} is already built!".format(self.node_name)
-            )
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'controls'
-        }
-
-        controls_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.controls_group.set(cmds.createNode(
-            'transform',
-            name=controls_group_name,
-            parent=self.node_name
-        ))
-
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'driving'
-        }
-        driving_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.driving_group.set(cmds.createNode(
-            'transform',
-            name=driving_group_name,
-            parent=self.node_name
-        ))
-        cmds.setAttr(self.driving_group.get() + '.visibility', False)
-
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'extras'
-        }
-        extras_group_name = icarus.metadata.name_from_metadata(metadata)
-        self.extras_group.set(cmds.createNode(
-            'transform',
-            name=extras_group_name,
-            parent=self.node_name
-        ))
-        cmds.setAttr(self.extras_group.get() + '.visibility', False)
-
         self.create_driving_joints()
         self.build()
         self.is_built.set(True)
@@ -269,25 +261,77 @@ class RigModule(IcarusNode):
         """
         cmds.setAttr(self.extras_group.get() + '.visibility', False)
 
-    def _add_deform_joint(self, name=None, parent=None):
+    def add_node(
+        self,
+        node_type,
+        role=None,
+        object_id=None,
+        description=None,
+        *args,
+        **kwargs
+    ):
+        """Add a node to this `IcarusNode`.
+
+        args and kwargs will directly be passed to ``cmds.createNode()``
+
+        :param node_type: type of the node to create, will be passed to ``cmds.createNode()``.
+        :type node_type: str
+        :param role: role of the node (this will be the last part of its name).
+        :type role: str
+        :param object_id: optional index for the node.
+        :type object_id: int
+        :param description: optional description for the node
+        :type object_id: str
+        """
+        if not role:
+            role = node_type
+        metadata = {
+            'base_name': self.name.get(),
+            'side': self.side.get(),
+            'role': role,
+            'description': description,
+            'id': object_id
+        }
+        name = icarus.metadata.name_from_metadata(metadata)
+        if cmds.objExists(name):
+            raise ValueError("A node with the name `{}` already exists".format(name))
+        if node_type == 'locator':
+            node = cmds.spaceLocator(name=name)[0]
+        else:
+            node = cmds.createNode(node_type, name=name, *args, **kwargs)
+        print node
+        cmds.addAttr(
+            node,
+            longName='module',
+            attributeType = 'message'
+        )
+        cmds.connectAttr(
+            self.node_name + '.message',
+            node + '.module'
+        )
+        self.owned_nodes.append(node)
+        return node
+
+    def _add_deform_joint(
+        self,
+        parent=None,
+        object_id=None,
+        description=None,
+    ):
         """Creates a new deform joint for this module.
 
         Args:
-            name (str): name of the joint, in case you don't want the default one.
             parent (str): node under which the new joint will be parented
         """
-        object_id = len(self.deform_joints)
-        if name is not None:
-            new_joint = name
-        else:
-            metadata = {
-                'base_name': self.name.get(),
-                'side': self.side.get(),
-                'role': 'deform',
-                'id': object_id
-            }
-            new_joint = icarus.metadata.name_from_metadata(metadata)
-        cmds.createNode('joint', name=new_joint)
+        if object_id is None:
+            object_id = len(self.deform_joints)
+
+        new_joint = self.add_node(
+            'joint',
+            role='deform',
+            object_id=object_id,
+            description=description
+        )
 
         if not parent:
             parent = self.parent_joint.get()
@@ -308,22 +352,18 @@ class RigModule(IcarusNode):
         self.deform_joints.append(new_joint)
         return new_joint
 
-    def _add_placement_locator(self, name=None, parent=None):
+    def _add_placement_locator(self, description=None, object_id=None, parent=None):
         """Creates a new placement locator for this module.
 
         A placement locator is a way to get placement data without polluting
         the deform skeleton.
         """
-        object_id = len(self.placement_locators)
-        if name is None:
-            metadata = {
-                'base_name': self.name.get(),
-                'side': self.side.get(),
-                'role': 'placement',
-                'id': object_id
-            }
-            name = icarus.metadata.name_from_metadata(metadata)
-        locator = cmds.spaceLocator(name=name)[0]
+        locator = self.add_node(
+            'locator',
+            role='placement',
+            object_id=object_id,
+            description=description
+        )
         if not parent:
             parent = self.placement_group.get()
         cmds.parent(locator, parent)
@@ -382,6 +422,16 @@ class RigModule(IcarusNode):
         ctl = shapeshifter.create_controller_from_name(shape_type)
         ctl = cmds.rename(ctl, ctl_name)
 
+        # update the controller color based on its side
+        current_data = shapeshifter.get_shape_data(ctl)
+        new_data = []
+        side_color = icarus.config.controller_colors[self.side.get()]
+        for shape_data in current_data:
+            new_shape_data = shape_data.copy()
+            new_shape_data.update(side_color)
+            new_data.append(new_shape_data)
+        shapeshifter.change_controller_shape(ctl, new_data)
+
         # get the existing shape data if it exists
         icarus.attributes.create_persistent_attribute(
             ctl,
@@ -400,6 +450,21 @@ class RigModule(IcarusNode):
             longName='attributes_state',
             dataType='string'
         )
+
+        icarus.attributes.create_persistent_attribute(
+            ctl,
+            self.node_name,
+            longName='parent_space_data',
+            dataType='string',
+        )
+
+        # We cannot set a default value on strings, so set the persistent
+        # attribute after its creation.
+        # It is mandatory to set a default value here, without a value
+        # the attribute returns `None` when rebuilt and this crashes
+        # the `setAttr` command.
+        if not cmds.getAttr(ctl + '.parent_space_data'):
+            cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
 
         icarus.dag.snap_first_to_last(ctl, dag_node)
         parent_group = icarus.dag.add_parent_group(ctl, 'buffer')

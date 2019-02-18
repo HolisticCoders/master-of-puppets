@@ -2,12 +2,12 @@ import maya.cmds as cmds
 
 import icarus.metadata
 
-from icarus.core.fields import IntField, ObjectListField, ObjectField
-from icarus.modules.fkikrpchain import FkIkRPChain
+from icarus.core.fields import IntField, ObjectListField, ObjectField, EnumField
+from icarus.modules.fkikrpchain import FkIkRotatePlaneChain
 # from icarus.common.foot import build_foot
 
 
-class BipedLeg(FkIkRPChain):
+class BipedLeg(FkIkRotatePlaneChain):
 
     joint_count = IntField(
         defaultValue=5,
@@ -35,6 +35,7 @@ class BipedLeg(FkIkRPChain):
 
     def initialize(self):
         super(BipedLeg, self).initialize()
+        self.side.set('L')
         self.ik_start_description.set('IK_ankle')
         self.ik_end_description.set('IK_hip')
 
@@ -50,65 +51,29 @@ class BipedLeg(FkIkRPChain):
             deform_name = icarus.metadata.name_from_metadata(metadata)
             deform = cmds.rename(deform, deform_name)
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_ball'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.ball_placement.set(name)
+        self.ball_placement.set(
+            self._add_placement_locator(description='foot_ball')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_twist'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.twist_placement.set(name)
+        self.twist_placement.set(
+            self._add_placement_locator(description='foot_twist')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_tip'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.tip_placement.set(name)
+        self.tip_placement.set(
+            self._add_placement_locator(description='foot_tip')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_heel'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.heel_placement.set(name)
+        self.heel_placement.set(
+            self._add_placement_locator(description='foot_heel')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_bank_ext'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.bank_ext_placement.set(name)
+        self.bank_ext_placement.set(
+            self._add_placement_locator(description='foot_bank_ext')
+        )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'placement',
-            'description': 'foot_bank_int'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        self._add_placement_locator(name=name)
-        self.bank_int_placement.set(name)
+        self.bank_int_placement.set(
+            self._add_placement_locator(description='foot_bank_int')
+        )
 
     def create_driving_joints(self):
         super(BipedLeg, self).create_driving_joints()
@@ -154,14 +119,11 @@ class BipedLeg(FkIkRPChain):
         )
 
         # bank setup
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'clamp',
-            'description': 'bank_int'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        clamp_int = cmds.createNode('clamp', name=name)
+        clamp_int = self.add_node(
+            'clamp',
+            role='clamp',
+            description='bank_int'
+        )
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.footBank',
             clamp_int + '.inputR'
@@ -172,14 +134,11 @@ class BipedLeg(FkIkRPChain):
             self.bank_int_pivot.get() + '.rotateZ'
         )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'clamp',
-            'description': 'bank_ext'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        clamp_ext = cmds.createNode('clamp', name=name)
+        clamp_ext = self.add_node(
+            'clamp',
+            role='clamp',
+            description='bank_ext'
+        )
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.footBank',
             clamp_ext + '.inputR'
@@ -191,14 +150,11 @@ class BipedLeg(FkIkRPChain):
         )
 
         # heel setup
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'clamp',
-            'description': '0_to_neg_90'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        clamp = cmds.createNode('clamp', name=name)
+        clamp = self.add_node(
+            'clamp',
+            role='clamp',
+            description='0_to_neg_90'
+        )
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.footRoll',
             clamp + '.inputR'
@@ -210,14 +166,11 @@ class BipedLeg(FkIkRPChain):
         )
 
         # tip setup
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'percent',
-            'description': 'bend_to_straight'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        bend_to_straight_percent = cmds.createNode('setRange', name=name)
+        bend_to_straight_percent = self.add_node(
+            'setRange',
+            role='percent',
+            description='bend_to_straight'
+        )
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.bendLimitAngle',
             bend_to_straight_percent + '.oldMinX'
@@ -232,14 +185,11 @@ class BipedLeg(FkIkRPChain):
         )
         cmds.setAttr(bend_to_straight_percent + '.maxX', 1)
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'mult',
-            'description': 'tip_roll'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        tip_roll_mult = cmds.createNode('multDoubleLinear', name=name)
+        tip_roll_mult = self.add_node(
+            'multDoubleLinear',
+            role='mult',
+            description='tip_roll'
+        )
         cmds.connectAttr(
             bend_to_straight_percent + '.outValueX',
             tip_roll_mult + '.input1'
@@ -254,14 +204,11 @@ class BipedLeg(FkIkRPChain):
         )
 
         # ball setup
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'percent',
-            'description': 'zero_to_bend'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        zero_to_bend_percent = cmds.createNode('setRange', name=name)
+        zero_to_bend_percent = self.add_node(
+            'setRange',
+            role='percent',
+            description='zero_to_bend'
+        )
         cmds.connectAttr(
             self.ik_end_ctl.get() + '.bendLimitAngle',
             zero_to_bend_percent + '.oldMaxX'
@@ -271,26 +218,20 @@ class BipedLeg(FkIkRPChain):
             zero_to_bend_percent + '.valueX'
         )
         cmds.setAttr(zero_to_bend_percent + '.maxX', 1)
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'reverse',
-            'description': 'bend_to_straight'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        bend_to_straight_reverse = cmds.createNode('reverse', name=name)
+        bend_to_straight_reverse = self.add_node(
+            'reverse',
+            role='reverse',
+            description='bend_to_straight'
+        )
         cmds.connectAttr(
             bend_to_straight_percent + '.outValueX',
             bend_to_straight_reverse + '.inputX'
         )
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'mult',
-            'description': 'ball_percent'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        ball_percent_mult = cmds.createNode('multDoubleLinear', name=name)
+        ball_percent_mult = self.add_node(
+            'multDoubleLinear',
+            role='mult',
+            description='ball_percent'
+        )
         cmds.connectAttr(
             bend_to_straight_reverse + '.outputX',
             ball_percent_mult + '.input1'
@@ -299,14 +240,11 @@ class BipedLeg(FkIkRPChain):
             zero_to_bend_percent + '.outValueX',
             ball_percent_mult + '.input2'
         )
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'mult',
-            'description': 'ball_roll'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        ball_roll_mult = cmds.createNode('multDoubleLinear', name=name)
+        ball_roll_mult = self.add_node(
+            'multDoubleLinear',
+            role='mult',
+            description='ball_roll'
+        )
         cmds.connectAttr(
             ball_percent_mult + '.output',
             ball_roll_mult + '.input1'
@@ -321,14 +259,11 @@ class BipedLeg(FkIkRPChain):
         )
 
     def create_foot_pivots(self):
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'grp',
-            'description': 'foot_roll_pivots'
-        }
-        name = icarus.metadata.name_from_metadata(metadata)
-        pivots_grp = cmds.createNode('transform', name=name)
+        pivots_grp = self.add_node(
+            'transform',
+            role='grp',
+            description='foot_roll_pivots'
+        )
         icarus.dag.snap_first_to_last(pivots_grp, self.extras_group.get())
         cmds.parent(pivots_grp, self.extras_group.get())
         icarus.dag.matrix_constraint(self.ik_end_ctl.get(), pivots_grp, maintain_offset=True)
