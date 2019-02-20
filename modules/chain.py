@@ -69,6 +69,7 @@ class Chain(RigModule):
         for joint, next_joint in zip(self.driving_chain[:-1], self.driving_chain[1:]):
             twists = [j for j in cmds.listRelatives(joint) if 'twist' in j]
             metadata = icarus.metadata.metadata_from_name(next_joint)
+            metadata['description'] = metadata['description'] + '_twist'
             mult_mat = self.add_node(
                 'multMatrix',
                 object_id=metadata['id'],
