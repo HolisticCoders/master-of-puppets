@@ -57,7 +57,7 @@ class Rig(IcarusNode):
 
     @property
     def skeleton(self):
-        return cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)
+        return list(reversed(cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)))
 
     @property
     def build_nodes(self):
