@@ -27,6 +27,14 @@ class Corrective(RigModule):
         tooltip="Base of the vector that is used to track the difference between the original pose and the current one.\n"
         "If left empty, this will automatically be set to the parent joint."
     )
+    vector_tip = ObjectField(
+        displayable=True,
+        editable=True,
+        gui_order=2,  # make sure it's always on top
+        tooltip="Tip of the vector that is used to track the difference between the original pose and the current one.\n"
+        "If left empty, the vector used will be along the +X axis of the Vector Base."
+    )
+
     vector_base_loc = ObjectField()
     vector_tip_loc = ObjectField()
     orig_pose_vector_tip_loc = ObjectField()
@@ -193,12 +201,16 @@ class Corrective(RigModule):
         )
 
         # give a magnitude to the vector
-        cmds.parent(vector_tip, vector_base)
-        icarus.dag.reset_node(vector_tip)
-        cmds.setAttr(vector_tip + '.translateX', 1)
-
-        cmds.parent(vector_tip, locator_space_group)
-        cmds.parentConstraint(vector_base, vector_tip, maintainOffset=True)
+        if self.vector_tip.get():
+            cmds.parent(vector_tip, locator_space_group)
+            icarus.dag.snap_first_to_last(vector_tip, self.vector_tip.get())
+            icarus.dag.matrix_constraint(self.vector_tip.get(), vector_tip, maintain_offset=True)
+        else:
+            icarus.dag.reset_node(vector_tip)
+            cmds.setAttr(vector_tip + '.translateX', 1)
+            cmds.parent(vector_tip, vector_base)
+            cmds.parent(vector_tip, locator_space_group)
+            icarus.dag.matrix_constraint(vector_base, vector_tip, maintain_offset=True)
         self.vector_tip_loc.set(vector_tip)
 
         orig_pose_vector_tip = self.add_node(
