@@ -20,7 +20,13 @@ class Corrective(RigModule):
         "However they will all be based on the same vector."
     )
 
-    vector_base = ObjectField() 
+    vector_base = ObjectField(
+        displayable=True,
+        editable=True,
+        gui_order=1,  # make sure it's always on top
+        tooltip="Base of the vector that is used to track the difference between the original pose and the current one.\n"
+        "If left empty, this will automatically be set to the parent joint."
+    )
     vector_base_loc = ObjectField()
     vector_tip_loc = ObjectField()
     orig_pose_vector_tip_loc = ObjectField()
@@ -53,7 +59,9 @@ class Corrective(RigModule):
             cmds.delete(joints_to_delete)
 
     def build(self):
-        self.vector_base.set(self.parent_joint.get())
+        if not self.vector_base.get():
+            self.vector_base.set(self.parent_joint.get())
+
         self.create_locators()
         value_range = self._build_angle_reader()
         for joint in self.driving_joints:
