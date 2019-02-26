@@ -158,13 +158,10 @@ class Corrective(RigModule):
             locator_space_group
         )
 
-        vector_base = cmds.listRelatives(
-            self.add_node(
-                'locator',
-                description='vector_base'
-            ),
-            parent=True
-        )[0]
+        vector_base = self.add_node(
+            'locator',
+            description='vector_base'
+        )
         vector_base = cmds.rename(
             vector_base,
             self.vector_base.get() + '_vectorBase'
@@ -178,13 +175,10 @@ class Corrective(RigModule):
         cmds.parentConstraint(self.vector_base.get(), vector_base)
         self.vector_base_loc.set(vector_base)
 
-        vector_tip = cmds.listRelatives(
-            self.add_node(
-                'locator',
-                description='vector_tip'
-            ),
-            parent=True
-        )[0]
+        vector_tip = self.add_node(
+            'locator',
+            description='vector_tip'
+        )
         vector_tip = cmds.rename(
             vector_tip,
             self.vector_base.get() + '_vectorTip'
@@ -199,13 +193,10 @@ class Corrective(RigModule):
         cmds.parentConstraint(vector_base, vector_tip, maintainOffset=True)
         self.vector_tip_loc.set(vector_tip)
 
-        orig_pose_vector_tip = cmds.listRelatives(
-            self.add_node(
-                'locator',
-                description='orig_pose_vector_tip'
-            ),
-            parent=True
-        )[0]
+        orig_pose_vector_tip = self.add_node(
+            'locator',
+            description='orig_pose_vector_tip'
+        )
         orig_pose_vector_tip = cmds.rename(
             orig_pose_vector_tip,
             self.vector_base.get() + '_vectorTipOrig'
