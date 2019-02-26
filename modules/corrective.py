@@ -14,7 +14,10 @@ class Corrective(RigModule):
         editable=True,
         defaultValue=1,
         hasMinValue=True,
-        minValue=1
+        minValue=1,
+        tooltip="The number of joints for the corrective.\n"
+        "Each joint can be driven in its own way.\n"
+        "However they will all be based on the same vector."
     )
 
     vector_base = ObjectField() 
