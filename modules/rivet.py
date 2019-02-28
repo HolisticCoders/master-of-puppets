@@ -10,6 +10,8 @@ class Rivet(RigModule):
     geometry = ObjectField(
         displayable=True,
         editable=True,
+        tooltip="The geometry on which the rivet will be attached to.\n"
+        "This can be either a mesh or a nurbsSurface."
     )
 
     def initialize(self, *args, **kwargs):

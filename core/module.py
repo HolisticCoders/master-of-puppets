@@ -29,12 +29,17 @@ class RigModule(IcarusNode):
         editable=True,
         gui_order=-2,  # make sure it's always on top
         unique=True,
+        tooltip="Base name of the module"
     )
     side = EnumField(
         choices=['M', 'L', 'R'],
         displayable=True,
         editable=True,
-        gui_order=-2  # make sure it's always on top
+        gui_order=-2,  # make sure it's always on top
+        tooltip="Side of the module:\n"
+        "M: Middle\n"
+        "L: Left\n"
+        "R: Right"
     )
 
     owned_nodes = ObjectListField()

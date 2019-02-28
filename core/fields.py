@@ -242,6 +242,7 @@ class Field(object):
         self.display_name = kwargs.pop('display_name', None)
         self.gui_order = kwargs.pop('gui_order', 1)
         self.unique = kwargs.pop('unique', False)
+        self.tooltip = kwargs.pop('tooltip', None)
 
         # copy the class attribute to the instance
         self.create_attr_args = self.create_attr_args.copy()

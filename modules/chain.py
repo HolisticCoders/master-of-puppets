@@ -16,6 +16,7 @@ class Chain(RigModule):
         minValue=1,
         displayable=True,
         editable=True,
+        tooltip="The number of joints for the chain."
     )
 
     twist_joint_count = IntField(
@@ -24,6 +25,7 @@ class Chain(RigModule):
         minValue=0,
         displayable=True,
         editable=True,
+        tooltip="The number of twist joint per segment of the chain"
     )
 
     deform_chain = ObjectListField()

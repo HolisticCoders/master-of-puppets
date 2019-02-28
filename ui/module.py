@@ -185,6 +185,8 @@ class ModulePanel(QtWidgets.QDockWidget):
                 map_field_to_widget['StringField']
             )
             widget = widget_data(field)
+            if field.tooltip:
+                widget.setToolTip(field.tooltip)
             value = getattr(self.modules[-1], field.name).get()
             widget.set(value)
             self._initial_values[widget] = value
