@@ -33,6 +33,7 @@ class FkIkChain(ChainSwitcher):
 
     ik_start_description = StringField()
     ik_end_description = StringField()
+    ik_chain_end_joint = ObjectField()
 
     def initialize(self):
         super(FkIkChain, self).initialize()
@@ -95,6 +96,8 @@ class FkIkChain(ChainSwitcher):
 
     def _setup_ik(self):
         ik_chain = self.chain_b.get()
+        if not self.ik_chain_end_joint.get():
+                self.ik_chain_end_joint.set(ik_chain[-1])
         self.ik_controls_group.set(
             self.add_node(
                 'transform',
@@ -112,7 +115,7 @@ class FkIkChain(ChainSwitcher):
         }
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         end_ctl, parent_group = self.add_control(
-            ik_chain[-1],
+            self.ik_chain_end_joint.get(),
             ctl_name,
             'cube'
         )
@@ -122,7 +125,7 @@ class FkIkChain(ChainSwitcher):
         cmds.parent(parent_group, self.ik_controls_group.get())
         icarus.dag.matrix_constraint(
             end_ctl,
-            ik_chain[-1],
+            self.ik_chain_end_joint.get(),
             translate=False,
             rotate=True,
             scale=False,
@@ -159,7 +162,7 @@ class FkIkChain(ChainSwitcher):
         }
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         pole_vector_ctl, parent_group = self.add_control(
-            ik_chain[-1],
+            self.ik_chain_end_joint.get(),
             ctl_name,
             'sphere'
         )

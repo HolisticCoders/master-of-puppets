@@ -30,7 +30,6 @@ class ChainSwitcher(Chain):
         self.switch_enum_name.set('A:B:')
 
     def build(self):
-        self._setup_twist()
         self._create_chains()
         self._create_settings_control()
         self._setup_switch()
@@ -38,16 +37,13 @@ class ChainSwitcher(Chain):
     def _create_chains(self):
         self.chain_a.set(
             cmds.duplicate(
-                self.driving_chain.get(),
+                self.driving_joints,
                 renameChildren=True,
                 parentOnly=True
             )
         )
         cmds.parent(self.chain_a[0], self.extras_group.get())
         for joint in self.chain_a.get():
-            if 'twist' in joint:
-                cmds.delete(joint)
-                continue
             metadata = icarus.metadata.metadata_from_name(joint)
             metadata['role'] = 'chainA'
             new_name = icarus.metadata.name_from_metadata(metadata)
@@ -55,16 +51,13 @@ class ChainSwitcher(Chain):
 
         self.chain_b.set(
             cmds.duplicate(
-                self.driving_chain.get(),
+                self.driving_joints,
                 renameChildren=True,
                 parentOnly=True
             )
         )
         cmds.parent(self.chain_b[0], self.extras_group.get())
         for joint in self.chain_b.get():
-            if 'twist' in joint:
-                cmds.delete(joint)
-                continue
             metadata = icarus.metadata.metadata_from_name(joint)
             metadata['role'] = 'chainB'
             new_name = icarus.metadata.name_from_metadata(metadata)
@@ -79,13 +72,13 @@ class ChainSwitcher(Chain):
         }
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl, buffer_grp = self.add_control(
-            self.driving_chain[-1],
+            self.driving_joints[-1],
             ctl_name,
             shape_type='cogwheel'
         )
         self.settings_ctl.set(ctl)
         cmds.parent(buffer_grp, self.controls_group.get())
-        icarus.dag.matrix_constraint(self.driving_chain[-1], buffer_grp)
+        icarus.dag.matrix_constraint(self.driving_joints[-1], buffer_grp)
 
         for attr in ['translate', 'rotate', 'scale']:
             for axis in 'XYZ':
@@ -126,8 +119,8 @@ class ChainSwitcher(Chain):
             self.reverse_switch.get() + ".inputX"
         )
 
-        for i in xrange(len(self.driving_chain)):
-            driving = self.driving_chain[i]
+        for i in xrange(len(self.driving_joints)):
+            driving = self.driving_joints[i]
             a = self.chain_a[i]
             b = self.chain_b[i]
             metadata = icarus.metadata.metadata_from_name(a)

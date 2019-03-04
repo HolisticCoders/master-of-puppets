@@ -15,8 +15,6 @@ class QuadrupedLeg(FkIkSpringChain):
         maxValue=5,
     )
 
-    foot_driving_joints = ObjectListField()
-
     twist_placement = ObjectField()
     heel_placement = ObjectField()
     tip_placement = ObjectField()
@@ -37,7 +35,7 @@ class QuadrupedLeg(FkIkSpringChain):
 
         name_list = ['hip', 'knee', 'ankle', 'foot_ball', 'foot_tip']
 
-        for deform, name in zip(self.deform_chain.get(), name_list):
+        for deform, name in zip(self.deform_joints.get(), name_list):
             metadata = {
                 'base_name': self.name.get(),
                 'side': self.side.get(),
@@ -67,18 +65,15 @@ class QuadrupedLeg(FkIkSpringChain):
             self._add_placement_locator(description='foot_bank_int')
         )
 
-    def create_driving_joints(self):
-        super(QuadrupedLeg, self).create_driving_joints()
-        foot_joints = [self.driving_chain[-1]]
-        self.foot_driving_joints.set(foot_joints)
-        for joint in foot_joints:
-            self.driving_chain.remove(joint)
+    def _create_chains(self):
+        super(Quadrupedleg, self)._create_chains()
+        self.ik_chain_end_joint.set(self.chain_b.get()[3])
 
     def _create_ik_handle(self):
         ik_chain = self.chain_b.get()
         ik_handle, effector = cmds.ikHandle(
-            startJoint=ik_chain[0],
-            endEffector=ik_chain[-1],
+            startJoint=ik_chain[0], # hip
+            endEffector=self.ik_chain_end_joint.get(), # ankle
             solver='ikSpringSolver'
         )
         self.ik_handle.set(ik_handle)
@@ -146,8 +141,8 @@ class QuadrupedLeg(FkIkSpringChain):
             maintain_offset=True
         )
         tip_ik_handle, effector = cmds.ikHandle(
-            startJoint=self.driving_chain[-1],  # ankle joint
-            endEffector=self.foot_driving_joints[-1],  # ball joint 
+            startJoint=self.chain_b[-2],  # ball joint
+            endEffector=self.chain_b[-1], # tip joint
             sol='ikSCsolver'
         )
         cmds.parent(tip_ik_handle, self.bank_int_pivot.get())

@@ -41,7 +41,7 @@ class BipedLeg(FkIkRotatePlaneChain):
 
         name_list = ['hip', 'knee', 'ankle', 'foot_ball', 'foot_tip']
 
-        for deform, name in zip(self.deform_chain.get(), name_list):
+        for deform, name in zip(self.deform_joints.get(), name_list):
             metadata = {
                 'base_name': self.name.get(),
                 'side': self.side.get(),
@@ -75,12 +75,9 @@ class BipedLeg(FkIkRotatePlaneChain):
             self._add_placement_locator(description='foot_bank_int')
         )
 
-    def create_driving_joints(self):
-        super(BipedLeg, self).create_driving_joints()
-        foot_joints = [j for j in self.driving_chain if 'foot' in j]
-        self.foot_driving_joints.set(foot_joints)
-        for joint in foot_joints:
-            self.driving_chain.remove(joint)
+    def _create_chains(self):
+        super(BipedLeg, self)._create_chains()
+        self.ik_chain_end_joint.set(self.chain_b.get()[2])
 
     def build(self):
         super(BipedLeg, self).build()
@@ -101,7 +98,7 @@ class BipedLeg(FkIkRotatePlaneChain):
         ik_chain = self.chain_b.get()
         ik_handle, effector = cmds.ikHandle(
             startJoint=ik_chain[0],
-            endEffector=ik_chain[2]
+            endEffector=self.ik_chain_end_joint.get()
         )
         self.ik_handle.set(ik_handle)
         cmds.parent(ik_handle, self.extras_group.get())
@@ -355,15 +352,15 @@ class BipedLeg(FkIkRotatePlaneChain):
 
     def create_ik_handles(self):
         ball_ikHandle, ball_effector = cmds.ikHandle(
-            startJoint=self.driving_chain[-1],  # ankle joint
-            endEffector=self.foot_driving_joints[0],  # ball joint 
+            startJoint=self.chain_b[2],  # ankle joint
+            endEffector=self.chain_b[3],  # ball joint 
             sol='ikSCsolver'
         )
         cmds.parent(ball_ikHandle, self.ball_pivot.get())
 
         tip_ikHandle, tip_effector = cmds.ikHandle(
-            startJoint=self.foot_driving_joints[0],  # ball joint
-            endEffector=self.foot_driving_joints[1],  # tip joint
+            startJoint=self.chain_b[3],  # ball joint
+            endEffector=self.chain_b[4],  # tip joint
             sol='ikSCsolver'
         )
         cmds.parent(tip_ikHandle, self.tip_pivot.get())
