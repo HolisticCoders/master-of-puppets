@@ -16,7 +16,7 @@ class Arm(FkIkRotatePlaneChain):
 
         name_list = ['shoulder', 'elbow', 'wrist']
 
-        for deform, name in zip(self.deform_chain.get(), name_list):
+        for deform, name in zip(self.deform_joints, name_list):
             metadata = {
                 'base_name': self.name.get(),
                 'side': self.side.get(),
