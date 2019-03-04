@@ -284,7 +284,7 @@ def create_parent_space(driven, drivers, translate=True, rotate=True):
         keyable=True
     )
 
-    driven_parent = add_parent_group(driven, suffix='PS')
+    driven_parent = add_parent_group(driven, suffix='ps')
     mult_mat = cmds.createNode('multMatrix')
     decompose_mat = cmds.createNode('decomposeMatrix')
     offset_choice = cmds.createNode('choice')
@@ -381,7 +381,7 @@ def create_point_space(driven, drivers):
         keyable=True
     )
 
-    driven_parent = cmds.listRelatives(driven, parent=True)[0]
+    driven_parent = add_parent_group(driven, suffix='ps')
     mult_mat = cmds.createNode('multMatrix')
     decompose_mat = cmds.createNode('decomposeMatrix')
     offset_choice = cmds.createNode('choice')
