@@ -1,3 +1,4 @@
+import maya.cmds as cmds
 import json
 import random
 import pdb
@@ -162,6 +163,8 @@ class RigPanel(QtWidgets.QWidget):
         selection = self.tree_view.selectionModel()
         selected = selection.selectedRows()
         pointer = [index.internalPointer() for index in selected]
+        joints = [p for p in pointer if isinstance(p, basestring)]
+        cmds.select(joints)
         publish('selected-modules-changed', pointer)
 
 
@@ -359,7 +362,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
                     | QtCore.Qt.ItemIsDropEnabled
                     | default_flags)
 
-        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDropEnabled
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDropEnabled | QtCore.Qt.ItemIsSelectable
 
     def supportedDropActions(self):
         return QtCore.Qt.MoveAction
