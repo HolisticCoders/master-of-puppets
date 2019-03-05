@@ -41,17 +41,9 @@ class CreationPanel(QtWidgets.QDockWidget):
 
     def _create_module(self, module_type):
         rig = Rig()
-        name = module_type.lower()
-        side = all_rig_modules[module_type].default_side
-        conflicting_modules = cmds.ls('{}*_{}_mod'.format(name, side))
-        new_id = len(conflicting_modules)
-        if new_id > 0:
-            name += str(new_id).zfill(2)
         try:
             module = rig.add_module(
                 module_type,
-                name=name,
-                side=side,
                 parent_joint='root_M_000_deform'
             )
         except RuntimeError as err:

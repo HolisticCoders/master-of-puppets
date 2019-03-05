@@ -106,8 +106,16 @@ class Rig(IcarusNode):
         if module_type not in all_rig_modules:
             raise ValueError("Module Type {} is not valid".format(module_type))
 
-        # instantiate the new module from the list of possible modules.
+        name = module_type.lower()
+        side = all_rig_modules[module_type].default_side
+        conflicting_modules = cmds.ls('{}*_{}_mod'.format(name, side))
+        new_id = len(conflicting_modules)
+        if new_id > 0:
+            name += str(new_id).zfill(2)
+
         kwargs['rig'] = self
+        kwargs['name'] = name
+        kwargs['side'] = side
         new_module = all_rig_modules[module_type](*args, **kwargs)
 
         return new_module
