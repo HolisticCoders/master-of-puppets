@@ -67,7 +67,7 @@ class QuadrupedLeg(FkIkSpringChain):
         )
 
     def _create_chains(self):
-        super(Quadrupedleg, self)._create_chains()
+        super(QuadrupedLeg, self)._create_chains()
         self.ik_chain_end_joint.set(self.chain_b.get()[3])
 
     def _create_ik_handle(self):
