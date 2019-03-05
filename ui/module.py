@@ -30,6 +30,7 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         self.actions_group = QtWidgets.QGroupBox('Actions')
         self.delete_button = QtWidgets.QPushButton('Delete')
+        self.duplicate_button = QtWidgets.QPushButton('Duplicate')
 
         layout = QtWidgets.QVBoxLayout()
         self.widget().setLayout(layout)
@@ -51,14 +52,17 @@ class ModulePanel(QtWidgets.QDockWidget):
         actions_layout = QtWidgets.QVBoxLayout()
         self.actions_group.setLayout(actions_layout)
         actions_layout.addWidget(self.delete_button)
+        actions_layout.addWidget(self.duplicate_button)
 
         self.apply_button.hide()
         self.reset_button.hide()
         self.delete_button.hide()
+        self.duplicate_button.hide()
 
         self.apply_button.released.connect(self._update_module)
         self.reset_button.released.connect(self._update_ui)
         self.delete_button.released.connect(self._delete_module)
+        self.duplicate_button.released.connect(self._duplicate_module)
 
         subscribe('selected-modules-changed', self._on_selection_changed)
 
@@ -126,6 +130,27 @@ class ModulePanel(QtWidgets.QDockWidget):
         for module in self.modules:
             rig.delete_module(module.node_name)
         publish('modules-deleted', self.modules)
+    
+    def _duplicate_module(self):
+        """Duplicate the selected module."""
+        if not self.modules:
+            return
+        rig = Rig()
+        new_modules = []
+        for module in self.modules:
+            module_type = module.module_type.get()
+            name = module.name.get()
+            side = module.side.get()
+            parent_joint = module.parent_joint.get()
+            new_module = rig.add_module(
+                module_type,
+                name=name,
+                side=side,
+                parent_joint=parent_joint
+            )
+            new_modules.append(new_module)
+
+        publish('modules-created', new_modules)
 
     def _update_ui(self):
         self._modified_fields = set()
@@ -135,6 +160,7 @@ class ModulePanel(QtWidgets.QDockWidget):
             self.apply_button.hide()
             self.reset_button.hide()
             self.delete_button.hide()
+            self.duplicate_button.hide()
             return
 
         # If one of the module is built, disable actions.
@@ -145,8 +171,10 @@ class ModulePanel(QtWidgets.QDockWidget):
         
         if is_built:
             self.delete_button.setEnabled(False)
+            self.duplicate_button.setEnabled(False)
         else:
             self.delete_button.setEnabled(True)
+            self.duplicate_button.setEnabled(True)
 
         # Enable apply and reset button only when a field has
         # been modified.
@@ -155,6 +183,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.apply_button.show()
         self.reset_button.show()
         self.delete_button.show()
+        self.duplicate_button.show()
 
         # Only show fields shared by all selected modules.
         field_names = set([f.name for f in self.modules[-1].fields])
