@@ -1,4 +1,5 @@
 from functools import partial
+import maya.cmds as cmds
 
 from icarus.core.rig import Rig
 from icarus.modules import all_rig_modules
@@ -42,17 +43,10 @@ class CreationPanel(QtWidgets.QDockWidget):
         rig = Rig()
         name = module_type.lower()
         side = all_rig_modules[module_type].default_side
-            if module.name.get() == name:
-                QtWidgets.QMessageBox.critical(
-                    self,
-                    'Icarus - Create Module',
-                    'A module named "%s" already exists, please '
-                    'rename it or choose another name.' % name,
-                    QtWidgets.QMessageBox.Ok,
-                    QtWidgets.QMessageBox.Ok
-                )
-                return
-
+        conflicting_modules = cmds.ls('{}*_{}_mod'.format(name, side))
+        new_id = len(conflicting_modules)
+        if new_id > 0:
+            name += str(new_id).zfill(2)
         try:
             module = rig.add_module(
                 module_type,
