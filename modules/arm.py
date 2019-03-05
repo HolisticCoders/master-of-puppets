@@ -8,9 +8,10 @@ import icarus.metadata
 
 class Arm(FkIkRotatePlaneChain):
 
+    default_side = 'L'
+
     def initialize(self):
         super(Arm, self).initialize()
-        self.side.set('L')
         self.ik_start_description.set('IK_shoulder')
         self.ik_end_description.set('IK_wrist')
 

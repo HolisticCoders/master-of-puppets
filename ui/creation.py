@@ -41,7 +41,7 @@ class CreationPanel(QtWidgets.QDockWidget):
     def _create_module(self, module_type):
         rig = Rig()
         name = module_type.lower()
-        for module in rig.rig_modules:
+        side = all_rig_modules[module_type].default_side
             if module.name.get() == name:
                 QtWidgets.QMessageBox.critical(
                     self,
@@ -57,6 +57,7 @@ class CreationPanel(QtWidgets.QDockWidget):
             module = rig.add_module(
                 module_type,
                 name=name,
+                side=side,
                 parent_joint='root_M_000_deform'
             )
         except RuntimeError as err:

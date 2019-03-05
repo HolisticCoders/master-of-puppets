@@ -9,6 +9,8 @@ from icarus.modules.fkikrpchain import FkIkRotatePlaneChain
 
 class BipedLeg(FkIkRotatePlaneChain):
 
+    default_side = 'L'
+
     joint_count = IntField(
         defaultValue=5,
         hasMinValue=True,
@@ -35,7 +37,6 @@ class BipedLeg(FkIkRotatePlaneChain):
 
     def initialize(self):
         super(BipedLeg, self).initialize()
-        self.side.set('L')
         self.ik_start_description.set('IK_ankle')
         self.ik_end_description.set('IK_hip')
 

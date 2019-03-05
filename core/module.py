@@ -42,6 +42,8 @@ class RigModule(IcarusNode):
         "R: Right"
     )
 
+    default_side = 'M'
+
     owned_nodes = ObjectListField()
 
     # Joint of the rig skeleton under which the deform joints will be parented.
