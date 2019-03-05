@@ -2,6 +2,8 @@ from functools import partial
 from operator import attrgetter
 from weakref import WeakValueDictionary
 
+import maya.cmds as cmds
+
 from icarus.vendor.Qt import QtCore, QtWidgets
 from icarus.ui.signals import publish, subscribe
 from icarus.ui.utils import clear_layout
@@ -149,6 +151,25 @@ class ModulePanel(QtWidgets.QDockWidget):
                 parent_joint=parent_joint
             )
             new_modules.append(new_module)
+            for field in module.fields:
+                if field.name in ['name', 'side']:
+                    continue
+                if field.editable:
+                    value = getattr(module, field.name).get()
+                    getattr(new_module, field.name).set(value)
+            new_module.update()
+
+            orig_nodes = module.deform_joints.get() + module.placement_locators.get()
+            new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
+            for orig_node, new_node in zip(orig_nodes, new_nodes):
+                for attr in ['translate', 'rotate', 'scale', 'jointOrient']:
+                    for axis in 'XYZ':
+                        attr_name = attr + axis
+                        if not cmds.attributeQuery(attr_name, node=orig_node, exists=True):
+                            continue
+                        value = cmds.getAttr(orig_node + '.' + attr_name)
+                        cmds.setAttr(new_node + '.' + attr_name, value)
+
 
         publish('modules-created', new_modules)
 
