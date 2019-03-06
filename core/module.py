@@ -42,6 +42,16 @@ class RigModule(IcarusNode):
         "R: Right"
     )
 
+    mirror_type = EnumField(
+        choices=['Behavior', 'Orientation', 'Scale'],
+        displayable=True,
+        editable=True,
+        gui_order=-1,  # make sure it's always on top
+        tooltip="How to mirror the module."
+    )
+
+    _mirror_module = ObjectField()
+
     default_side = 'M'
 
     owned_nodes = ObjectListField()
@@ -118,6 +128,14 @@ class RigModule(IcarusNode):
             module_type = cmds.getAttr(parent_module + '.module_type')
             parent_module = all_rig_modules[module_type](parent_module, rig=self.rig)
             return parent_module
+
+    @property
+    def mirror_module(self):
+        mirror_node = self._mirror_module.get()
+        if mirror_node:
+            module_type = cmds.getAttr(mirror_node + '.module_type')
+            mirror_module = all_rig_modules[self.module_type](mirror_node, rig=self.rig)
+            return mirror_module
 
     def initialize(self):
         """Creation of all the needed placement nodes.

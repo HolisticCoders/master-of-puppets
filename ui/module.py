@@ -9,6 +9,7 @@ from icarus.ui.signals import publish, subscribe
 from icarus.ui.utils import clear_layout
 from icarus.ui.fieldwidgets import map_field_to_widget
 from icarus.core.rig import Rig
+import icarus.metadata
 
 
 class ModulePanel(QtWidgets.QDockWidget):
@@ -31,8 +32,9 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.reset_button = QtWidgets.QPushButton('Reset')
 
         self.actions_group = QtWidgets.QGroupBox('Actions')
-        self.delete_button = QtWidgets.QPushButton('Delete')
+        self.mirror_button = QtWidgets.QPushButton('Mirror')
         self.duplicate_button = QtWidgets.QPushButton('Duplicate')
+        self.delete_button = QtWidgets.QPushButton('Delete')
 
         layout = QtWidgets.QVBoxLayout()
         self.widget().setLayout(layout)
@@ -53,18 +55,21 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         actions_layout = QtWidgets.QVBoxLayout()
         self.actions_group.setLayout(actions_layout)
-        actions_layout.addWidget(self.delete_button)
+        actions_layout.addWidget(self.mirror_button)
         actions_layout.addWidget(self.duplicate_button)
+        actions_layout.addWidget(self.delete_button)
 
         self.apply_button.hide()
         self.reset_button.hide()
-        self.delete_button.hide()
+        self.mirror_button.hide()
         self.duplicate_button.hide()
+        self.delete_button.hide()
 
         self.apply_button.released.connect(self._update_module)
         self.reset_button.released.connect(self._update_ui)
-        self.delete_button.released.connect(self._delete_module)
+        self.mirror_button.released.connect(self._mirror_module)
         self.duplicate_button.released.connect(self._duplicate_module)
+        self.delete_button.released.connect(self._delete_module)
 
         subscribe('selected-modules-changed', self._on_selection_changed)
 
@@ -132,7 +137,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         for module in self.modules:
             rig.delete_module(module.node_name)
         publish('modules-deleted', self.modules)
-    
+
     def _duplicate_module(self):
         """Duplicate the selected module."""
         if not self.modules:
@@ -170,6 +175,67 @@ class ModulePanel(QtWidgets.QDockWidget):
                         value = cmds.getAttr(orig_node + '.' + attr_name)
                         cmds.setAttr(new_node + '.' + attr_name, value)
 
+        publish('modules-created', new_modules)
+
+    def _mirror_module(self):
+        if not self.modules:
+            return
+        rig = Rig()
+        new_modules = []
+        for module in self.modules:
+            orig_side = module.side.get()
+            if orig_side == 'M':
+                return
+            new_side = 'R' if orig_side == 'L' else 'L'
+            orig_name = module.name.get()
+            orig_type = module.module_type.get()
+            mirror_type = module.mirror_type.get()
+
+            orig_parent_joint = module.parent_joint.get()
+            metadata = icarus.metadata.metadata_from_name(orig_parent_joint)
+            metadata['side'] = new_side
+            new_parent_joint = icarus.metadata.name_from_metadata(metadata)
+            if not cmds.objExists(new_parent_joint):
+                new_parent_joint = orig_parent_joint
+
+            new_module = rig.add_module(
+                orig_type,
+                name=orig_name,
+                side=new_side,
+                parent_joint=new_parent_joint
+            )
+
+            for field in module.fields:
+                if field.name in ['name', 'side']:
+                    continue
+                if field.editable:
+                    value = getattr(module, field.name).get()
+                    getattr(new_module, field.name).set(value)
+            new_module.update()
+            module._mirror_module.set(new_module.node_name)
+            new_module._mirror_module.set(module.node_name)
+
+            for orig_joint, new_joint in zip(module.deform_joints.get(), new_module.deform_joints.get()):
+                for attr in ['translate', 'rotate', 'scale', 'jointOrient']:
+                    for axis in 'XYZ':
+                        attr_name = attr + axis
+                        if not cmds.attributeQuery(attr_name, node=orig_joint, exists=True):
+                            continue
+                        value = cmds.getAttr(orig_joint + '.' + attr_name)
+                        if mirror_type.lower() == 'behavior':
+                            if attr_name == 'translateX':
+                                value *=-1
+                            same_parent = cmds.listRelatives(new_joint, parent=True) == cmds.listRelatives(orig_joint, parent=True)
+                            if same_parent:
+                                if attr_name == 'jointOrientX':
+                                    value += 180
+                                if attr_name == 'jointOrientZ':
+                                    value *= -1
+                        elif mirror_type.lower() == 'orientation':
+                            pass
+                        elif mirror_type.lower() == 'scale':
+                            pass
+                        cmds.setAttr(new_joint + '.' + attr_name, value)
 
         publish('modules-created', new_modules)
 
@@ -180,8 +246,9 @@ class ModulePanel(QtWidgets.QDockWidget):
         if not self.modules:
             self.apply_button.hide()
             self.reset_button.hide()
-            self.delete_button.hide()
+            self.mirror_button.hide()
             self.duplicate_button.hide()
+            self.delete_button.hide()
             return
 
         # If one of the module is built, disable actions.
@@ -189,13 +256,15 @@ class ModulePanel(QtWidgets.QDockWidget):
         for module in self.modules:
             if module.is_built.get():
                 is_built = True
-        
+
         if is_built:
-            self.delete_button.setEnabled(False)
+            self.mirror_button.setEnabled(False)
             self.duplicate_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         else:
-            self.delete_button.setEnabled(True)
+            self.mirror_button.setEnabled(True)
             self.duplicate_button.setEnabled(True)
+            self.delete_button.setEnabled(True)
 
         # Enable apply and reset button only when a field has
         # been modified.
@@ -203,8 +272,9 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.reset_button.setEnabled(False)
         self.apply_button.show()
         self.reset_button.show()
-        self.delete_button.show()
+        self.mirror_button.show()
         self.duplicate_button.show()
+        self.delete_button.show()
 
         # Only show fields shared by all selected modules.
         field_names = set([f.name for f in self.modules[-1].fields])
