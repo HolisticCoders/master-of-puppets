@@ -63,7 +63,14 @@ class ChainSwitcher(Chain):
             new_name = icarus.metadata.name_from_metadata(metadata)
             cmds.rename(joint, new_name)
 
-    def _create_settings_control(self):
+    def _create_settings_control(self, node=None):
+        """Create the settings control to switch between the two chains.
+
+        :param node: The node on witch the settings control should snap itself.
+        :type node: str
+        """
+        if node is None:
+            node = self.driving_joints[-1]
         metadata = {
             'base_name': self.name.get(),
             'side': self.side.get(),
@@ -72,13 +79,13 @@ class ChainSwitcher(Chain):
         }
         ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl, buffer_grp = self.add_control(
-            self.driving_joints[-1],
+            node,
             ctl_name,
             shape_type='cogwheel'
         )
         self.settings_ctl.set(ctl)
         cmds.parent(buffer_grp, self.controls_group.get())
-        icarus.dag.matrix_constraint(self.driving_joints[-1], buffer_grp)
+        icarus.dag.matrix_constraint(node, buffer_grp)
 
         for attr in ['translate', 'rotate', 'scale']:
             for axis in 'XYZ':

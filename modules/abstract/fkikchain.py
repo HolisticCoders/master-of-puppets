@@ -64,6 +64,9 @@ class FkIkChain(ChainSwitcher):
                 icarus.metadata.name_from_metadata(metadata)
             )
 
+    def _create_settings_control(self):
+        super(FkIkChain, self)._create_settings_control(self.ik_chain_end_joint.get())
+
     def build(self):
         super(FkIkChain, self).build()
         self._setup_fk()

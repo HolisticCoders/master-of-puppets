@@ -50,7 +50,7 @@ class FkIkRotatePlaneChain(FkIkChain):
             translation=True
         )
         end_pos = cmds.xform(
-            ik_chain[-1],
+            self.ik_chain_end_joint.get(),
             query=True,
             worldSpace=True,
             translation=True
