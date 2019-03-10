@@ -18,6 +18,17 @@ def ensure_facs_node_exists():
     return node
 
 
+def get_action_units_dict():
+    facs_node = ensure_facs_node_exists()
+    value = cmds.getAttr(facs_node + '.actionUnits')
+    action_units = json.loads(value, object_pairs_hook=OrderedDict) if value else {}
+    return action_units
+
+
+def get_action_units():
+    return get_action_units_dict().keys()
+
+
 class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
     """The main window of the Icarus GUI."""
 
@@ -44,6 +55,9 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         self.facs_list = QtWidgets.QListView()
         self.action_units_model = ActionUnitsModel()
         self.facs_list.setModel(self.action_units_model)
+        self.facs_list.selectionModel().selectionChanged.connect(
+            self.facs_selection_changed
+        )
         self.facs_list.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
@@ -64,7 +78,6 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         facs_finish_edit_button.released.connect(self.finish_edit_action_unit)
         facs_actions_layout.addWidget(facs_finish_edit_button)
 
-
         # Controllers part
         controllers_group = QtWidgets.QGroupBox('Controllers')
         main_layout.addWidget(controllers_group)
@@ -72,6 +85,11 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         controllers_layout = QtWidgets.QVBoxLayout()
         controllers_group.setLayout(controllers_layout)
         controllers_list = QtWidgets.QListView()
+        self.controllers_model = ControllersModel()
+        controllers_list.setModel(self.controllers_model)
+        controllers_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
         controllers_layout.addWidget(controllers_list)
         controllers_actions_layout = QtWidgets.QHBoxLayout()
         controllers_layout.addLayout(controllers_actions_layout)
@@ -85,6 +103,14 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
 
         ensure_facs_node_exists()
 
+    def facs_selection_changed(self):
+        selected_indices = self.facs_list.selectionModel().selectedIndexes()
+        if selected_indices:
+            self.controllers_model.action_unit = selected_indices[-1].data()
+        else:
+            self.controllers_model.action_unit = None
+        self.controllers_model.dataChanged.emit(0, 0, [QtCore.Qt.DisplayRole])
+
     def add_action_unit(self):
         facs_node = ensure_facs_node_exists()
         value = cmds.getAttr(facs_node + '.actionUnits')
@@ -93,7 +119,7 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         action_units[name] = []
         cmds.setAttr(facs_node + '.actionUnits', json.dumps(action_units), type='string')
         index = action_units.keys().index(name)
-        self.action_units_model.dataChanged.emit(index, 0, [QtCore.Qt.DisplayRole])
+        self.action_units_model.dataChanged.emit(index, index, [QtCore.Qt.DisplayRole])
 
     def remove_action_units(self):
         facs_node = ensure_facs_node_exists()
@@ -115,7 +141,22 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         print "Finishing Editing Action unit"
 
     def add_controllers_to_action_unit(self):
-        print "Adding Controller"
+        last_action_unit = self.facs_list.selectionModel().selectedIndexes()[0].data()
+        maya_sel = cmds.ls(sl=True)
+        action_units_dict = get_action_units_dict()
+        new_controls = list(set(action_units_dict.get(last_action_unit, [])) | set(maya_sel))
+        action_units_dict[last_action_unit] = new_controls
+        facs_node = ensure_facs_node_exists()
+        cmds.setAttr(
+            facs_node + '.actionUnits',
+            json.dumps(action_units_dict),
+            type='string'
+        )
+        self.controllers_model.dataChanged.emit(
+            0,
+            len(self.controllers_model.controllers),
+            [QtCore.Qt.DisplayRole]
+        )
 
     def remove_controllers_from_action_unit(self):
         print "Removing Controller"
@@ -145,9 +186,7 @@ class ActionUnitsModel(QtCore.QAbstractListModel):
 
     def setData(self, index, value, role):
         if not value:
-            logger.warning('You must enter a name for the action unit.'.format(
-                value
-            ))
+            logger.warning('You must enter a name for the action unit.')
             return False
 
         facs_node = ensure_facs_node_exists()
@@ -174,3 +213,28 @@ class ActionUnitsModel(QtCore.QAbstractListModel):
     def flags(self, index):
         default_flags = super(ActionUnitsModel, self).flags(index)
         return (QtCore.Qt.ItemIsEditable | default_flags)
+
+
+class ControllersModel(QtCore.QAbstractListModel):
+    def __init__(self, parent=None, action_unit=None):
+        super(ControllersModel, self).__init__(parent)
+        self.action_unit = action_unit
+
+    @property
+    def controllers(self):
+        if self.action_unit:
+            action_units = get_action_units_dict()
+            controllers = action_units[self.action_unit]
+            return controllers
+
+    def rowCount(self, parent):
+        if self.controllers:
+            return len(self.controllers)
+        else:
+            return 0
+
+    def data(self, index, role):
+        action_units_dict = get_action_units_dict()
+        if role == QtCore.Qt.DisplayRole:
+            row = index.row()
+            return action_units_dict[self.action_unit][row]
