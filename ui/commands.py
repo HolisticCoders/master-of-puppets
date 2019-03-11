@@ -46,9 +46,9 @@ def open_icarus():
 
 def open_facs_editor():
     """Open the `icarus` GUI."""
-    import icarus.vendor.facseditor.window
-    win = icarus.vendor.facseditor.window.FACSWindow()
-    win.show()
+    import facseditor
+    facseditor.close()
+    facseditor.show()
 
 
 def open_parent_spaces():
