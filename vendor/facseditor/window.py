@@ -6,7 +6,7 @@ import logging
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 import maya.cmds as cmds
 
-from icarus.vendor.Qt import QtWidgets, QtCore
+from icarus.vendor.Qt import QtWidgets, QtCore, QtGui
 import facseditor.core
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         facs_layout = QtWidgets.QVBoxLayout()
         facs_group.setLayout(facs_layout)
         self.action_units_list = QtWidgets.QListView()
-        self.action_units_model = QtCore.QStringListModel()
+        self.action_units_model = ActionUnitsModel()
         self.action_units_list.setModel(self.action_units_model)
         self.action_units_model.setStringList(facseditor.core.get_action_units())
         self.action_units_model.dataChanged.connect(self.action_units_data_changed)
@@ -179,11 +179,13 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         last_action_unit = self.action_units_list.selectionModel().currentIndex().data()
         facseditor.core.edit_action_unit(last_action_unit)
         self.update_edit_buttons()
+        self.update_action_units_model()
 
     @undoable
     def finish_edit_action_unit(self):
         facseditor.core.finish_edit()
         self.update_edit_buttons()
+        self.update_action_units_model()
 
     @undoable
     def add_controllers_to_action_unit(self):
@@ -200,3 +202,15 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         facseditor.core.remove_controllers_from_action_unit(last_action_unit, selected_controllers)
         self.update_controllers_model()
 
+
+class ActionUnitsModel(QtCore.QStringListModel):
+    def data(self, index, role):
+        """Color the Action unit that's being edited."""
+        if role == QtCore.Qt.BackgroundRole:
+            if index.data() == facseditor.core.get_editing_action_unit():
+                return QtGui.QBrush(QtGui.QColor(152, 195, 121))
+        elif role == QtCore.Qt.ForegroundRole:
+            if index.data() == facseditor.core.get_editing_action_unit():
+                return QtGui.QBrush(QtGui.QColor(43, 43, 43))
+        else:
+            return super(ActionUnitsModel, self).data(index, role)
