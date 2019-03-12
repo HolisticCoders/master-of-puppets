@@ -1,6 +1,7 @@
-import logging
-import json
 from collections import OrderedDict
+from functools import wraps
+import json
+import logging
 
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 import maya.cmds as cmds
@@ -9,6 +10,21 @@ from icarus.vendor.Qt import QtWidgets, QtCore
 import facseditor.core
 
 logger = logging.getLogger(__name__)
+
+
+def undoable(func):
+    """Decorated function will execute in one undo chunk."""
+
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        cmds.undoInfo(openChunk=True)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            cmds.undoInfo(closeChunk=True)
+
+    return wrapped
+
 
 class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
     """The main window of the Icarus GUI."""
@@ -58,12 +74,15 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         facs_remove_button = QtWidgets.QPushButton('Remove')
         facs_remove_button.released.connect(self.remove_action_units)
         facs_actions_layout.addWidget(facs_remove_button)
-        facs_edit_button = QtWidgets.QPushButton('Edit')
-        facs_edit_button.released.connect(self.edit_action_unit)
-        facs_actions_layout.addWidget(facs_edit_button)
-        facs_finish_edit_button = QtWidgets.QPushButton('Finish Edit')
-        facs_finish_edit_button.released.connect(self.finish_edit_action_unit)
-        facs_actions_layout.addWidget(facs_finish_edit_button)
+        self.facs_edit_button = QtWidgets.QPushButton('Edit')
+        self.facs_edit_button.released.connect(self.edit_action_unit)
+        facs_actions_layout.addWidget(self.facs_edit_button)
+        self.facs_finish_edit_button = QtWidgets.QPushButton('Finish Edit')
+        self.facs_finish_edit_button.released.connect(self.finish_edit_action_unit)
+
+        self.update_edit_buttons()
+
+        facs_actions_layout.addWidget(self.facs_finish_edit_button)
 
         # Controllers part
         controllers_group = QtWidgets.QGroupBox('Controllers')
@@ -93,6 +112,14 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
 
         facseditor.core.ensure_facs_node_exists()
 
+    def update_edit_buttons(self):
+        if facseditor.core.is_editing():
+            self.facs_edit_button.setEnabled(False)
+            self.facs_finish_edit_button.setEnabled(True)
+        else:
+            self.facs_edit_button.setEnabled(True)
+            self.facs_finish_edit_button.setEnabled(False)
+
     def facs_selection_changed(self):
         self.update_controllers_model()
 
@@ -112,24 +139,20 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         controllers_names = [c.data() for c in self.controllers_list.selectionModel().selectedIndexes()]
         cmds.select(controllers_names)
 
+    @undoable
     def add_action_unit(self):
         facseditor.core.add_action_unit()
         self.update_action_units_model()
 
+    @undoable
     def remove_action_units(self):
         action_units = [a.data() for a in self.action_units_list.selectionModel().selectedIndexes()]
         facseditor.core.remove_action_units(action_units)
         self.update_action_units_model()
 
+    @undoable
     def move_action_unit(self, new_key, new_index):
-        action_units_dict = facseditor.core.get_action_units_dict()
-        action_units_dict[new_key] = action_units_dict.pop(new_key)
-        i = 0
-        for key, value in action_units_dict.items():
-            if key != new_key and i >= new_index:
-                action_units_dict[key] = action_units_dict.pop(key)
-            i += 1
-        return action_units_dict
+        return facseditor.core.move_action_unit(new_key, new_index)
 
     def action_units_data_changed(self, topLeft, bottomRight, roles):
         new_index = topLeft.row()
@@ -148,41 +171,32 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         )
         self.update_action_units_model()
 
-
+    @undoable
     def edit_action_unit(self):
-        print "Editing Action unit"
+        if not self.action_units_list.selectionModel().selectedIndexes():
+            return
+        cmds.playbackOptions(min=0, max=10)
+        last_action_unit = self.action_units_list.selectionModel().currentIndex().data()
+        facseditor.core.edit_action_unit(last_action_unit)
+        self.update_edit_buttons()
 
+    @undoable
     def finish_edit_action_unit(self):
-        print "Finishing Editing Action unit"
+        facseditor.core.finish_edit()
+        self.update_edit_buttons()
 
+    @undoable
     def add_controllers_to_action_unit(self):
         if not self.action_units_list.selectionModel().selectedIndexes():
             return
         last_action_unit = self.action_units_list.selectionModel().currentIndex().data()
-        maya_sel = cmds.ls(sl=True)
-        action_units_dict = facseditor.core.get_action_units_dict()
-        new_controls = set(action_units_dict.get(last_action_unit, [])) | set(maya_sel)
-        action_units_dict[last_action_unit] = list(sorted(new_controls))
-        facs_node = facseditor.core.ensure_facs_node_exists()
-        cmds.setAttr(
-            facs_node + '.actionUnits',
-            json.dumps(action_units_dict),
-            type='string'
-        )
+        facseditor.core.add_controllers_to_action_unit(last_action_unit)
         self.update_controllers_model()
 
+    @undoable
     def remove_controllers_from_action_unit(self):
         last_action_unit = self.action_units_list.selectionModel().currentIndex().data()
         selected_controllers = [c.data() for c in self.controllers_list.selectionModel().selectedIndexes()]
-        action_units_dict = facseditor.core.get_action_units_dict()
-        controllers = action_units_dict[last_action_unit]
-        new_controllers = [c for c in controllers if c not in selected_controllers]
-        action_units_dict[last_action_unit] = new_controllers
-        facs_node = facseditor.core.ensure_facs_node_exists()
-        cmds.setAttr(
-            facs_node + '.actionUnits',
-            json.dumps(action_units_dict),
-            type='string'
-        )
+        facseditor.core.remove_controllers_from_action_unit(last_action_unit, selected_controllers)
         self.update_controllers_model()
 
