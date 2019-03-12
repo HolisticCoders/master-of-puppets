@@ -22,6 +22,11 @@ MENU_ITEMS = [
         'label': 'Open Parent Spaces',
     },
     {
+        'name': 'icarus_open_facs_editor_menu_item',
+        'command': 'from icarus.ui.commands import open_facs_editor;open_facs_editor()',
+        'label': 'Open FACS Editor',
+    },
+    {
         'name': 'icarus_build_menu_item',
         'command': 'from icarus.ui.commands import build_rig;build_rig()',
         'label': 'Build Rig',

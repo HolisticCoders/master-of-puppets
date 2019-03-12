@@ -19,6 +19,7 @@ def reload_icarus():
     search = [
         'icarus',
         'shapeshifter',
+        'facseditor',
     ]
 
     icarus_modules = []
@@ -41,6 +42,13 @@ def open_icarus():
     import icarus.ui
     icarus.ui.close()
     icarus.ui.show()
+
+
+def open_facs_editor():
+    """Open the `icarus` GUI."""
+    import facseditor
+    facseditor.close()
+    facseditor.show()
 
 
 def open_parent_spaces():
