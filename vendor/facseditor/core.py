@@ -67,8 +67,8 @@ def get_controllers(action_unit):
     action_units_dict = get_action_units_dict()
     return action_units_dict.get(action_unit, [])
 
-def add_parent_group(node):
-    parent_group = cmds.createNode('transform')
+def add_parent_group(node, name):
+    parent_group = cmds.createNode('transform', name=name)
     mat = cmds.xform(node, query=True, matrix=True, worldSpace=True)
     cmds.xform(parent_group, matrix=mat, worldSpace=True)
     node_parent = cmds.listRelatives(node, parent=True)
@@ -258,8 +258,9 @@ def add_controllers_to_action_unit(action_unit):
         type='string'
     )
     for control in new_controls:
-        parent_group = add_parent_group(control)
-        cmds.rename(parent_group, control + '_' + nicename_to_camelcase(action_unit))
+        parent_group_name = control + '_' + nicename_to_camelcase(action_unit)
+        if not cmds.objExists(parent_group_name):
+            add_parent_group(control, name=parent_group_name)
 
 
 def remove_controllers_from_action_unit(action_unit, controllers):
