@@ -351,6 +351,15 @@ class BipedLeg(FkIkRotatePlaneChain):
         cmds.parent(self.bank_ext_pivot.get(), self.twist_pivot.get())
         cmds.parent(self.twist_pivot.get(), pivots_grp)
 
+        # Make sure the pivots transform are zeroed out
+        # because they'll be driven by attributes that default to a 0 value
+        icarus.dag.add_parent_group(self.twist_pivot.get())
+        icarus.dag.add_parent_group(self.heel_pivot.get())
+        icarus.dag.add_parent_group(self.ball_pivot.get())
+        icarus.dag.add_parent_group(self.tip_pivot.get())
+        icarus.dag.add_parent_group(self.bank_ext_pivot.get())
+        icarus.dag.add_parent_group(self.bank_int_pivot.get())
+
     def create_ik_handles(self):
         ball_ikHandle, ball_effector = cmds.ikHandle(
             startJoint=self.chain_b[2],  # ankle joint
