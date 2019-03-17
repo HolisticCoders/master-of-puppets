@@ -40,12 +40,14 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
 
-        main_layout = QtWidgets.QHBoxLayout()
+        main_layout = QtWidgets.QVBoxLayout()
+        lists_layout = QtWidgets.QHBoxLayout()
+        main_layout.addLayout(lists_layout)
         central_widget.setLayout(main_layout)
 
         # FACS action units part
         facs_group = QtWidgets.QGroupBox('FACS Action units')
-        main_layout.addWidget(facs_group)
+        lists_layout.addWidget(facs_group)
 
         facs_layout = QtWidgets.QVBoxLayout()
         facs_group.setLayout(facs_layout)
@@ -86,7 +88,7 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
 
         # Controllers part
         controllers_group = QtWidgets.QGroupBox('Controllers')
-        main_layout.addWidget(controllers_group)
+        lists_layout.addWidget(controllers_group)
 
         controllers_layout = QtWidgets.QVBoxLayout()
         controllers_group.setLayout(controllers_layout)
@@ -109,6 +111,10 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         controllers_remove_button = QtWidgets.QPushButton('Remove')
         controllers_remove_button.released.connect(self.remove_controllers_from_action_unit)
         controllers_actions_layout.addWidget(controllers_remove_button)
+
+        select_facs_button = QtWidgets.QPushButton('Select FACS Control')
+        select_facs_button.released.connect(self._select_facs_control)
+        main_layout.addWidget(select_facs_button)
 
         facseditor.core.ensure_facs_node_exists()
 
@@ -201,6 +207,9 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         selected_controllers = [c.data() for c in self.controllers_list.selectionModel().selectedIndexes()]
         facseditor.core.remove_controllers_from_action_unit(last_action_unit, selected_controllers)
         self.update_controllers_model()
+
+    def _select_facs_control(self):
+        cmds.select(facseditor.core.ensure_facs_node_exists(), replace=True)
 
 
 class ActionUnitsModel(QtCore.QStringListModel):
