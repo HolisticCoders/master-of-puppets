@@ -47,7 +47,8 @@ class Leaf(RigModule):
 
     def build(self):
         for joint in self.driving_joints:
-            ctl = self.add_control(joint, shape_type='sphere')[0]
+            ctl, parent_group = self.add_control(joint, shape_type='sphere')
+            cmds.parent(parent_group, self.controls_group.get())
             icarus.dag.matrix_constraint(ctl, joint)
 
     def update_parent_joint(self):
