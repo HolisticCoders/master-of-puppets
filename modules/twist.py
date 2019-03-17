@@ -85,13 +85,18 @@ class Twist(RigModule):
         quat_to_euler = self.add_node('quatToEuler')
 
         cmds.connectAttr(
-            twist_driver + '.worldMatrix[0]',
+            twist_driver + '.matrix',
             mult_mat + '.matrixIn[0]'
         )
-        cmds.connectAttr(
-            twist_driver_parent + '.worldInverseMatrix[0]',
-            mult_mat + '.matrixIn[1]'
+        cmds.setAttr(
+            mult_mat + '.matrixIn[1]',
+            cmds.getAttr(twist_driver + '.inverseMatrix'),
+            type='matrix'
         )
+        # cmds.connectAttr(
+        #     twist_driver_parent + '.worldInverseMatrix[0]',
+        #     mult_mat + '.matrixIn[2]'
+        # )
         cmds.connectAttr(
             mult_mat + '.matrixSum',
             decomp_mat + '.inputMatrix',
