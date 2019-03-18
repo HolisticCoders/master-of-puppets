@@ -192,10 +192,16 @@ class Rig(IcarusNode):
                     # changes along the way.
                     continue
 
-                parents = spaces.get('parents', [])
-                space_type = spaces.get('space_type', 'parent')
+                # TODO: Allow multiple types of spaces at the same type
+                parents = spaces.get('parent', [])
+                orients = spaces.get('orient', [])
+                points = spaces.get('point', [])
                 if parents:
-                    icarus.dag.create_space_switching(ctl, parents, space_type)
+                    icarus.dag.create_space_switching(ctl, parents, 'parent')
+                elif orients:
+                    icarus.dag.create_space_switching(ctl, orients, 'orient')
+                elif points:
+                    icarus.dag.create_space_switching(ctl, points, 'point')
 
         icarus.postscript.run_scripts('post_build')
 
