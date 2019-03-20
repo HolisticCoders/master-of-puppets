@@ -3,6 +3,7 @@ from operator import attrgetter
 from weakref import WeakValueDictionary
 
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
 
 from icarus.vendor.Qt import QtCore, QtWidgets
 from icarus.ui.signals import publish, subscribe
@@ -10,6 +11,7 @@ from icarus.ui.utils import clear_layout
 from icarus.ui.fieldwidgets import map_field_to_widget
 from icarus.core.rig import Rig
 import icarus.metadata
+from icarus.core.fields import ObjectField, ObjectListField
 
 
 class ModulePanel(QtWidgets.QDockWidget):
@@ -178,6 +180,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         publish('modules-created', new_modules)
 
     def _mirror_module(self):
+        cmds.undoInfo(openChunk=True)
         if not self.modules:
             return
         rig = Rig()
@@ -185,7 +188,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         for module in self.modules:
             orig_side = module.side.get()
             if orig_side == 'M':
-                return
+                continue
             new_side = 'R' if orig_side == 'L' else 'L'
             orig_name = module.name.get()
             orig_type = module.module_type.get()
@@ -204,9 +207,12 @@ class ModulePanel(QtWidgets.QDockWidget):
                 side=new_side,
                 parent_joint=new_parent_joint
             )
+            new_modules.append(new_module)
 
             for field in module.fields:
                 if field.name in ['name', 'side']:
+                    continue
+                if isinstance(field, ObjectField) or isinstance(field, ObjectListField):
                     continue
                 if field.editable:
                     value = getattr(module, field.name).get()
@@ -215,28 +221,87 @@ class ModulePanel(QtWidgets.QDockWidget):
             module._mirror_module.set(new_module.node_name)
             new_module._mirror_module.set(module.node_name)
 
-            for orig_joint, new_joint in zip(module.deform_joints.get(), new_module.deform_joints.get()):
-                for attr in ['translate', 'rotate', 'scale', 'jointOrient']:
-                    for axis in 'XYZ':
-                        attr_name = attr + axis
-                        if not cmds.attributeQuery(attr_name, node=orig_joint, exists=True):
-                            continue
-                        value = cmds.getAttr(orig_joint + '.' + attr_name)
-                        if mirror_type.lower() == 'behavior':
-                            if attr_name == 'translateX':
-                                value *=-1
-                            same_parent = cmds.listRelatives(new_joint, parent=True) == cmds.listRelatives(orig_joint, parent=True)
-                            if same_parent:
-                                if attr_name == 'jointOrientX':
-                                    value += 180
-                                if attr_name == 'jointOrientZ':
-                                    value *= -1
-                        elif mirror_type.lower() == 'orientation':
-                            pass
-                        elif mirror_type.lower() == 'scale':
-                            pass
-                        cmds.setAttr(new_joint + '.' + attr_name, value)
+            # actually mirror the nodes
+            orig_nodes = module.deform_joints.get() + module.placement_locators.get()
+            new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
+            for orig_node, new_node in zip(orig_nodes, new_nodes):
+                if mirror_type.lower() == 'behavior':
+                    world_reflexion_mat = om2.MMatrix([
+                        -1.0, -0.0, -0.0, 0.0,
+                         0.0,  1.0,  0.0, 0.0,
+                         0.0,  0.0,  1.0, 0.0,
+                         0.0,  0.0,  0.0, 1.0
+                    ])
+                    local_reflexion_mat = om2.MMatrix([
+                        -1.0,  0.0,  0.0, 0.0,
+                         0.0, -1.0,  0.0, 0.0,
+                         0.0,  0.0, -1.0, 0.0,
+                         0.0,  0.0,  0.0, 1.0
+                    ])
+                    orig_node_mat = om2.MMatrix(
+                        cmds.getAttr(orig_node + '.worldMatrix')
+                    )
+                    new_node_parent = cmds.listRelatives(new_node, parent=True)
+                    new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
+                    cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                    cmds.setAttr(new_node + '.scale', 1, 1, 1)
+                if mirror_type.lower() == 'orientation':
+                    world_reflexion_mat = om2.MMatrix([
+                        -1.0, -0.0, -0.0, 0.0,
+                         0.0,  1.0,  0.0, 0.0,
+                         0.0,  0.0,  1.0, 0.0,
+                         0.0,  0.0,  0.0, 1.0
+                    ])
+                    orig_node_mat = om2.MMatrix(
+                        cmds.getAttr(orig_node + '.worldMatrix')
+                    )
+                    new_node_parent = cmds.listRelatives(new_node, parent=True)
+                    new_mat = orig_node_mat * world_reflexion_mat
+                    cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                    cmds.setAttr(new_node + '.scale', 1, 1, 1)
+                    orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
+                    cmds.xform(new_node, rotation=orig_orient, ws=True)
 
+        # mirror the object fields and object list fields values
+        for module, new_module in zip(self.modules, new_modules):
+            orig_side = module.side.get()
+            for field in module.fields:
+                if field.editable:
+                    if isinstance(field, ObjectField):
+                        orig_value = getattr(module, field.name).get()
+                        if orig_side == 'M':
+                            value = orig_value
+                        else:
+                            new_side = 'R' if orig_side == 'L' else 'L'
+                            metadata = icarus.metadata.metadata_from_name(orig_value)
+                            metadata['side'] = new_side
+                            new_name = icarus.metadata.name_from_metadata(metadata)
+                            if cmds.objExists(new_name):
+                                value = new_name
+                            else:
+                                value = orig_value
+                    elif isinstance(field, ObjectListField):
+                        orig_value = getattr(module, field.name).get()
+                        value = []
+                        for val in orig_value:
+                            if orig_side == 'M':
+                                value.append(orig_value)
+                            else:
+                                new_side = 'R' if orig_side == 'L' else 'L'
+                                metadata = icarus.metadata.metadata_from_name(orig_value)
+                                metadata['side'] = new_side
+                                new_name = icarus.metadata.name_from_metadata(metadata)
+                                if cmds.objExists(new_name):
+                                    value.append(new_name)
+                                else:
+                                    value.append(orig_value)
+                    else:
+                        continue
+
+                    getattr(new_module, field.name).set(value)
+            new_module.update()
+
+        cmds.undoInfo(closeChunk=True)
         publish('modules-created', new_modules)
 
     def _update_ui(self):
