@@ -52,12 +52,12 @@ class Rig(IcarusNode):
         if parent_module in modules:
             modules.remove(parent_module)
             self.sort_parent_module(parent_module, modules, sorted_modules)
-    
+
         sorted_modules.append(module)
 
     @property
     def skeleton(self):
-        return list(reversed(cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)))
+        return [n for n in reversed(cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)) if cmds.nodeType(n) == 'joint']
 
     @property
     def build_nodes(self):
@@ -239,7 +239,8 @@ class Rig(IcarusNode):
             for attribute in ['.translate', '.rotate', '.scale']:
                 attr = node + attribute
                 input_attr = cmds.connectionInfo(attr, sourceFromDestination=True)
-                cmds.disconnectAttr(input_attr, attr)
+                if input_attr:
+                    cmds.disconnectAttr(input_attr, attr)
         cmds.delete(self.build_nodes)
         for module in self.rig_modules:
             module.is_built.set(False)
