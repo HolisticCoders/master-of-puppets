@@ -1,8 +1,8 @@
 import json
 import logging
-import os
 import time
 from collections import OrderedDict
+import re
 
 import maya.cmds as cmds
 
@@ -108,10 +108,30 @@ class Rig(IcarusNode):
 
         name = kwargs.get('name', module_type.lower())
         side = kwargs.get('side', all_rig_modules[module_type].default_side)
-        conflicting_modules = cmds.ls('{}*_{}_mod'.format(name, side))
-        new_id = len(conflicting_modules)
-        if new_id > 0:
-            name += str(new_id).zfill(2)
+
+        # extract the name without the index of the module
+        pattern = '^(?P<raw_name>[a-zA-Z]*)[0-9]*'
+        regex = re.compile(pattern)
+        match = re.match(regex, name)
+        raw_name = match.group('raw_name')
+
+        # get the highest index from the modules with the same name and side
+        highest_index = None
+        for mod in self.rig_modules:
+            pattern = '^{}(?P<id>[0-9]*)_{}_mod'.format(
+                raw_name,
+                side
+            )
+            regex = re.compile(pattern)
+            match = re.match(regex, mod.node_name)
+            if match:
+                index = match.group('id')
+                index = int(index) if index else 0
+                if index > highest_index:
+                    highest_index = index
+
+        if highest_index is not None:
+            name = raw_name + str(highest_index + 1).zfill(2)
 
         # update the kwargs in case the values changed
         kwargs['rig'] = self
@@ -273,6 +293,10 @@ class Rig(IcarusNode):
                 attributeType='bool',
                 defaultValue=True
             )
+
+    @undoable
+    def mirror(self, module):
+        """Mirrors the specified rig module."""
 
     @undoable
     def duplicate(self, module):
