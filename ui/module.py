@@ -147,35 +147,8 @@ class ModulePanel(QtWidgets.QDockWidget):
         rig = Rig()
         new_modules = []
         for module in self.modules:
-            module_type = module.module_type.get()
-            name = module.name.get()
-            side = module.side.get()
-            parent_joint = module.parent_joint.get()
-            new_module = rig.add_module(
-                module_type,
-                name=name,
-                side=side,
-                parent_joint=parent_joint
-            )
+            new_module = rig.duplicate(module)
             new_modules.append(new_module)
-            for field in module.fields:
-                if field.name in ['name', 'side']:
-                    continue
-                if field.editable:
-                    value = getattr(module, field.name).get()
-                    getattr(new_module, field.name).set(value)
-            new_module.update()
-
-            orig_nodes = module.deform_joints.get() + module.placement_locators.get()
-            new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
-            for orig_node, new_node in zip(orig_nodes, new_nodes):
-                for attr in ['translate', 'rotate', 'scale', 'jointOrient']:
-                    for axis in 'XYZ':
-                        attr_name = attr + axis
-                        if not cmds.attributeQuery(attr_name, node=orig_node, exists=True):
-                            continue
-                        value = cmds.getAttr(orig_node + '.' + attr_name)
-                        cmds.setAttr(new_node + '.' + attr_name, value)
 
         publish('modules-created', new_modules)
 
