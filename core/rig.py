@@ -1,16 +1,18 @@
 import json
 import logging
-import os
 import time
 from collections import OrderedDict
+import re
 
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
 
 from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
 from icarus.config import default_modules
-from icarus.core.fields import ObjectField
+from icarus.core.fields import ObjectField, ObjectListField
 from icarus.utils.undo import undoable
+from icarus.utils.dg import find_mirror_node
 import icarus.dag
 import icarus.postscript
 from shapeshifter import shapeshifter
@@ -52,12 +54,12 @@ class Rig(IcarusNode):
         if parent_module in modules:
             modules.remove(parent_module)
             self.sort_parent_module(parent_module, modules, sorted_modules)
-    
+
         sorted_modules.append(module)
 
     @property
     def skeleton(self):
-        return list(reversed(cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)))
+        return [n for n in reversed(cmds.listRelatives(self.skeleton_group.get(), allDescendents=True)) if cmds.nodeType(n) == 'joint']
 
     @property
     def build_nodes(self):
@@ -108,10 +110,30 @@ class Rig(IcarusNode):
 
         name = kwargs.get('name', module_type.lower())
         side = kwargs.get('side', all_rig_modules[module_type].default_side)
-        conflicting_modules = cmds.ls('{}*_{}_mod'.format(name, side))
-        new_id = len(conflicting_modules)
-        if new_id > 0:
-            name += str(new_id).zfill(2)
+
+        # extract the name without the index of the module
+        pattern = '^(?P<raw_name>[a-zA-Z]*)[0-9]*'
+        regex = re.compile(pattern)
+        match = re.match(regex, name)
+        raw_name = match.group('raw_name')
+
+        # get the highest index from the modules with the same name and side
+        highest_index = None
+        for mod in self.rig_modules:
+            pattern = '^{}(?P<id>[0-9]*)_{}_mod'.format(
+                raw_name,
+                side
+            )
+            regex = re.compile(pattern)
+            match = re.match(regex, mod.node_name)
+            if match:
+                index = match.group('id')
+                index = int(index) if index else 0
+                if index > highest_index:
+                    highest_index = index
+
+        if highest_index is not None:
+            name = raw_name + str(highest_index + 1).zfill(2)
 
         # update the kwargs in case the values changed
         kwargs['rig'] = self
@@ -239,7 +261,8 @@ class Rig(IcarusNode):
             for attribute in ['.translate', '.rotate', '.scale']:
                 attr = node + attribute
                 input_attr = cmds.connectionInfo(attr, sourceFromDestination=True)
-                cmds.disconnectAttr(input_attr, attr)
+                if input_attr:
+                    cmds.disconnectAttr(input_attr, attr)
         cmds.delete(self.build_nodes)
         for module in self.rig_modules:
             module.is_built.set(False)
@@ -272,4 +295,130 @@ class Rig(IcarusNode):
                 attributeType='bool',
                 defaultValue=True
             )
+
+    @undoable
+    def mirror_module(self, module):
+        """Mirrors the specified rig module."""
+        orig_side = module.side.get()
+        if orig_side == 'M':
+            return
+
+        non_mirrored_parents = module.find_non_mirrored_parents()
+        if non_mirrored_parents:
+            for parent in non_mirrored_parents:
+                self.mirror_module(parent)
+
+        new_side = 'R' if orig_side == 'L' else 'L'
+        orig_name = module.name.get()
+        orig_type = module.module_type.get()
+        mirror_type = module.mirror_type.get()
+
+        orig_parent_joint = module.parent_joint.get()
+        metadata = icarus.metadata.metadata_from_name(orig_parent_joint)
+        metadata['side'] = new_side
+        new_parent_joint = icarus.metadata.name_from_metadata(metadata)
+        if not cmds.objExists(new_parent_joint):
+            new_parent_joint = orig_parent_joint
+
+        new_module = self.add_module(
+            orig_type,
+            name=orig_name,
+            side=new_side,
+            parent_joint=new_parent_joint
+        )
+
+        for field in module.fields:
+            if field.name in ['name', 'side']:
+                continue
+            if field.editable:
+                value = None
+                if isinstance(field, ObjectField):
+                    orig_value = getattr(module, field.name).get()
+                    value = find_mirror_node(orig_value)
+                elif isinstance(field, ObjectListField):
+                    orig_value = getattr(module, field.name).get()
+                    value = [find_mirror_node(v) for v in orig_value]
+                else:
+                    value = getattr(module, field.name).get()
+
+                if value:
+                    getattr(new_module, field.name).set(value)
+
+        new_module.update()
+        module.module_mirror = new_module.node_name
+        new_module.module_mirror = module.node_name
+
+        # actually mirror the nodes
+        orig_nodes = module.deform_joints.get() + module.placement_locators.get()
+        new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
+        for orig_node, new_node in zip(orig_nodes, new_nodes):
+            if mirror_type.lower() == 'behavior':
+                world_reflexion_mat = om2.MMatrix([
+                    -1.0, -0.0, -0.0, 0.0,
+                     0.0,  1.0,  0.0, 0.0,
+                     0.0,  0.0,  1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                local_reflexion_mat = om2.MMatrix([
+                    -1.0,  0.0,  0.0, 0.0,
+                     0.0, -1.0,  0.0, 0.0,
+                     0.0,  0.0, -1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                orig_node_mat = om2.MMatrix(
+                    cmds.getAttr(orig_node + '.worldMatrix')
+                )
+                new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
+                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                cmds.setAttr(new_node + '.scale', 1, 1, 1)
+            if mirror_type.lower() == 'orientation':
+                world_reflexion_mat = om2.MMatrix([
+                    -1.0, -0.0, -0.0, 0.0,
+                     0.0,  1.0,  0.0, 0.0,
+                     0.0,  0.0,  1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                orig_node_mat = om2.MMatrix(
+                    cmds.getAttr(orig_node + '.worldMatrix')
+                )
+                new_mat = orig_node_mat * world_reflexion_mat
+                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                cmds.setAttr(new_node + '.scale', 1, 1, 1)
+                orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
+                cmds.xform(new_node, rotation=orig_orient, ws=True)
+
+        return new_module
+
+    @undoable
+    def duplicate_module(self, module):
+        """Duplicate the specified rig module"""
+        module_type = module.module_type.get()
+        name = module.name.get()
+        side = module.side.get()
+        parent_joint = module.parent_joint.get()
+        new_module = module.rig.add_module(
+            module_type,
+            name=name,
+            side=side,
+            parent_joint=parent_joint
+        )
+        for field in module.fields:
+            if field.name in ['name', 'side']:
+                continue
+            if field.editable:
+                value = getattr(module, field.name).get()
+                getattr(new_module, field.name).set(value)
+        new_module.update()
+
+        orig_nodes = module.deform_joints.get() + module.placement_locators.get()
+        new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
+        for orig_node, new_node in zip(orig_nodes, new_nodes):
+            for attr in ['translate', 'rotate', 'scale', 'jointOrient']:
+                for axis in 'XYZ':
+                    attr_name = attr + axis
+                    if not cmds.attributeQuery(attr_name, node=orig_node, exists=True):
+                        continue
+                    value = cmds.getAttr(orig_node + '.' + attr_name)
+                    cmds.setAttr(new_node + '.' + attr_name, value)
+        return new_module
 
