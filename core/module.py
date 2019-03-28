@@ -453,9 +453,9 @@ class RigModule(IcarusNode):
         shape_type='circle'
     ):
         metadata = icarus.metadata.metadata_from_name(dag_node)
-        if object_id:
+        if object_id is not None:
             metadata['id'] = object_id
-        if description:
+        if description is not None:
             metadata['description'] = description
         metadata['role'] = 'ctl'
         ctl_name = icarus.metadata.name_from_metadata(metadata)

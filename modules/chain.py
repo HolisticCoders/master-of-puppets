@@ -3,84 +3,44 @@ import math
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from icarus.core.module import RigModule
+from icarus.modules.abstract.abstractchain import AbstractChain
 from icarus.core.fields import IntField, ObjectListField
 import icarus.dag
 
 
-class Chain(RigModule):
+class Chain(AbstractChain):
 
-    joint_count = IntField(
-        defaultValue=1,
+    offset_control_count = IntField(
+        defaultValue=0,
         hasMinValue=True,
-        minValue=1,
+        minValue=0,
         displayable=True,
         editable=True,
         tooltip="The number of joints for the chain."
     )
 
-    def initialize(self):
-        super(Chain, self).initialize()
-        for i in range(self.joint_count.get()):
-            new_joint = self._add_deform_joint()
-            if i > 0:
-                cmds.setAttr(new_joint + '.translateX', 5)
-
-    def update(self):
-        super(Chain, self).update()
-        self._update_chain_joint_count()
-
     def build(self):
-        parent = self.controls_group.get()
-        for joint in self.driving_joints:
-            ctl, parent_group = self.add_control(joint)
-            cmds.parent(parent_group, parent)
-            icarus.dag.matrix_constraint(ctl, joint)
-            parent = ctl
+        fk_parent = self.controls_group.get()
+        for fk_id, joint in enumerate(self.driving_joints):
+            # Add the fk control
+            fk_ctl, parent_group = self.add_control(joint)
+            cmds.parent(parent_group, fk_parent)
 
-    def _add_deform_joint(self):
-        deform_chain = self.deform_joints.get()
-        if deform_chain:
-            parent = deform_chain[-1]
-        else:
-            parent = self.parent_joint.get()
-        joint = super(Chain, self)._add_deform_joint(
-            parent=parent,
-            object_id=len(self.deform_joints)
-        )
-        return joint
+            fk_parent = fk_ctl
+            constrain_ctl = fk_ctl
 
-    def _update_chain_joint_count(self):
-        diff = self.joint_count.get() - len(self.deform_joints)
-        if diff > 0:
-            for index in range(diff):
-                new_joint = self._add_deform_joint()
-                cmds.setAttr(new_joint + '.translateX', 5)
-        elif diff < 0:
-            joints = self.deform_joints.get()
-            joints_to_delete = joints[diff:]
-            joints_to_keep = joints[:len(joints) + diff]
+            # create the offset controls
+            for i in range(self.offset_control_count.get()):
+                offset_ctl, parent_group = self.add_control(
+                    joint,
+                    object_id=i,
+                    description='offset_{}'.format(str(fk_id).zfill(3)),
+                    shape_type='sphere'
+                )
+                cmds.parent(parent_group, constrain_ctl)
+                constrain_ctl = offset_ctl
 
-            for module in self.rig.rig_modules:
-                if module.parent_joint.get() in joints_to_delete:
-                    if joints_to_keep:
-                        new_parent_joint = joints_to_keep[-1]
-                    else:
-                        new_parent_joint = self.parent_joint.get()
-                    module.parent_joint.set(new_parent_joint)
-                    module.update()
-
-            cmds.delete(joints_to_delete)
-
-    def update_parent_joint(self):
-        """Reparent the first joint to the proper parent_joint if needed."""
-        super(Chain, self).update_parent_joint()
-        expected_parent = self.parent_joint.get()
-        first_joint = self.deform_joints[0]
-        actual_parent = cmds.listRelatives(first_joint, parent=True)[0]
-
-        if expected_parent != actual_parent:
-            cmds.parent(first_joint, expected_parent)
+            icarus.dag.matrix_constraint(constrain_ctl, joint)
 
 
 exported_rig_modules = [Chain]

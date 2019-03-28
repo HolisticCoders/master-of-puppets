@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 
-from icarus.modules.chain import Chain
+from icarus.modules.abstract.abstractchain import AbstractChain
 from icarus.core.fields import (
     IntField,
     ObjectListField,
@@ -10,7 +10,7 @@ from icarus.core.fields import (
 import icarus.metadata
 
 
-class ChainSwitcher(Chain):
+class ChainSwitcher(AbstractChain):
 
     chain_a = ObjectListField()
     chain_b = ObjectListField()
@@ -71,16 +71,9 @@ class ChainSwitcher(Chain):
         """
         if node is None:
             node = self.driving_joints[-1]
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'ctl',
-            'description': 'settings',
-        }
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl, buffer_grp = self.add_control(
             node,
-            ctl_name,
+            description='settings',
             shape_type='cogwheel'
         )
         self.settings_ctl.set(ctl)
