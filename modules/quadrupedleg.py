@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 
-from icarus.modules.fkikspringchain import FkIkSpringChain
-from icarus.core.fields import IntField, ObjectField, ObjectListField, EnumField
-import icarus.metadata
+from mop.modules.fkikspringchain import FkIkSpringChain
+from mop.core.fields import IntField, ObjectField, ObjectListField, EnumField
+import mop.metadata
 
 
 class QuadrupedLeg(FkIkSpringChain):
@@ -43,7 +43,7 @@ class QuadrupedLeg(FkIkSpringChain):
                 'role': 'deform',
                 'description': name
             }
-            deform_name = icarus.metadata.name_from_metadata(metadata)
+            deform_name = mop.metadata.name_from_metadata(metadata)
             deform = cmds.rename(deform, deform_name)
 
         self.twist_placement.set(
@@ -136,7 +136,7 @@ class QuadrupedLeg(FkIkSpringChain):
         self._add_foot_attributes()
         self._create_foot_pivots()
         self._connect_attrs_to_pivots()
-        icarus.dag.matrix_constraint(
+        mop.dag.matrix_constraint(
             self.bank_int_pivot.get(),
             self.ik_handle.get(),
             maintain_offset=True
@@ -183,9 +183,9 @@ class QuadrupedLeg(FkIkSpringChain):
             role='grp',
             description='foot_pivots'
         )
-        icarus.dag.snap_first_to_last(pivots_grp, self.extras_group.get())
+        mop.dag.snap_first_to_last(pivots_grp, self.extras_group.get())
         cmds.parent(pivots_grp, self.extras_group.get())
-        icarus.dag.matrix_constraint(self.ik_end_ctl.get(), pivots_grp, maintain_offset=True)
+        mop.dag.matrix_constraint(self.ik_end_ctl.get(), pivots_grp, maintain_offset=True)
 
         metadata = {
             'base_name': self.name.get(),
@@ -193,9 +193,9 @@ class QuadrupedLeg(FkIkSpringChain):
             'role': 'pivot',
             'description': 'twist'
         }
-        name = icarus.metadata.name_from_metadata(metadata)
+        name = mop.metadata.name_from_metadata(metadata)
         self.twist_pivot.set(cmds.spaceLocator(name=name)[0])
-        icarus.dag.snap_first_to_last(
+        mop.dag.snap_first_to_last(
             self.twist_pivot.get(),
             self.twist_placement.get()
         )
@@ -207,9 +207,9 @@ class QuadrupedLeg(FkIkSpringChain):
             'role': 'pivot',
             'description': 'heel'
         }
-        name = icarus.metadata.name_from_metadata(metadata)
+        name = mop.metadata.name_from_metadata(metadata)
         self.heel_pivot.set(cmds.spaceLocator(name=name)[0])
-        icarus.dag.snap_first_to_last(
+        mop.dag.snap_first_to_last(
             self.heel_pivot.get(),
             self.heel_placement.get()
         )
@@ -221,9 +221,9 @@ class QuadrupedLeg(FkIkSpringChain):
             'role': 'pivot',
             'description': 'tip'
         }
-        name = icarus.metadata.name_from_metadata(metadata)
+        name = mop.metadata.name_from_metadata(metadata)
         self.tip_pivot.set(cmds.spaceLocator(name=name)[0])
-        icarus.dag.snap_first_to_last(
+        mop.dag.snap_first_to_last(
             self.tip_pivot.get(),
             self.tip_placement.get()
         )
@@ -235,9 +235,9 @@ class QuadrupedLeg(FkIkSpringChain):
             'role': 'pivot',
             'description': 'bank_ext'
         }
-        name = icarus.metadata.name_from_metadata(metadata)
+        name = mop.metadata.name_from_metadata(metadata)
         self.bank_ext_pivot.set(cmds.spaceLocator(name=name)[0])
-        icarus.dag.snap_first_to_last(
+        mop.dag.snap_first_to_last(
             self.bank_ext_pivot.get(),
             self.bank_ext_placement.get()
         )
@@ -249,9 +249,9 @@ class QuadrupedLeg(FkIkSpringChain):
             'role': 'pivot',
             'description': 'bank_int'
         }
-        name = icarus.metadata.name_from_metadata(metadata)
+        name = mop.metadata.name_from_metadata(metadata)
         self.bank_int_pivot.set(cmds.spaceLocator(name=name)[0])
-        icarus.dag.snap_first_to_last(
+        mop.dag.snap_first_to_last(
             self.bank_int_pivot.get(),
             self.bank_int_placement.get()
         )

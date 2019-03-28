@@ -1,18 +1,18 @@
 from functools import partial
 import maya.cmds as cmds
 
-from icarus.core.rig import Rig
-from icarus.modules import all_rig_modules
-from icarus.ui.signals import publish
-from icarus.utils.case import title
-from icarus.vendor.Qt import QtCore, QtWidgets
+from mop.core.rig import Rig
+from mop.modules import all_rig_modules
+from mop.ui.signals import publish
+from mop.utils.case import title
+from mop.vendor.Qt import QtCore, QtWidgets
 
 
 class CreationPanel(QtWidgets.QDockWidget):
     def __init__(self, parent=None):
         super(CreationPanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setObjectName('icarus_creation_panel')
+        self.setObjectName('mop_creation_panel')
         self.setWindowTitle('Creation Panel')
 
         self.setWidget(QtWidgets.QWidget())
@@ -49,7 +49,7 @@ class CreationPanel(QtWidgets.QDockWidget):
         except RuntimeError as err:
             QtWidgets.QMessageBox.critical(
                 self,
-                'Icarus - Create Module',
+                'mop - Create Module',
                 str(err),
                 QtWidgets.QMessageBox.Ok,
                 QtWidgets.QMessageBox.Ok

@@ -7,20 +7,20 @@ import re
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from icarus.core.icarusNode import IcarusNode
-from icarus.modules import all_rig_modules
-from icarus.config import default_modules
-from icarus.core.fields import ObjectField, ObjectListField
-from icarus.utils.undo import undoable
-from icarus.utils.dg import find_mirror_node
-import icarus.dag
-import icarus.postscript
+from mop.core.mopNode import MopNode
+from mop.modules import all_rig_modules
+from mop.config import default_modules
+from mop.core.fields import ObjectField, ObjectListField
+from mop.utils.undo import undoable
+from mop.utils.dg import find_mirror_node
+import mop.dag
+import mop.postscript
 from shapeshifter import shapeshifter
 
 logger = logging.getLogger(__name__)
 
 
-class Rig(IcarusNode):
+class Rig(MopNode):
 
     modules_group = ObjectField()
     extras_group = ObjectField()
@@ -178,7 +178,7 @@ class Rig(IcarusNode):
     @undoable
     def build(self):
         start_time = time.time()
-        icarus.postscript.run_scripts('pre_build')
+        mop.postscript.run_scripts('pre_build')
 
         nodes_before_build = set(cmds.ls('*'))
         for module in self.rig_modules:
@@ -190,7 +190,7 @@ class Rig(IcarusNode):
                 attributes_state = cmds.getAttr(ctl + '.attributes_state')
                 if attributes_state:
                     attributes_state = json.loads(attributes_state)
-                    icarus.attributes.set_attributes_state(ctl, attributes_state)
+                    mop.attributes.set_attributes_state(ctl, attributes_state)
             cmds.setAttr(module.placement_group.get() + '.visibility', False)
 
         nodes_after_build = set(cmds.ls('*'))
@@ -219,13 +219,13 @@ class Rig(IcarusNode):
                 orients = spaces.get('orient', [])
                 points = spaces.get('point', [])
                 if parents:
-                    icarus.dag.create_space_switching(ctl, parents, 'parent')
+                    mop.dag.create_space_switching(ctl, parents, 'parent')
                 elif orients:
-                    icarus.dag.create_space_switching(ctl, orients, 'orient')
+                    mop.dag.create_space_switching(ctl, orients, 'orient')
                 elif points:
-                    icarus.dag.create_space_switching(ctl, points, 'point')
+                    mop.dag.create_space_switching(ctl, points, 'point')
 
-        icarus.postscript.run_scripts('post_build')
+        mop.postscript.run_scripts('post_build')
 
         self._tag_nodes_for_unbuild(build_nodes)
         tot_time = time.time() - start_time
@@ -234,7 +234,7 @@ class Rig(IcarusNode):
 
     @undoable
     def unbuild(self):
-        icarus.postscript.run_scripts('pre_unbuild')
+        mop.postscript.run_scripts('pre_unbuild')
 
         self.reset_pose()
 
@@ -249,7 +249,7 @@ class Rig(IcarusNode):
                     )
                 except:
                     pass
-                attributes_state = icarus.attributes.get_attributes_state(ctl)
+                attributes_state = mop.attributes.get_attributes_state(ctl)
                 cmds.setAttr(
                     ctl + '.attributes_state',
                     json.dumps(attributes_state),
@@ -268,20 +268,20 @@ class Rig(IcarusNode):
             module.is_built.set(False)
 
         self.is_built.set(False)
-        icarus.postscript.run_scripts('post_unbuild')
+        mop.postscript.run_scripts('post_unbuild')
 
     def publish(self):
-        icarus.postscript.run_scripts('pre_publish')
+        mop.postscript.run_scripts('pre_publish')
         cmds.setAttr(self.skeleton_group.get() + '.visibility', False)
         for module in self.rig_modules:
             logger.info("Publishing: " + module.node_name)
             module.publish()
-        icarus.postscript.run_scripts('post_publish')
+        mop.postscript.run_scripts('post_publish')
 
     @undoable
     def reset_pose(self):
         for control in cmds.ls('*_ctl'):
-            icarus.dag.reset_node(control)
+            mop.dag.reset_node(control)
 
     def _tag_nodes_for_unbuild(self, nodes):
         """Tag the nodes created during the build.
@@ -314,9 +314,9 @@ class Rig(IcarusNode):
         mirror_type = module.mirror_type.get()
 
         orig_parent_joint = module.parent_joint.get()
-        metadata = icarus.metadata.metadata_from_name(orig_parent_joint)
+        metadata = mop.metadata.metadata_from_name(orig_parent_joint)
         metadata['side'] = new_side
-        new_parent_joint = icarus.metadata.name_from_metadata(metadata)
+        new_parent_joint = mop.metadata.name_from_metadata(metadata)
         if not cmds.objExists(new_parent_joint):
             new_parent_joint = orig_parent_joint
 

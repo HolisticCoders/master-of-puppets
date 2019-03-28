@@ -1,7 +1,7 @@
 import logging
 import maya.cmds as cmds
 
-from icarus.core.module import RigModule
+from mop.core.module import RigModule
 
 
 logger = logging.getLogger(__name__)

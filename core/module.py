@@ -3,18 +3,18 @@ import logging
 
 import maya.cmds as cmds
 
-from icarus.core.fields import (
+from mop.core.fields import (
     EnumField,
     ObjectField,
     StringField,
     ObjectListField,
 )
-from icarus.core.icarusNode import IcarusNode
-from icarus.modules import all_rig_modules
-import icarus.attributes
-import icarus.dag
-import icarus.metadata
-import icarus.config
+from mop.core.mopNode import MopNode
+from mop.modules import all_rig_modules
+import mop.attributes
+import mop.dag
+import mop.metadata
+import mop.config
 
 from shapeshifter import shapeshifter
 
@@ -22,7 +22,7 @@ from shapeshifter import shapeshifter
 logger = logging.getLogger(__name__)
 
 
-class RigModule(IcarusNode):
+class RigModule(MopNode):
 
     name = StringField(
         displayable=True,
@@ -90,7 +90,7 @@ class RigModule(IcarusNode):
                 'side': side,
                 'role': 'mod',
             }
-            self.node_name = icarus.metadata.name_from_metadata(metadata)
+            self.node_name = mop.metadata.name_from_metadata(metadata)
         super(RigModule, self).__init__(self.node_name)
 
         self.rig = rig
@@ -105,7 +105,7 @@ class RigModule(IcarusNode):
 
             if parent_joint:
                 self.parent_joint.set(parent_joint)
-                icarus.dag.matrix_constraint(parent_joint, self.node_name)
+                mop.dag.matrix_constraint(parent_joint, self.node_name)
 
             self.initialize()
             self.update()
@@ -199,7 +199,7 @@ class RigModule(IcarusNode):
 
         self.update_parent_joint()
 
-        scene_metadata = icarus.metadata.metadata_from_name(self.node_name)
+        scene_metadata = mop.metadata.metadata_from_name(self.node_name)
         name_changed = self.name.get() != scene_metadata['base_name']
         side_changed = self.side.get() != scene_metadata['side']
 
@@ -221,10 +221,10 @@ class RigModule(IcarusNode):
                 for attr in persistent_attrs:
                     old_node, attr_name = attr.split('__')
 
-                    metadata = icarus.metadata.metadata_from_name(old_node)
+                    metadata = mop.metadata.metadata_from_name(old_node)
                     metadata['base_name'] = self.name.get()
                     metadata['side'] = self.side.get()
-                    new_node = icarus.metadata.name_from_metadata(metadata)
+                    new_node = mop.metadata.name_from_metadata(metadata)
                     logger.debug("Renaming persistent attribute from {} to {}".format(
                         self.node_name + '.' + attr,
                         self.node_name + '.' + new_node + '__' + attr_name
@@ -256,13 +256,13 @@ class RigModule(IcarusNode):
 
         parent = self.parent_joint.get()
         if parent:
-            icarus.dag.matrix_constraint(parent, self.node_name)
+            mop.dag.matrix_constraint(parent, self.node_name)
 
     def _update_node_name(self, node):
-        metadata = icarus.metadata.metadata_from_name(node)
+        metadata = mop.metadata.metadata_from_name(node)
         metadata['base_name'] = self.name.get()
         metadata['side'] = self.side.get()
-        new_name = icarus.metadata.name_from_metadata(metadata)
+        new_name = mop.metadata.name_from_metadata(metadata)
         cmds.rename(node, new_name)
         return new_name
 
@@ -302,7 +302,7 @@ class RigModule(IcarusNode):
         *args,
         **kwargs
     ):
-        """Add a node to this `IcarusNode`.
+        """Add a node to this `MopNode`.
 
         args and kwargs will directly be passed to ``cmds.createNode()``
 
@@ -324,7 +324,7 @@ class RigModule(IcarusNode):
             'description': description,
             'id': object_id
         }
-        name = icarus.metadata.name_from_metadata(metadata)
+        name = mop.metadata.name_from_metadata(metadata)
         if cmds.objExists(name):
             raise ValueError("A node with the name `{}` already exists".format(name))
         if node_type == 'locator':
@@ -420,9 +420,9 @@ class RigModule(IcarusNode):
         )
         driving_joints = []
         for joint in duplicate:
-            metadata = icarus.metadata.metadata_from_name(joint)
+            metadata = mop.metadata.metadata_from_name(joint)
             metadata['role'] = 'driving'
-            new_name = icarus.metadata.name_from_metadata(metadata)
+            new_name = mop.metadata.name_from_metadata(metadata)
             joint = cmds.rename(joint, new_name)
             driving_joints.append(joint)
 
@@ -443,7 +443,7 @@ class RigModule(IcarusNode):
             if parent != cmds.listRelatives(driving, parent=True)[0]:
                 cmds.parent(driving, parent)
 
-            icarus.dag.matrix_constraint(driving, deform)
+            mop.dag.matrix_constraint(driving, deform)
 
     def add_control(
         self,
@@ -452,20 +452,20 @@ class RigModule(IcarusNode):
         description=None,
         shape_type='circle'
     ):
-        metadata = icarus.metadata.metadata_from_name(dag_node)
+        metadata = mop.metadata.metadata_from_name(dag_node)
         if object_id is not None:
             metadata['id'] = object_id
         if description is not None:
             metadata['description'] = description
         metadata['role'] = 'ctl'
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
+        ctl_name = mop.metadata.name_from_metadata(metadata)
         ctl = shapeshifter.create_controller_from_name(shape_type)
         ctl = cmds.rename(ctl, ctl_name)
 
         # update the controller color based on its side
         current_data = shapeshifter.get_shape_data(ctl)
         new_data = []
-        side_color = icarus.config.controller_colors[self.side.get()]
+        side_color = mop.config.controller_colors[self.side.get()]
         for shape_data in current_data:
             new_shape_data = shape_data.copy()
             new_shape_data.update(side_color)
@@ -473,7 +473,7 @@ class RigModule(IcarusNode):
         shapeshifter.change_controller_shape(ctl, new_data)
 
         # get the existing shape data if it exists
-        icarus.attributes.create_persistent_attribute(
+        mop.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
             longName='shape_data',
@@ -484,14 +484,14 @@ class RigModule(IcarusNode):
             ctl_data = json.loads(ctl_data)
             shapeshifter.change_controller_shape(ctl, ctl_data)
 
-        icarus.attributes.create_persistent_attribute(
+        mop.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
             longName='attributes_state',
             dataType='string'
         )
 
-        icarus.attributes.create_persistent_attribute(
+        mop.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
             longName='parent_space_data',
@@ -506,8 +506,8 @@ class RigModule(IcarusNode):
         if not cmds.getAttr(ctl + '.parent_space_data'):
             cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
 
-        icarus.dag.snap_first_to_last(ctl, dag_node)
-        parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
+        mop.dag.snap_first_to_last(ctl, dag_node)
+        parent_group = mop.dag.add_parent_group(ctl, 'buffer')
         self.controllers.append(ctl)
         return ctl, parent_group
 

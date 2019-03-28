@@ -3,9 +3,9 @@ import math
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from icarus.modules.abstract.abstractchain import AbstractChain
-from icarus.core.fields import IntField, ObjectListField
-import icarus.dag
+from mop.modules.abstract.abstractchain import AbstractChain
+from mop.core.fields import IntField, ObjectListField
+import mop.dag
 
 
 class Chain(AbstractChain):
@@ -40,7 +40,7 @@ class Chain(AbstractChain):
                 cmds.parent(parent_group, constrain_ctl)
                 constrain_ctl = offset_ctl
 
-            icarus.dag.matrix_constraint(constrain_ctl, joint)
+            mop.dag.matrix_constraint(constrain_ctl, joint)
 
 
 exported_rig_modules = [Chain]

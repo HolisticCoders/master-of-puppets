@@ -1,5 +1,5 @@
-"""Qt widgets for Icarus fields."""
-from icarus.vendor.Qt import QtWidgets
+"""Qt widgets for mop fields."""
+from mop.vendor.Qt import QtWidgets
 
 
 class SpinBox(QtWidgets.QSpinBox):

@@ -2,26 +2,26 @@ import logging
 
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
-from icarus.ui.creation import CreationPanel
-from icarus.ui.module import ModulePanel
-from icarus.ui.rig import RigPanel
-from icarus.ui.settings import get_settings
-from icarus.ui.signals import clear_all_signals, publish, subscribe
-from icarus.vendor.Qt import QtWidgets, QtCore
+from mop.ui.creation import CreationPanel
+from mop.ui.module import ModulePanel
+from mop.ui.rig import RigPanel
+from mop.ui.settings import get_settings
+from mop.ui.signals import clear_all_signals, publish, subscribe
+from mop.vendor.Qt import QtWidgets, QtCore
 
 logger = logging.getLogger(__name__)
 
 
-class IcarusWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
-    """The main window of the Icarus GUI."""
+class mopWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
+    """The main window of the mop GUI."""
 
-    ui_name = 'icarus_main_window'
+    ui_name = 'mop_main_window'
 
     def __init__(self, parent=None):
-        super(IcarusWindow, self).__init__(parent)
+        super(mopWindow, self).__init__(parent)
         self.setObjectName(self.ui_name)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('Icarus')
+        self.setWindowTitle('MOP')
 
         self.setDockNestingEnabled(True)
 
@@ -55,7 +55,7 @@ class IcarusWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         settings.setValue('%s/geometry' % name, self.saveGeometry())
 
         publish('save-settings')
-        logger.info('Saved Icarus settings.')
+        logger.info('Saved mop settings.')
 
     def load_settings(self):
         name = self.objectName()
@@ -70,7 +70,7 @@ class IcarusWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
             self.restoreGeometry(geometry)
 
         publish('load-settings')
-        logger.info('Loaded Icarus settings.')
+        logger.info('Loaded mop settings.')
 
     def floatingChanged(self, floating):
         self.save_settings()
@@ -82,5 +82,5 @@ class IcarusWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
     def close(self):
         self.save_settings()
         clear_all_signals()
-        super(IcarusWindow, self).close()
+        super(mopWindow, self).close()
 

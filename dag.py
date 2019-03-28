@@ -1,6 +1,6 @@
 import maya.cmds as cmds
-import icarus.metadata
-import icarus.utils.dg as _dgutils
+import mop.metadata
+import mop.utils.dg as _dgutils
 
 
 def hierarchy_to_dict(parent, tree, nodes=[]):
@@ -204,9 +204,9 @@ def add_parent_group(dag_node, suffix='grp'):
         matrix=True,
         worldSpace=True
     )
-    metadata = icarus.metadata.metadata_from_name(dag_node)
+    metadata = mop.metadata.metadata_from_name(dag_node)
     metadata['role'] = suffix
-    buffer_name = icarus.metadata.name_from_metadata(metadata)
+    buffer_name = mop.metadata.name_from_metadata(metadata)
     grp = cmds.createNode('transform', name=buffer_name)
     cmds.xform(grp, matrix=dag_node_mat, worldSpace=True)
 

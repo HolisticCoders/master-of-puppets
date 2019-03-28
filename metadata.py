@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 
-import icarus.utils.case
+import mop.utils.case
 
 
 def name_from_metadata(metadata):
@@ -8,8 +8,8 @@ def name_from_metadata(metadata):
 
     This function should be used EVERYTIME a node is named.
     """
-    metadata['base_name'] = icarus.utils.case.camel(metadata['base_name'])
-    metadata['role'] = icarus.utils.case.camel(metadata['role'])
+    metadata['base_name'] = mop.utils.case.camel(metadata['base_name'])
+    metadata['role'] = mop.utils.case.camel(metadata['role'])
     name_components = [
         metadata['base_name'],
         metadata['side'],

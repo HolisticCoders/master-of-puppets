@@ -14,7 +14,7 @@ def show():
 
 
 def close():
-    """Close icarus GUI."""
+    """Close mop GUI."""
     if is_running():
         cmds.workspaceControl(get_workspace(), edit=True, close=True)
         cmds.deleteUI(get_workspace(), control=True)

@@ -5,18 +5,18 @@ import pdb
 from collections import defaultdict
 from weakref import WeakKeyDictionary, WeakSet
 
-from icarus.vendor.Qt import QtCore, QtGui, QtWidgets
-from icarus.core.rig import Rig
-from icarus.ui.settings import get_settings
-from icarus.ui.signals import publish, subscribe
-from icarus.ui.commands import build_rig, unbuild_rig, publish_rig
-from icarus.ui.utils import hsv_to_rgb
+from mop.vendor.Qt import QtCore, QtGui, QtWidgets
+from mop.core.rig import Rig
+from mop.ui.settings import get_settings
+from mop.ui.signals import publish, subscribe
+from mop.ui.commands import build_rig, unbuild_rig, publish_rig
+from mop.ui.utils import hsv_to_rgb
 
 
 class RigPanel(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(RigPanel, self).__init__(parent)
-        self.setObjectName('icarus_rig_panel')
+        self.setObjectName('mop_rig_panel')
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowTitle('Rig Panel')
 
@@ -106,13 +106,13 @@ class RigPanel(QtWidgets.QWidget):
         found, return ``None``.
 
         A matching index is an index containing a module of the same
-        :attr:`icarus.core.module.RigModule.node_name` as the passed
+        :attr:`mop.core.module.RigModule.node_name` as the passed
         module.
 
         :param module: Module to find the index of.
         :param index: Parent index of the search, since we are in a
                       tree view.
-        :type module: icarus.core.module.RigModule
+        :type module: mop.core.module.RigModule
         :type index: PySide2.QtCore.QModelIndex
         :rtype: PySide2.QtCore.QModelIndex
         """
@@ -188,7 +188,7 @@ class ModulesModel(QtCore.QAbstractItemModel):
     """A model storing modules and their deform joints.
 
     In this model, joints are stored as :class:`str` instances,
-    and modules as :class:`icarus.core.module.RigModule`.
+    and modules as :class:`mop.core.module.RigModule`.
     """
 
     def __init__(self, parent=None):

@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 
-from icarus.core.module import RigModule
-from icarus.core.fields import IntField, ObjectField, BoolField
-import icarus.dag
+from mop.core.module import RigModule
+from mop.core.fields import IntField, ObjectField, BoolField
+import mop.dag
 
 class Twist(RigModule):
 
@@ -122,7 +122,7 @@ class Twist(RigModule):
                 current_factor *= -1
                 current_factor_reverse *= -1
 
-            metadata = icarus.metadata.metadata_from_name(joint)
+            metadata = mop.metadata.metadata_from_name(joint)
             anim_blend = self.add_node(
                 'animBlendNodeAdditiveRotation',
                 role='twistAmount',

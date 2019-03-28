@@ -2,10 +2,10 @@ import maya.api.OpenMaya as om2
 import maya.cmds as cmds
 import maya.mel as mel
 
-from icarus.modules.abstract.fkikchain import FkIkChain
-import icarus.metadata
+from mop.modules.abstract.fkikchain import FkIkChain
+import mop.metadata
 
-from icarus.core.fields import (
+from mop.core.fields import (
     StringField,
     ObjectListField,
     ObjectField,
@@ -29,7 +29,7 @@ class FkIkSpringChain(FkIkChain):
         self.ik_handle.set(ik_handle)
         cmds.parent(ik_handle, self.extras_group.get())
         cmds.poleVectorConstraint(self.ik_pv_ctl.get(), ik_handle)
-        icarus.dag.matrix_constraint(
+        mop.dag.matrix_constraint(
             self.ik_end_ctl.get(),
             ik_handle,
             maintain_offset=True

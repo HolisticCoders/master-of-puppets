@@ -5,13 +5,13 @@ from weakref import WeakValueDictionary
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from icarus.vendor.Qt import QtCore, QtWidgets
-from icarus.ui.signals import publish, subscribe
-from icarus.ui.utils import clear_layout
-from icarus.ui.fieldwidgets import map_field_to_widget
-from icarus.core.rig import Rig
-import icarus.metadata
-from icarus.core.fields import ObjectField, ObjectListField
+from mop.vendor.Qt import QtCore, QtWidgets
+from mop.ui.signals import publish, subscribe
+from mop.ui.utils import clear_layout
+from mop.ui.fieldwidgets import map_field_to_widget
+from mop.core.rig import Rig
+import mop.metadata
+from mop.core.fields import ObjectField, ObjectListField
 
 
 class ModulePanel(QtWidgets.QDockWidget):
@@ -19,7 +19,7 @@ class ModulePanel(QtWidgets.QDockWidget):
     def __init__(self, parent=None):
         super(ModulePanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setObjectName('icarus_settings_panel')
+        self.setObjectName('mop_settings_panel')
         self.setWindowTitle('Module Panel')
 
         self._module_widgets = WeakValueDictionary()
@@ -79,7 +79,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         """Update the module to edit.
 
         ``modules`` argument is a :class:`list` of
-        :class:`icarus.core.module.RigModule` and/or :class:`str`
+        :class:`mop.core.module.RigModule` and/or :class:`str`
         instances.
 
         :param pointer: Data to the selected module.
@@ -129,7 +129,7 @@ class ModulePanel(QtWidgets.QDockWidget):
             return
         button = QtWidgets.QMessageBox.warning(
             self,
-            'Icarus - Delete Module',
+            'mop - Delete Module',
             'You are about to delete %d module(s). Continue ?' % len(self.modules),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
         )

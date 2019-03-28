@@ -1,9 +1,9 @@
 import maya.cmds as cmds
 
-from icarus.modules.fkikrpchain import FkIkRotatePlaneChain
-from icarus.core.fields import IntField, ObjectListField, ObjectField, EnumField
-import icarus.dag
-import icarus.metadata
+from mop.modules.fkikrpchain import FkIkRotatePlaneChain
+from mop.core.fields import IntField, ObjectListField, ObjectField, EnumField
+import mop.dag
+import mop.metadata
 
 
 class Arm(FkIkRotatePlaneChain):
@@ -24,7 +24,7 @@ class Arm(FkIkRotatePlaneChain):
                 'role': 'deform',
                 'description': name
             }
-            deform_name = icarus.metadata.name_from_metadata(metadata)
+            deform_name = mop.metadata.name_from_metadata(metadata)
             deform = cmds.rename(deform, deform_name)
 
     def build(self):

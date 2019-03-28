@@ -1,5 +1,5 @@
-from icarus.core.fields import IntField
-from icarus.modules.chain import Chain
+from mop.core.fields import IntField
+from mop.modules.chain import Chain
 
 
 class Spine(Chain):

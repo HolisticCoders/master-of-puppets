@@ -1,10 +1,10 @@
 import maya.cmds as cmds
 
-from icarus.core.module import RigModule
-from icarus.core.fields import IntField, ObjectField
-import icarus.metadata
-import icarus.dag
-import icarus.attributes
+from mop.core.module import RigModule
+from mop.core.fields import IntField, ObjectField
+import mop.metadata
+import mop.dag
+import mop.attributes
 
 
 class Corrective(RigModule):
@@ -75,7 +75,7 @@ class Corrective(RigModule):
         for joint in self.driving_joints:
             ctl = self._add_control(joint)
             condition_nodes = []
-            metadata = icarus.metadata.metadata_from_name(joint)
+            metadata = mop.metadata.metadata_from_name(joint)
             for angleAxis in 'YZ':
                 positive_offset = self.add_node(
                     'multiplyDivide',
@@ -165,7 +165,7 @@ class Corrective(RigModule):
         )
         cmds.parent(locator_space_group, self.extras_group.get())
         cmds.setAttr(locator_space_group + '.inheritsTransform', False)
-        icarus.dag.snap_first_to_last(
+        mop.dag.snap_first_to_last(
             locator_space_group,
             self.vector_base.get()
         )
@@ -183,11 +183,11 @@ class Corrective(RigModule):
             self.vector_base.get() + '_vectorBase'
         )
         cmds.parent(vector_base, locator_space_group)
-        icarus.dag.snap_first_to_last(
+        mop.dag.snap_first_to_last(
             vector_base,
             self.vector_base.get()
         )
-        # icarus.dag.matrix_constraint(self.vector_base.get(), vector_base)
+        # mop.dag.matrix_constraint(self.vector_base.get(), vector_base)
         cmds.parentConstraint(self.vector_base.get(), vector_base)
         self.vector_base_loc.set(vector_base)
 
@@ -203,14 +203,14 @@ class Corrective(RigModule):
         # give a magnitude to the vector
         if self.vector_tip.get():
             cmds.parent(vector_tip, locator_space_group)
-            icarus.dag.snap_first_to_last(vector_tip, self.vector_tip.get())
-            icarus.dag.matrix_constraint(self.vector_tip.get(), vector_tip, maintain_offset=True)
+            mop.dag.snap_first_to_last(vector_tip, self.vector_tip.get())
+            mop.dag.matrix_constraint(self.vector_tip.get(), vector_tip, maintain_offset=True)
         else:
-            icarus.dag.reset_node(vector_tip)
+            mop.dag.reset_node(vector_tip)
             cmds.setAttr(vector_tip + '.translateX', 1)
             cmds.parent(vector_tip, vector_base)
             cmds.parent(vector_tip, locator_space_group)
-            icarus.dag.matrix_constraint(vector_base, vector_tip, maintain_offset=True)
+            mop.dag.matrix_constraint(vector_base, vector_tip, maintain_offset=True)
         self.vector_tip_loc.set(vector_tip)
 
         orig_pose_vector_tip = self.add_node(
@@ -224,7 +224,7 @@ class Corrective(RigModule):
 
         # give a magnitude to the vector
         cmds.parent(orig_pose_vector_tip, vector_base)
-        icarus.dag.reset_node(orig_pose_vector_tip)
+        mop.dag.reset_node(orig_pose_vector_tip)
         cmds.setAttr(orig_pose_vector_tip + '.translateX', 1)
 
         cmds.parent(orig_pose_vector_tip, locator_space_group)
@@ -306,13 +306,13 @@ class Corrective(RigModule):
     def _add_control(self, joint):
         ctl, parent_group = self.add_control(joint)
 
-        icarus.dag.snap_first_to_last(parent_group, joint)
+        mop.dag.snap_first_to_last(parent_group, joint)
         cmds.parent(parent_group, self.controls_group.get())
 
-        offset_group = icarus.dag.add_parent_group(ctl, 'offset')
-        icarus.dag.matrix_constraint(ctl, joint)
+        offset_group = mop.dag.add_parent_group(ctl, 'offset')
+        mop.dag.matrix_constraint(ctl, joint)
 
-        icarus.attributes.create_persistent_attribute(
+        mop.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
             ln='affectedBy',
@@ -366,14 +366,14 @@ class Corrective(RigModule):
         for axis in 'XYZ':
             for transform in ['translate', 'rotate', 'scale']:
                 cmds.setAttr(ctl + '.' + transform + axis, lock=True)
-            icarus.attributes.create_persistent_attribute(
+            mop.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
                 ln='offset' + 'Positive' + axis,
                 attributeType='double',
                 keyable=True
             )
-            icarus.attributes.create_persistent_attribute(
+            mop.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
                 ln='offset' + 'Negative' + axis,

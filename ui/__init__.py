@@ -1,4 +1,4 @@
-from icarus.ui.build import (
+from mop.ui.build import (
     is_running,
     close,
     show,

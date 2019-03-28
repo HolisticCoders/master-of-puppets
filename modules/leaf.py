@@ -1,10 +1,10 @@
 import maya.cmds as cmds
 
-from icarus.core.module import RigModule
-from icarus.core.fields import IntField, ObjectField
-import icarus.metadata
-import icarus.dag
-import icarus.attributes
+from mop.core.module import RigModule
+from mop.core.fields import IntField, ObjectField
+import mop.metadata
+import mop.dag
+import mop.attributes
 
 
 class Leaf(RigModule):
@@ -49,7 +49,7 @@ class Leaf(RigModule):
         for joint in self.driving_joints:
             ctl, parent_group = self.add_control(joint, shape_type='sphere')
             cmds.parent(parent_group, self.controls_group.get())
-            icarus.dag.matrix_constraint(ctl, joint)
+            mop.dag.matrix_constraint(ctl, joint)
 
     def update_parent_joint(self):
         """Reparent the joints to the proper parent_joint if needed."""

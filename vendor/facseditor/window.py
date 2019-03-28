@@ -6,7 +6,7 @@ import logging
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 import maya.cmds as cmds
 
-from icarus.vendor.Qt import QtWidgets, QtCore, QtGui
+from mop.vendor.Qt import QtWidgets, QtCore, QtGui
 import facseditor.core
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def undoable(func):
 
 
 class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
-    """The main window of the Icarus GUI."""
+    """The main window of the mop GUI."""
 
     ui_name = 'facs_main_window'
 

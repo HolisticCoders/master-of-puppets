@@ -1,13 +1,13 @@
 import maya.cmds as cmds
 
-from icarus.modules.abstract.abstractchain import AbstractChain
-from icarus.core.fields import (
+from mop.modules.abstract.abstractchain import AbstractChain
+from mop.core.fields import (
     IntField,
     ObjectListField,
     ObjectField,
     StringField
 )
-import icarus.metadata
+import mop.metadata
 
 
 class ChainSwitcher(AbstractChain):
@@ -44,9 +44,9 @@ class ChainSwitcher(AbstractChain):
         )
         cmds.parent(self.chain_a[0], self.extras_group.get())
         for joint in self.chain_a.get():
-            metadata = icarus.metadata.metadata_from_name(joint)
+            metadata = mop.metadata.metadata_from_name(joint)
             metadata['role'] = 'chainA'
-            new_name = icarus.metadata.name_from_metadata(metadata)
+            new_name = mop.metadata.name_from_metadata(metadata)
             cmds.rename(joint, new_name)
 
         self.chain_b.set(
@@ -58,9 +58,9 @@ class ChainSwitcher(AbstractChain):
         )
         cmds.parent(self.chain_b[0], self.extras_group.get())
         for joint in self.chain_b.get():
-            metadata = icarus.metadata.metadata_from_name(joint)
+            metadata = mop.metadata.metadata_from_name(joint)
             metadata['role'] = 'chainB'
-            new_name = icarus.metadata.name_from_metadata(metadata)
+            new_name = mop.metadata.name_from_metadata(metadata)
             cmds.rename(joint, new_name)
 
     def _create_settings_control(self, node=None):
@@ -78,7 +78,7 @@ class ChainSwitcher(AbstractChain):
         )
         self.settings_ctl.set(ctl)
         cmds.parent(buffer_grp, self.controls_group.get())
-        icarus.dag.matrix_constraint(node, buffer_grp)
+        mop.dag.matrix_constraint(node, buffer_grp)
 
         for attr in ['translate', 'rotate', 'scale']:
             for axis in 'XYZ':
@@ -123,7 +123,7 @@ class ChainSwitcher(AbstractChain):
             driving = self.driving_joints[i]
             a = self.chain_a[i]
             b = self.chain_b[i]
-            metadata = icarus.metadata.metadata_from_name(a)
+            metadata = mop.metadata.metadata_from_name(a)
             wt_add_mat = self.add_node(
                 'wtAddMatrix',
                 description = metadata['description'],

@@ -5,17 +5,17 @@ from collections import OrderedDict
 from maya.app.general.mayaMixin import MayaQWidgetBaseMixin
 import maya.cmds as cmds
 
-from icarus.ui.settings import get_settings
-from icarus.ui.signals import clear_all_signals, publish, subscribe
-from icarus.vendor.Qt import QtWidgets, QtCore
-import icarus.dag
+from mop.ui.settings import get_settings
+from mop.ui.signals import clear_all_signals, publish, subscribe
+from mop.vendor.Qt import QtWidgets, QtCore
+import mop.dag
 
 logger = logging.getLogger(__name__)
 
 
-class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
+class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
-    ui_name = 'icarus_parent_spaces'
+    ui_name = 'mop_parent_spaces'
 
     space_types = OrderedDict((
         ('Parent', 'parent'),
@@ -24,13 +24,13 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
     ))
 
     def __init__(self, parent=None):
-        super(IcarusParentSpaces, self).__init__(parent)
+        super(mopParentSpaces, self).__init__(parent)
 
         self._nice_names = {}
         self._current_driver = None
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('Icarus - Parent Spaces')
+        self.setWindowTitle('mop - Parent Spaces')
 
         self.content = QtWidgets.QWidget()
 
@@ -114,7 +114,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """Pick the child from Maya's selection."""
         selection = cmds.ls(selection=True)
         if not selection:
-            logger.warning('Please select an Icarus control to start.')
+            logger.warning('Please select an mop control to start.')
             return
         control = selection[-1]
         self.set_child(control)
@@ -205,10 +205,10 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         space_changed = space_type != prev_space_type
         drivers_changed = drivers != prev_drivers.values()
         if prev_drivers and (space_changed or drivers_changed):
-            icarus.dag.remove_parent_spaces(ctl)
+            mop.dag.remove_parent_spaces(ctl)
 
         if drivers:
-            icarus.dag.create_space_switching(ctl, drivers, space_type)
+            mop.dag.create_space_switching(ctl, drivers, space_type)
 
         data = json.dumps({
             space_type: drivers,
@@ -226,7 +226,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         button = QtWidgets.QMessageBox.warning(
             self,
-            'Icarus - Delete Parent Spaces',
+            'mop - Delete Parent Spaces',
             'You are about to delete all parent spaces '
             'set on %s, continue ?' % ctl,
             QtWidgets.QMessageBox.Yes
@@ -236,7 +236,7 @@ class IcarusParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         if button != QtWidgets.QMessageBox.Yes:
             return
 
-        icarus.dag.remove_parent_spaces(ctl)
+        mop.dag.remove_parent_spaces(ctl)
         self.model.setStringList([])
         cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
 

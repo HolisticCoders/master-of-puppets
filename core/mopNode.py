@@ -2,11 +2,11 @@ import weakref
 
 import maya.cmds as cmds
 
-from icarus.core.fields import FieldContainerMeta, BoolField
-import icarus.metadata
+from mop.core.fields import FieldContainerMeta, BoolField
+import mop.metadata
 
 
-class IcarusNode(object):
+class MopNode(object):
 
     __metaclass__ = FieldContainerMeta
 

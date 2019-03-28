@@ -6,7 +6,7 @@ import maya.api.OpenMaya as om2
 import maya.cmds as cmds
 import maya.mel
 
-from icarus.utils.case import title
+from mop.utils.case import title
 
 logger = logging.getLogger(__name__)
 

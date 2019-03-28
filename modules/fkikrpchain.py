@@ -1,14 +1,14 @@
 import maya.api.OpenMaya as om2
 import maya.cmds as cmds
 
-from icarus.modules.abstract.fkikchain import FkIkChain
-from icarus.core.fields import (
+from mop.modules.abstract.fkikchain import FkIkChain
+from mop.core.fields import (
     IntField,
     StringField,
     ObjectListField,
     ObjectField,
 )
-import icarus.metadata
+import mop.metadata
 
 
 class FkIkRotatePlaneChain(FkIkChain):
@@ -28,7 +28,7 @@ class FkIkRotatePlaneChain(FkIkChain):
         self.ik_handle.set(ik_handle)
         cmds.parent(ik_handle, self.extras_group.get())
         cmds.poleVectorConstraint(self.ik_pv_ctl.get(), ik_handle)
-        icarus.dag.matrix_constraint(
+        mop.dag.matrix_constraint(
             self.ik_end_ctl.get(),
             ik_handle,
             maintain_offset=True

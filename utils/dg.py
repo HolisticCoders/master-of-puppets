@@ -1,5 +1,5 @@
 import maya.cmds as cmds
-import icarus.metadata
+import mop.metadata
 
 
 class CatchCreatedNodes(object):
@@ -22,14 +22,14 @@ def find_mirror_node(node):
     if not node:
         return None
 
-    metadata = icarus.metadata.metadata_from_name(node)
+    metadata = mop.metadata.metadata_from_name(node)
     mirror_metadata = metadata
     orig_side = metadata['side']
     if orig_side == 'M':
         mirror_node = node
     else:
         mirror_metadata['side'] = 'R' if orig_side == 'L' else 'L'
-        mirror_node = icarus.metadata.name_from_metadata(
+        mirror_node = mop.metadata.name_from_metadata(
             mirror_metadata
         )
 

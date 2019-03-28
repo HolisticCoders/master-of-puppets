@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 
-from icarus.core.module import RigModule
-from icarus.core.fields import ObjectField
-import icarus.dag
+from mop.core.module import RigModule
+from mop.core.fields import ObjectField
+import mop.dag
 
 
 class Rivet(RigModule):
@@ -21,11 +21,11 @@ class Rivet(RigModule):
     def build(self):
         joint = self.driving_joints[0]
         ctl, parent_group = self.add_control(joint)
-        icarus.dag.snap_first_to_last(parent_group, joint)
+        mop.dag.snap_first_to_last(parent_group, joint)
         cmds.parent(parent_group, self.controls_group.get())
-        icarus.dag.matrix_constraint(ctl, joint)
+        mop.dag.matrix_constraint(ctl, joint)
         follicle, follicle_transform = self.add_follicle(ctl)
-        icarus.dag.matrix_constraint(
+        mop.dag.matrix_constraint(
             follicle_transform,
             parent_group,
             maintain_offset=True

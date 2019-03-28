@@ -16,28 +16,28 @@ def increment_version(path):
 
     If you use a different versionning convention, you can
     specify another function to use instead by overriding
-    the `icarus.increment_version` attribute.
+    the `mop.increment_version` attribute.
 
     Example::
 
         >>> def my_increment_version(path):
         ...     return path + '1'
-        >>> import icarus
-        >>> icarus.increment_version = my_increment_version
+        >>> import mop
+        >>> mop.increment_version = my_increment_version
 
     The ``path`` argument is automatically given to you
-    by `icarus` when a new path version is needed, and
+    by `mop` when a new path version is needed, and
     corresponds to the current version path.
 
     If the path is invalid (e.g does not contain a version
     number), you can raise a :class:`ValueError` to notify
-    `icarus` something went wrong.
+    `mop` something went wrong.
 
     .. note::
 
         This function will not save the scene, but is used to
         create a new file name for the incremental save feature
-        of `icarus`.
+        of `mop`.
 
     :param path: Path to increment.
     :type path: str
@@ -57,16 +57,16 @@ def increment_version(path):
 def incremental_save():
     """Increment the current scene version.
 
-    The base implementation uses :func:`icarus.increment_version` to
+    The base implementation uses :func:`mop.increment_version` to
     generate the new file path.
 
     If you want to further customize the way scenes are saved, you
-    can override the `icarus.incremental_save` attribute.
+    can override the `mop.incremental_save` attribute.
     """
-    import icarus
+    import mop
     path = cmds.file(query=True, location=True)
     try:
-        new_path = icarus.increment_version(path)
+        new_path = mop.increment_version(path)
     except ValueError as err:
         logger.error(str(err))
         return
@@ -79,7 +79,7 @@ def save_publish():
 
     This takes publish versions into account.
     """
-    import icarus
+    import mop
     path = cmds.file(query=True, location=True)
     work_dir = os.path.dirname(path)
     publish_dir = os.path.join(work_dir, 'release')
@@ -99,6 +99,6 @@ def save_publish():
                     highest_version = version
                     highest_publish = f
 
-    new_path = icarus.increment_version(os.path.join(publish_dir, highest_publish))
+    new_path = mop.increment_version(os.path.join(publish_dir, highest_publish))
     cmds.file(rename=new_path)
     cmds.file(save=True, force=True)

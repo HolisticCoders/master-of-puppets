@@ -1,9 +1,9 @@
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from icarus.core.module import RigModule
-from icarus.core.fields import IntField
-import icarus.dag
+from mop.core.module import RigModule
+from mop.core.fields import IntField
+import mop.dag
 
 
 class AbstractChain(RigModule):
@@ -33,7 +33,7 @@ class AbstractChain(RigModule):
         for joint in self.driving_joints:
             ctl, parent_group = self.add_control(joint)
             cmds.parent(parent_group, parent)
-            icarus.dag.matrix_constraint(ctl, joint)
+            mop.dag.matrix_constraint(ctl, joint)
             parent = ctl
 
     def _add_deform_joint(self):

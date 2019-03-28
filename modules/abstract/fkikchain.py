@@ -1,14 +1,14 @@
 import maya.api.OpenMaya as om2
 import maya.cmds as cmds
 
-from icarus.core.fields import (
+from mop.core.fields import (
     IntField,
     StringField,
     ObjectListField,
     ObjectField,
 )
-from icarus.modules.abstract.chainswitcher import ChainSwitcher
-import icarus.metadata
+from mop.modules.abstract.chainswitcher import ChainSwitcher
+import mop.metadata
 
 
 class FkIkChain(ChainSwitcher):
@@ -49,19 +49,19 @@ class FkIkChain(ChainSwitcher):
         super(FkIkChain, self)._create_chains()
 
         for fk in self.chain_a:
-            metadata = icarus.metadata.metadata_from_name(fk)
+            metadata = mop.metadata.metadata_from_name(fk)
             metadata['role'] = 'fk'
             cmds.rename(
                 fk,
-                icarus.metadata.name_from_metadata(metadata)
+                mop.metadata.name_from_metadata(metadata)
             )
 
         for ik in self.chain_b:
-            metadata = icarus.metadata.metadata_from_name(ik)
+            metadata = mop.metadata.metadata_from_name(ik)
             metadata['role'] = 'ik'
             cmds.rename(
                 ik,
-                icarus.metadata.name_from_metadata(metadata)
+                mop.metadata.name_from_metadata(metadata)
             )
 
     def _create_settings_control(self):
@@ -82,19 +82,19 @@ class FkIkChain(ChainSwitcher):
             )
         )
         cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
-        icarus.dag.reset_node(self.fk_controls_group.get())
+        mop.dag.reset_node(self.fk_controls_group.get())
 
         parent = self.fk_controls_group.get()
         for i, fk in enumerate(self.chain_a.get()):
-            metadata = icarus.metadata.metadata_from_name(fk)
+            metadata = mop.metadata.metadata_from_name(fk)
             metadata['role'] = 'ctl'
             if metadata['description']:
                 metadata['description'] = 'FK_' + metadata['description']
-            ctl_name = icarus.metadata.name_from_metadata(metadata)
+            ctl_name = mop.metadata.name_from_metadata(metadata)
             ctl, parent_group = self.add_control(fk, ctl_name)
             self.fk_controls.append(ctl)
             cmds.parent(parent_group, parent)
-            icarus.dag.matrix_constraint(ctl, fk)
+            mop.dag.matrix_constraint(ctl, fk)
             parent = ctl
 
     def _setup_ik(self):
@@ -109,14 +109,14 @@ class FkIkChain(ChainSwitcher):
             )
         )
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
-        icarus.dag.reset_node(self.ik_controls_group.get())
+        mop.dag.reset_node(self.ik_controls_group.get())
         metadata = {
             'base_name': self.name.get(),
             'side': self.side.get(),
             'role': 'ctl',
             'description': self.ik_end_description.get(),
         }
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
+        ctl_name = mop.metadata.name_from_metadata(metadata)
         end_ctl, parent_group = self.add_control(
             self.ik_chain_end_joint.get(),
             ctl_name,
@@ -126,7 +126,7 @@ class FkIkChain(ChainSwitcher):
         self.ik_end_ctl.set(end_ctl)
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
-        icarus.dag.matrix_constraint(
+        mop.dag.matrix_constraint(
             end_ctl,
             self.ik_chain_end_joint.get(),
             translate=False,
@@ -141,7 +141,7 @@ class FkIkChain(ChainSwitcher):
             'role': 'ctl',
             'description': self.ik_start_description.get(),
         }
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
+        ctl_name = mop.metadata.name_from_metadata(metadata)
         start_ctl, parent_group = self.add_control(
             ik_chain[0],
             ctl_name,
@@ -151,7 +151,7 @@ class FkIkChain(ChainSwitcher):
         self.ik_start_ctl.set(start_ctl)
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
-        icarus.dag.matrix_constraint(
+        mop.dag.matrix_constraint(
             start_ctl,
             ik_chain[0],
             maintain_offset=True
@@ -163,7 +163,7 @@ class FkIkChain(ChainSwitcher):
             'role': 'ctl',
             'description': 'IK_pole_vector',
         }
-        ctl_name = icarus.metadata.name_from_metadata(metadata)
+        ctl_name = mop.metadata.name_from_metadata(metadata)
         pole_vector_ctl, parent_group = self.add_control(
             self.ik_chain_end_joint.get(),
             ctl_name,

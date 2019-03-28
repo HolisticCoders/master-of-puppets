@@ -1,13 +1,13 @@
 import maya.cmds as cmds
 
-from icarus.ui.settings import get_settings
-from icarus.ui.window import IcarusWindow
+from mop.ui.settings import get_settings
+from mop.ui.window import mopWindow
 
 
 def show():
-    """Run the Icarus GUI."""
-    window = IcarusWindow()
-    name = IcarusWindow.ui_name
+    """Run the mop GUI."""
+    window = mopWindow()
+    name = mopWindow.ui_name
 
     # Make sure the workspace is not shown, nor exists.
     close()
@@ -27,14 +27,14 @@ def show():
 
 
 def close():
-    """Close icarus GUI."""
+    """Close mop GUI."""
     if is_running():
         cmds.workspaceControl(get_workspace(), edit=True, close=True)
         cmds.deleteUI(get_workspace(), control=True)
 
 
 def is_running():
-    """Return ``True`` if Icarus GUI is currently opened.
+    """Return ``True`` if mop GUI is currently opened.
 
     :rtype: bool
     """
@@ -42,8 +42,8 @@ def is_running():
 
 
 def get_workspace():
-    """Return the name of the Icarus workspace control.
+    """Return the name of the mop workspace control.
 
     :rtype: str
     """
-    return IcarusWindow.ui_name + 'WorkspaceControl'
+    return mopWindow.ui_name + 'WorkspaceControl'
