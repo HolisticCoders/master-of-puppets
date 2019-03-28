@@ -147,132 +147,20 @@ class ModulePanel(QtWidgets.QDockWidget):
         rig = Rig()
         new_modules = []
         for module in self.modules:
-            new_module = rig.duplicate(module)
+            new_module = rig.duplicate_module(module)
             new_modules.append(new_module)
 
         publish('modules-created', new_modules)
 
     def _mirror_module(self):
-        cmds.undoInfo(openChunk=True)
         if not self.modules:
             return
         rig = Rig()
         new_modules = []
         for module in self.modules:
-            orig_side = module.side.get()
-            if orig_side == 'M':
-                continue
-            new_side = 'R' if orig_side == 'L' else 'L'
-            orig_name = module.name.get()
-            orig_type = module.module_type.get()
-            mirror_type = module.mirror_type.get()
-
-            orig_parent_joint = module.parent_joint.get()
-            metadata = icarus.metadata.metadata_from_name(orig_parent_joint)
-            metadata['side'] = new_side
-            new_parent_joint = icarus.metadata.name_from_metadata(metadata)
-            if not cmds.objExists(new_parent_joint):
-                new_parent_joint = orig_parent_joint
-
-            new_module = rig.add_module(
-                orig_type,
-                name=orig_name,
-                side=new_side,
-                parent_joint=new_parent_joint
-            )
-            new_modules.append(new_module)
-
-            for field in module.fields:
-                if field.name in ['name', 'side']:
-                    continue
-                if isinstance(field, ObjectField) or isinstance(field, ObjectListField):
-                    continue
-                if field.editable:
-                    value = getattr(module, field.name).get()
-                    getattr(new_module, field.name).set(value)
-            new_module.update()
-            module._mirror_module.set(new_module.node_name)
-            new_module._mirror_module.set(module.node_name)
-
-            # actually mirror the nodes
-            orig_nodes = module.deform_joints.get() + module.placement_locators.get()
-            new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
-            for orig_node, new_node in zip(orig_nodes, new_nodes):
-                if mirror_type.lower() == 'behavior':
-                    world_reflexion_mat = om2.MMatrix([
-                        -1.0, -0.0, -0.0, 0.0,
-                         0.0,  1.0,  0.0, 0.0,
-                         0.0,  0.0,  1.0, 0.0,
-                         0.0,  0.0,  0.0, 1.0
-                    ])
-                    local_reflexion_mat = om2.MMatrix([
-                        -1.0,  0.0,  0.0, 0.0,
-                         0.0, -1.0,  0.0, 0.0,
-                         0.0,  0.0, -1.0, 0.0,
-                         0.0,  0.0,  0.0, 1.0
-                    ])
-                    orig_node_mat = om2.MMatrix(
-                        cmds.getAttr(orig_node + '.worldMatrix')
-                    )
-                    new_node_parent = cmds.listRelatives(new_node, parent=True)
-                    new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
-                    cmds.xform(new_node, matrix=new_mat, worldSpace=True)
-                    cmds.setAttr(new_node + '.scale', 1, 1, 1)
-                if mirror_type.lower() == 'orientation':
-                    world_reflexion_mat = om2.MMatrix([
-                        -1.0, -0.0, -0.0, 0.0,
-                         0.0,  1.0,  0.0, 0.0,
-                         0.0,  0.0,  1.0, 0.0,
-                         0.0,  0.0,  0.0, 1.0
-                    ])
-                    orig_node_mat = om2.MMatrix(
-                        cmds.getAttr(orig_node + '.worldMatrix')
-                    )
-                    new_node_parent = cmds.listRelatives(new_node, parent=True)
-                    new_mat = orig_node_mat * world_reflexion_mat
-                    cmds.xform(new_node, matrix=new_mat, worldSpace=True)
-                    cmds.setAttr(new_node + '.scale', 1, 1, 1)
-                    orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
-                    cmds.xform(new_node, rotation=orig_orient, ws=True)
-
-        # mirror the object fields and object list fields values
-        for module, new_module in zip(self.modules, new_modules):
-            orig_side = module.side.get()
-            for field in module.fields:
-                if field.editable:
-                    if isinstance(field, ObjectField):
-                        orig_value = getattr(module, field.name).get()
-                        if orig_side == 'M':
-                            value = orig_value
-                        else:
-                            new_side = 'R' if orig_side == 'L' else 'L'
-                            metadata = icarus.metadata.metadata_from_name(orig_value)
-                            metadata['side'] = new_side
-                            new_name = icarus.metadata.name_from_metadata(metadata)
-                            if cmds.objExists(new_name):
-                                value = new_name
-                            else:
-                                value = orig_value
-                    elif isinstance(field, ObjectListField):
-                        orig_value = getattr(module, field.name).get()
-                        value = []
-                        for val in orig_value:
-                            if orig_side == 'M':
-                                value.append(orig_value)
-                            else:
-                                new_side = 'R' if orig_side == 'L' else 'L'
-                                metadata = icarus.metadata.metadata_from_name(orig_value)
-                                metadata['side'] = new_side
-                                new_name = icarus.metadata.name_from_metadata(metadata)
-                                if cmds.objExists(new_name):
-                                    value.append(new_name)
-                                else:
-                                    value.append(orig_value)
-                    else:
-                        continue
-
-                    getattr(new_module, field.name).set(value)
-            new_module.update()
+            new_module = rig.mirror_module(module)
+            if new_module is not None:
+                new_modules.append(new_module)
 
         cmds.undoInfo(closeChunk=True)
         publish('modules-created', new_modules)

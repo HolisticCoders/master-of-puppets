@@ -5,12 +5,14 @@ from collections import OrderedDict
 import re
 
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
 
 from icarus.core.icarusNode import IcarusNode
 from icarus.modules import all_rig_modules
 from icarus.config import default_modules
-from icarus.core.fields import ObjectField
+from icarus.core.fields import ObjectField, ObjectListField
 from icarus.utils.undo import undoable
+from icarus.utils.dg import find_mirror_node
 import icarus.dag
 import icarus.postscript
 from shapeshifter import shapeshifter
@@ -295,11 +297,100 @@ class Rig(IcarusNode):
             )
 
     @undoable
-    def mirror(self, module):
+    def mirror_module(self, module):
         """Mirrors the specified rig module."""
+        orig_side = module.side.get()
+        if orig_side == 'M':
+            return
+
+        non_mirrored_parents = module.find_non_mirrored_parents()
+        if non_mirrored_parents:
+            for parent in non_mirrored_parents:
+                self.mirror_module(parent)
+
+        new_side = 'R' if orig_side == 'L' else 'L'
+        orig_name = module.name.get()
+        orig_type = module.module_type.get()
+        mirror_type = module.mirror_type.get()
+
+        orig_parent_joint = module.parent_joint.get()
+        metadata = icarus.metadata.metadata_from_name(orig_parent_joint)
+        metadata['side'] = new_side
+        new_parent_joint = icarus.metadata.name_from_metadata(metadata)
+        if not cmds.objExists(new_parent_joint):
+            new_parent_joint = orig_parent_joint
+
+        new_module = self.add_module(
+            orig_type,
+            name=orig_name,
+            side=new_side,
+            parent_joint=new_parent_joint
+        )
+
+        for field in module.fields:
+            if field.name in ['name', 'side']:
+                continue
+            if field.editable:
+                value = None
+                if isinstance(field, ObjectField):
+                    orig_value = getattr(module, field.name).get()
+                    value = find_mirror_node(orig_value)
+                elif isinstance(field, ObjectListField):
+                    orig_value = getattr(module, field.name).get()
+                    value = [find_mirror_node(v) for v in orig_value]
+                else:
+                    value = getattr(module, field.name).get()
+
+                if value:
+                    getattr(new_module, field.name).set(value)
+
+        new_module.update()
+        module.module_mirror = new_module.node_name
+        new_module.module_mirror = module.node_name
+
+        # actually mirror the nodes
+        orig_nodes = module.deform_joints.get() + module.placement_locators.get()
+        new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
+        for orig_node, new_node in zip(orig_nodes, new_nodes):
+            if mirror_type.lower() == 'behavior':
+                world_reflexion_mat = om2.MMatrix([
+                    -1.0, -0.0, -0.0, 0.0,
+                     0.0,  1.0,  0.0, 0.0,
+                     0.0,  0.0,  1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                local_reflexion_mat = om2.MMatrix([
+                    -1.0,  0.0,  0.0, 0.0,
+                     0.0, -1.0,  0.0, 0.0,
+                     0.0,  0.0, -1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                orig_node_mat = om2.MMatrix(
+                    cmds.getAttr(orig_node + '.worldMatrix')
+                )
+                new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
+                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                cmds.setAttr(new_node + '.scale', 1, 1, 1)
+            if mirror_type.lower() == 'orientation':
+                world_reflexion_mat = om2.MMatrix([
+                    -1.0, -0.0, -0.0, 0.0,
+                     0.0,  1.0,  0.0, 0.0,
+                     0.0,  0.0,  1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                orig_node_mat = om2.MMatrix(
+                    cmds.getAttr(orig_node + '.worldMatrix')
+                )
+                new_mat = orig_node_mat * world_reflexion_mat
+                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                cmds.setAttr(new_node + '.scale', 1, 1, 1)
+                orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
+                cmds.xform(new_node, rotation=orig_orient, ws=True)
+
+        return new_module
 
     @undoable
-    def duplicate(self, module):
+    def duplicate_module(self, module):
         """Duplicate the specified rig module"""
         module_type = module.module_type.get()
         name = module.name.get()

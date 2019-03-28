@@ -50,7 +50,7 @@ class RigModule(IcarusNode):
         tooltip="How to mirror the module."
     )
 
-    _mirror_module = ObjectField()
+    _module_mirror = ObjectField()
 
     default_side = 'M'
 
@@ -130,12 +130,19 @@ class RigModule(IcarusNode):
             return parent_module
 
     @property
-    def mirror_module(self):
-        mirror_node = self._mirror_module.get()
+    def module_mirror(self):
+        """Return the actual instance of the module mirror."""
+        mirror_node = self._module_mirror.get()
         if mirror_node:
-            module_type = cmds.getAttr(mirror_node + '.module_type')
-            mirror_module = all_rig_modules[self.module_type](mirror_node, rig=self.rig)
+            mirror_module = all_rig_modules[self.module_type.get()](
+                mirror_node,
+                rig=self.rig
+            )
             return mirror_module
+
+    @module_mirror.setter
+    def module_mirror(self, value):
+        self._module_mirror.set(value)
 
     def initialize(self):
         """Creation of all the needed placement nodes.
@@ -438,11 +445,20 @@ class RigModule(IcarusNode):
 
             icarus.dag.matrix_constraint(driving, deform)
 
-    def add_control(self, dag_node, ctl_name=None, shape_type='circle'):
-        if not ctl_name:
-            metadata = icarus.metadata.metadata_from_name(dag_node)
-            metadata['role'] = 'ctl'
-            ctl_name = icarus.metadata.name_from_metadata(metadata)
+    def add_control(
+        self,
+        dag_node,
+        object_id=None,
+        description=None,
+        shape_type='circle'
+    ):
+        metadata = icarus.metadata.metadata_from_name(dag_node)
+        if object_id:
+            metadata['id'] = object_id
+        if description:
+            metadata['description'] = description
+        metadata['role'] = 'ctl'
+        ctl_name = icarus.metadata.name_from_metadata(metadata)
         ctl = shapeshifter.create_controller_from_name(shape_type)
         ctl = cmds.rename(ctl, ctl_name)
 
@@ -494,3 +510,17 @@ class RigModule(IcarusNode):
         parent_group = icarus.dag.add_parent_group(ctl, 'buffer')
         self.controllers.append(ctl)
         return ctl, parent_group
+
+    def find_non_mirrored_parents(self, non_mirrored_parents=None):
+        """Recursively find the parent module that are not mirrored."""
+
+        if non_mirrored_parents is None:
+            non_mirrored_parents = []
+
+        parent = self.parent_module
+
+        if not parent.module_mirror and parent.side.get() != 'M':
+            non_mirrored_parents.append(parent)
+            RigModule.find_non_mirrored_parents(parent, non_mirrored_parents)
+
+        return non_mirrored_parents
