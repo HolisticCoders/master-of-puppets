@@ -296,7 +296,6 @@ class Rig(MopNode):
                 defaultValue=True
             )
 
-    @undoable
     def mirror_module(self, module):
         """Mirrors the specified rig module."""
         orig_side = module.side.get()

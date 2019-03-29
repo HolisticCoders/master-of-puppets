@@ -8,6 +8,7 @@ import maya.api.OpenMaya as om2
 from mop.vendor.Qt import QtCore, QtWidgets
 from mop.ui.signals import publish, subscribe
 from mop.ui.utils import clear_layout
+from mop.utils.undo import undoable
 from mop.ui.fieldwidgets import map_field_to_widget
 from mop.core.rig import Rig
 import mop.metadata
@@ -152,6 +153,7 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         publish('modules-created', new_modules)
 
+    @undoable
     def _mirror_module(self):
         if not self.modules:
             return
@@ -162,7 +164,6 @@ class ModulePanel(QtWidgets.QDockWidget):
             if new_module is not None:
                 new_modules.append(new_module)
 
-        cmds.undoInfo(closeChunk=True)
         publish('modules-created', new_modules)
 
     def _update_ui(self):
