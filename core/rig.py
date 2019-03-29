@@ -298,6 +298,10 @@ class Rig(MopNode):
 
     def mirror_module(self, module):
         """Mirrors the specified rig module."""
+
+        if module.is_mirrored:
+            return
+
         orig_side = module.side.get()
         if orig_side == 'M':
             return

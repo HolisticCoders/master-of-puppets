@@ -144,6 +144,10 @@ class RigModule(MopNode):
     def module_mirror(self, value):
         self._module_mirror.set(value)
 
+    @property
+    def is_mirrored(self):
+        return bool(self.module_mirror)
+
     def initialize(self):
         """Creation of all the needed placement nodes.
 
