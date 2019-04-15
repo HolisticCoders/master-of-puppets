@@ -16,7 +16,8 @@ class Chain(AbstractChain):
         minValue=0,
         displayable=True,
         editable=True,
-        tooltip="The number of joints for the chain."
+        tooltip="The amount of offset control per joint.\n"
+        "An offset control can move without affecting the children joints"
     )
 
     def build(self):

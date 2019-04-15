@@ -87,11 +87,14 @@ class FkIkChain(ChainSwitcher):
         parent = self.fk_controls_group.get()
         for i, fk in enumerate(self.chain_a.get()):
             metadata = mop.metadata.metadata_from_name(fk)
-            metadata['role'] = 'ctl'
             if metadata['description']:
-                metadata['description'] = 'FK_' + metadata['description']
-            ctl_name = mop.metadata.name_from_metadata(metadata)
-            ctl, parent_group = self.add_control(fk, ctl_name)
+                description = 'FK_' + metadata['description']
+            else:
+                description = None
+            ctl, parent_group = self.add_control(
+                fk,
+                description=description
+            )
             self.fk_controls.append(ctl)
             cmds.parent(parent_group, parent)
             mop.dag.matrix_constraint(ctl, fk)
@@ -110,17 +113,10 @@ class FkIkChain(ChainSwitcher):
         )
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
         mop.dag.reset_node(self.ik_controls_group.get())
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'ctl',
-            'description': self.ik_end_description.get(),
-        }
-        ctl_name = mop.metadata.name_from_metadata(metadata)
         end_ctl, parent_group = self.add_control(
             self.ik_chain_end_joint.get(),
-            ctl_name,
-            'cube'
+            description=self.ik_end_description.get(),
+            shape_type='cube'
         )
         self.ik_controls.append(end_ctl)
         self.ik_end_ctl.set(end_ctl)
@@ -135,17 +131,10 @@ class FkIkChain(ChainSwitcher):
             maintain_offset=True
         )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'ctl',
-            'description': self.ik_start_description.get(),
-        }
-        ctl_name = mop.metadata.name_from_metadata(metadata)
         start_ctl, parent_group = self.add_control(
             ik_chain[0],
-            ctl_name,
-            'cube'
+            description=self.ik_start_description.get(),
+            shape_type='cube'
         )
         self.ik_controls.append(start_ctl)
         self.ik_start_ctl.set(start_ctl)
@@ -157,17 +146,10 @@ class FkIkChain(ChainSwitcher):
             maintain_offset=True
         )
 
-        metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': 'ctl',
-            'description': 'IK_pole_vector',
-        }
-        ctl_name = mop.metadata.name_from_metadata(metadata)
         pole_vector_ctl, parent_group = self.add_control(
             self.ik_chain_end_joint.get(),
-            ctl_name,
-            'sphere'
+            description='IK_pole_vector',
+            shape_type='sphere'
         )
         self.ik_controls.append(pole_vector_ctl)
         self.ik_pv_ctl.set(pole_vector_ctl)
