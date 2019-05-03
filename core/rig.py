@@ -299,13 +299,16 @@ class Rig(MopNode):
     def mirror_module(self, module):
         """Mirrors the specified rig module."""
 
+        # don't mirror an already mirrored module
         if module.is_mirrored:
             return
 
+        # make sure we're not mirroring a middle module
         orig_side = module.side.get()
         if orig_side == 'M':
             return
 
+        # recursively mirror all parent modules that aren't already mirrored
         non_mirrored_parents = module.find_non_mirrored_parents()
         if non_mirrored_parents:
             for parent in non_mirrored_parents:
@@ -330,65 +333,10 @@ class Rig(MopNode):
             parent_joint=new_parent_joint
         )
 
-        for field in module.fields:
-            if field.name in ['name', 'side']:
-                continue
-            if field.editable:
-                value = None
-                if isinstance(field, ObjectField):
-                    orig_value = getattr(module, field.name).get()
-                    value = find_mirror_node(orig_value)
-                elif isinstance(field, ObjectListField):
-                    orig_value = getattr(module, field.name).get()
-                    value = [find_mirror_node(v) for v in orig_value]
-                else:
-                    value = getattr(module, field.name).get()
-
-                if value:
-                    getattr(new_module, field.name).set(value)
-
-        new_module.update()
-        module.module_mirror = new_module.node_name
+        module.module_mirror = self.node_name
         new_module.module_mirror = module.node_name
 
-        # actually mirror the nodes
-        orig_nodes = module.deform_joints.get() + module.placement_locators.get()
-        new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
-        for orig_node, new_node in zip(orig_nodes, new_nodes):
-            if mirror_type.lower() == 'behavior':
-                world_reflexion_mat = om2.MMatrix([
-                    -1.0, -0.0, -0.0, 0.0,
-                     0.0,  1.0,  0.0, 0.0,
-                     0.0,  0.0,  1.0, 0.0,
-                     0.0,  0.0,  0.0, 1.0
-                ])
-                local_reflexion_mat = om2.MMatrix([
-                    -1.0,  0.0,  0.0, 0.0,
-                     0.0, -1.0,  0.0, 0.0,
-                     0.0,  0.0, -1.0, 0.0,
-                     0.0,  0.0,  0.0, 1.0
-                ])
-                orig_node_mat = om2.MMatrix(
-                    cmds.getAttr(orig_node + '.worldMatrix')
-                )
-                new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
-                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
-                cmds.setAttr(new_node + '.scale', 1, 1, 1)
-            if mirror_type.lower() == 'orientation':
-                world_reflexion_mat = om2.MMatrix([
-                    -1.0, -0.0, -0.0, 0.0,
-                     0.0,  1.0,  0.0, 0.0,
-                     0.0,  0.0,  1.0, 0.0,
-                     0.0,  0.0,  0.0, 1.0
-                ])
-                orig_node_mat = om2.MMatrix(
-                    cmds.getAttr(orig_node + '.worldMatrix')
-                )
-                new_mat = orig_node_mat * world_reflexion_mat
-                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
-                cmds.setAttr(new_node + '.scale', 1, 1, 1)
-                orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
-                cmds.xform(new_node, rotation=orig_orient, ws=True)
+        new_module.update_mirror()
 
         return new_module
 

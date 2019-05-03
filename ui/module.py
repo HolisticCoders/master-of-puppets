@@ -36,6 +36,7 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         self.actions_group = QtWidgets.QGroupBox('Actions')
         self.mirror_button = QtWidgets.QPushButton('Mirror')
+        self.update_mirror_button = QtWidgets.QPushButton('Update Mirror')
         self.duplicate_button = QtWidgets.QPushButton('Duplicate')
         self.delete_button = QtWidgets.QPushButton('Delete')
 
@@ -59,18 +60,21 @@ class ModulePanel(QtWidgets.QDockWidget):
         actions_layout = QtWidgets.QVBoxLayout()
         self.actions_group.setLayout(actions_layout)
         actions_layout.addWidget(self.mirror_button)
+        actions_layout.addWidget(self.update_mirror_button)
         actions_layout.addWidget(self.duplicate_button)
         actions_layout.addWidget(self.delete_button)
 
         self.apply_button.hide()
         self.reset_button.hide()
         self.mirror_button.hide()
+        self.update_mirror_button.hide()
         self.duplicate_button.hide()
         self.delete_button.hide()
 
         self.apply_button.released.connect(self._update_module)
         self.reset_button.released.connect(self._update_ui)
         self.mirror_button.released.connect(self._mirror_module)
+        self.update_mirror_button.released.connect(self._update_mirror)
         self.duplicate_button.released.connect(self._duplicate_module)
         self.delete_button.released.connect(self._delete_module)
 
@@ -166,6 +170,18 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         publish('modules-created', new_modules)
 
+    @undoable
+    def _update_mirror(self):
+        if not self.modules:
+            return
+        for module in self.modules:
+            mirror_mod = module.module_mirror
+            if not mirror_mod:
+                continue
+            if mirror_mod in self.modules:
+                self.modules.remove(mirror_mod)
+            module.update_mirror()
+
     def _update_ui(self):
         self._modified_fields = set()
         self._initial_values = {}
@@ -174,6 +190,7 @@ class ModulePanel(QtWidgets.QDockWidget):
             self.apply_button.hide()
             self.reset_button.hide()
             self.mirror_button.hide()
+            self.update_mirror_button.hide()
             self.duplicate_button.hide()
             self.delete_button.hide()
             return
@@ -186,10 +203,12 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         if is_built:
             self.mirror_button.setEnabled(False)
+            self.update_mirror_button.setEnabled(False)
             self.duplicate_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
             self.mirror_button.setEnabled(True)
+            self.update_mirror_button.setEnabled(True)
             self.duplicate_button.setEnabled(True)
             self.delete_button.setEnabled(True)
 
@@ -200,6 +219,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.apply_button.show()
         self.reset_button.show()
         self.mirror_button.show()
+        self.update_mirror_button.show()
         self.duplicate_button.show()
         self.delete_button.show()
 

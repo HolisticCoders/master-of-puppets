@@ -2,6 +2,7 @@ import json
 import logging
 
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
 
 from mop.core.fields import (
     EnumField,
@@ -43,7 +44,7 @@ class RigModule(MopNode):
     )
 
     mirror_type = EnumField(
-        choices=['Behavior', 'Orientation', 'Scale'],
+        choices=['Behavior', 'Orientation'],
         displayable=True,
         editable=True,
         gui_order=-1,  # make sure it's always on top
@@ -528,3 +529,65 @@ class RigModule(MopNode):
             RigModule.find_non_mirrored_parents(parent, non_mirrored_parents)
 
         return non_mirrored_parents
+    
+    def update_mirror(self):
+
+        # update all the fields to match the mirror module
+        for field in self.module_mirror.fields:
+            if field.name in ['name', 'side']:
+                continue
+            if field.editable:
+                value = None
+                if isinstance(field, ObjectField):
+                    orig_value = getattr(self.module_mirror, field.name).get()
+                    value = find_mirror_node(orig_value)
+                elif isinstance(field, ObjectListField):
+                    orig_value = getattr(self.module_mirror, field.name).get()
+                    value = [find_mirror_node(v) for v in orig_value]
+                else:
+                    value = getattr(self.module_mirror, field.name).get()
+
+                if value:
+                    getattr(self, field.name).set(value)
+
+        self.update()
+
+        # mirror the nodes based on the mirror type
+        orig_nodes = self.module_mirror.deform_joints.get() + self.module_mirror.placement_locators.get()
+        new_nodes = self.deform_joints.get() + self.placement_locators.get()
+        mirror_type = self.mirror_type.get()
+        for orig_node, new_node in zip(orig_nodes, new_nodes):
+            if mirror_type.lower() == 'behavior':
+                world_reflexion_mat = om2.MMatrix([
+                    -1.0, -0.0, -0.0, 0.0,
+                     0.0,  1.0,  0.0, 0.0,
+                     0.0,  0.0,  1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                local_reflexion_mat = om2.MMatrix([
+                    -1.0,  0.0,  0.0, 0.0,
+                     0.0, -1.0,  0.0, 0.0,
+                     0.0,  0.0, -1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                orig_node_mat = om2.MMatrix(
+                    cmds.getAttr(orig_node + '.worldMatrix')
+                )
+                new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
+                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                cmds.setAttr(new_node + '.scale', 1, 1, 1)
+            if mirror_type.lower() == 'orientation':
+                world_reflexion_mat = om2.MMatrix([
+                    -1.0, -0.0, -0.0, 0.0,
+                     0.0,  1.0,  0.0, 0.0,
+                     0.0,  0.0,  1.0, 0.0,
+                     0.0,  0.0,  0.0, 1.0
+                ])
+                orig_node_mat = om2.MMatrix(
+                    cmds.getAttr(orig_node + '.worldMatrix')
+                )
+                new_mat = orig_node_mat * world_reflexion_mat
+                cmds.xform(new_node, matrix=new_mat, worldSpace=True)
+                cmds.setAttr(new_node + '.scale', 1, 1, 1)
+                orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
+                cmds.xform(new_node, rotation=orig_orient, ws=True)
