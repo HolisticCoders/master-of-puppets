@@ -317,7 +317,6 @@ class Rig(MopNode):
         new_side = 'R' if orig_side == 'L' else 'L'
         orig_name = module.name.get()
         orig_type = module.module_type.get()
-        mirror_type = module.mirror_type.get()
 
         orig_parent_joint = module.parent_joint.get()
         metadata = mop.metadata.metadata_from_name(orig_parent_joint)
