@@ -23,21 +23,31 @@ def hierarchy_to_dict(parent, tree, nodes=[]):
         for child in children:
             hierarchy_to_dict(child, tree[parent], nodes=nodes)
     else:
-        tree[parent] = None
+        tree[parent] = {}
 
 
-def dict_to_hierarchy(tree):
+def dict_to_hierarchy(tree, create_nodes=True, node_type='transform'):
     """Parent DAG nodes based on a dictionnary.
 
     Args:
         tree (dict): Dictionary representing the hierarchy.
+        node_type (str): Type of node to be created if the children doesn't exist
     """
     if tree:
         for parent, child_tree in tree.iteritems():
+            print (parent, child_tree)
             if child_tree:
                 for child in child_tree:
-                    cmds.parent(child, parent)
-                dict_to_hierarchy(child_tree)
+                    if not cmds.objExists(child):
+                        if create_nodes:
+                            cmds.createNode(node_type, name=child)
+                        else: 
+                            continue
+                    current_parent = cmds.listRelatives(child, parent=True)
+                    current_parent = current_parent[0] if current_parent is not None else None
+                    if current_parent != parent:
+                        cmds.parent(child, parent)
+                dict_to_hierarchy(child_tree, create_nodes=create_nodes, node_type=node_type)
 
 
 def matrix_constraint(driver, driven, translate=True, rotate=True, scale=True, maintain_offset=False):
