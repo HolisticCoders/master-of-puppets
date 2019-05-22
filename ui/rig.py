@@ -72,6 +72,7 @@ class RigPanel(QtWidgets.QWidget):
     def _refresh_model(self, modules=None):
         self.model = ModulesModel()
         self.tree_view.setModel(self.model)
+        self.tree_view.header().hide()
         self.tree_view.expandAll()
 
         selection_model = self.tree_view.selectionModel()
