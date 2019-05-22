@@ -12,6 +12,7 @@ from mop.core.fields import (
 )
 from mop.core.mopNode import MopNode
 from mop.modules import all_rig_modules
+from mop.utils.dg import find_mirror_node
 import mop.attributes
 import mop.dag
 import mop.metadata
