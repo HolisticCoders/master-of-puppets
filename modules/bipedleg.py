@@ -37,8 +37,8 @@ class BipedLeg(FkIkRotatePlaneChain):
 
     def initialize(self):
         super(BipedLeg, self).initialize()
-        self.ik_start_description.set('IK_ankle')
-        self.ik_end_description.set('IK_hip')
+        self.ik_start_description.set('IK_hip')
+        self.ik_end_description.set('IK_foot')
 
         name_list = ['hip', 'knee', 'ankle', 'foot_ball', 'foot_tip']
 
