@@ -113,6 +113,7 @@ class FkIkChain(ChainSwitcher):
         )
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
         mop.dag.reset_node(self.ik_controls_group.get())
+        # print(self.ik_chain_end_joint.get())
         end_ctl, parent_group = self.add_control(
             self.ik_chain_end_joint.get(),
             description=self.ik_end_description.get(),
