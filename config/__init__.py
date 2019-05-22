@@ -1,11 +1,18 @@
-import json
-import os
+import logging
 
-default_modules_path = os.path.join(os.path.dirname(__file__), 'default-modules.json')
-controller_colors_path = os.path.join(os.path.dirname(__file__), 'controller-colors.json')
 
-with open(default_modules_path, 'r') as f:
-    default_modules = json.loads(f.read())
+logger = logging.getLogger(__name__)
 
-with open(controller_colors_path, 'r') as f:
-    controller_colors = json.loads(f.read())
+
+from .default_config import *
+
+try:
+    from mop_general_config import *
+except ImportError:
+    logger.info("No general config found")
+
+try:
+    from mop_project_config import *
+except ImportError:
+    logger.info("No project config found")
+
