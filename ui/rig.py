@@ -3,7 +3,7 @@ import json
 import random
 import pdb
 from collections import defaultdict
-from weakref import WeakKeyDictionary, WeakSet
+from weakref import WeakValueDictionary
 
 from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 from mop.core.rig import Rig
@@ -53,9 +53,23 @@ class RigPanel(QtWidgets.QWidget):
         actions_layout.addWidget(self.unbuild_button)
         actions_layout.addWidget(self.publish_button)
 
-        self._refresh_model()
-        if self.model.is_colored:
-            random_colors.setChecked(True)
+        self._module_icon = QtGui.QIcon(':QR_settings.png')
+        self._joint_icon = QtGui.QIcon(':kinJoint.png')
+        self._items = {}
+        self._module_items = {}
+        self._joint_items = {}
+        self._joint_parent_modules = WeakValueDictionary()
+
+        self.model = QtGui.QStandardItemModel()
+        self._populate_model(Rig().rig_modules)
+        self.tree_view.setModel(self.model)
+        self.tree_view.header().hide()
+        self.tree_view.expandAll()
+        selection_model = self.tree_view.selectionModel()
+        selection_model.selectionChanged.connect(self._on_selection_changed)
+        # self._refresh_model()
+        # if self.model.is_colored:
+        #     random_colors.setChecked(True)
 
         self._update_buttons_enabled()
 
@@ -65,9 +79,80 @@ class RigPanel(QtWidgets.QWidget):
         self.unbuild_button.released.connect(self._on_unbuild_rig)
         self.publish_button.released.connect(self._on_publish_rig)
 
-        subscribe('modules-created', self._refresh_model)
-        subscribe('modules-updated', self._refresh_model)
-        subscribe('modules-deleted', self._refresh_model)
+        subscribe('modules-created', self._on_modules_created)
+        subscribe('modules-updated', self._on_modules_updated)
+        subscribe('modules-deleted', self._on_modules_deleted)
+
+    def _is_module_item(self, item):
+        # HACK: 'cause you know, nothing's perfect.
+        # https://bugreports.qt.io/browse/PYSIDE-74
+        return id(item) in (id(x) for x in self._module_items.values())
+
+    def _populate_model(self, modules):
+        new_module_items = {}
+        new_joint_items = {}
+        for module in modules:
+            item = QtGui.QStandardItem(module.node_name)
+            item.setIcon(self._module_icon)
+            item.setEditable(False)
+
+            new_module_items[module] = item
+
+            self._module_items[module] = item
+            self._items[item.text()] = module
+
+            for joint in module.deform_joints:
+                joint_item = QtGui.QStandardItem(joint)
+                joint_item.setIcon(self._joint_icon)
+                joint_item.setEditable(False)
+
+                new_joint_items[joint] = joint_item
+
+                self._joint_items[joint] = joint_item
+                self._joint_parent_modules[joint] = module
+                self._items[joint_item.text()] = joint
+
+        root = self.model.invisibleRootItem()
+
+        for module, item in new_module_items.iteritems():
+            if module.parent_joint.get():
+                parent_item = self._joint_items[module.parent_joint.get()]
+            else:
+                parent_item = root
+            parent_item.appendRow(item)
+
+        for joint, item in new_joint_items.iteritems():
+            module = self._joint_parent_modules[joint]
+            parent_item = self._module_items[module]
+            parent_item.appendRow(item)
+
+    def _on_modules_created(self, modules):
+        self._populate_model(modules)
+
+    def _on_modules_updated(self, modules):
+        for module in modules:
+            item = self._module_items[module]
+
+            module_name = module.node_name
+            was_renamed = item.text() != module_name
+            if was_renamed:
+                item.setText(module_name)
+
+            joint_items = [item.child(row) for row in xrange(item.rowCount())]
+            joint_item_names = [item.text() for item in joint_items]
+            joints = module.deform_joints.get()
+
+            if len(joints) > len(joint_items):
+                pass
+
+    def _on_modules_deleted(self, modules):
+        for module in modules:
+            item = self._module_items[module]
+            parent_item = item.parent()
+            if not parent_item:
+                continue
+            row = item.row()
+            parent_item.removeRow(row)
 
     def _refresh_model(self, modules=None):
         self.model = ModulesModel()
@@ -163,10 +248,19 @@ class RigPanel(QtWidgets.QWidget):
     def _on_selection_changed(self, selected, deselected):
         selection = self.tree_view.selectionModel()
         selected = selection.selectedRows()
-        pointer = [index.internalPointer() for index in selected]
-        joints = [p for p in pointer if isinstance(p, basestring)]
+        items = [self.model.itemFromIndex(index) for index in selected]
+        joints = [
+            self._items[item.text()]
+            for item in items
+            if not self._is_module_item(item)
+        ]
+        modules = [
+            self._items[item.text()]
+            for item in items
+            if self._is_module_item(item)
+        ]
         cmds.select(joints)
-        publish('selected-modules-changed', pointer)
+        publish('selected-modules-changed', modules)
 
 
 class ModulesTree(QtWidgets.QTreeView):
