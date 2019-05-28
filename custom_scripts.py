@@ -34,8 +34,17 @@ def run_scripts_from_path(scripts_path):
             module_name = os.path.splitext(script_name)[0]
             script_path = os.path.join(scripts_path, script_name)
             mod = imp.load_source(module_name, script_path)
-            logger.info("Running script: {}".format(module_name))
-            mod.run()
+
+            asset_type = config.get_asset_type()
+
+            script_target = mod.__dict__.get("target_asset_type", "all")
+            if (
+                script_target == "all"
+                or not asset_type 
+                or asset_type in mod.__dict__.get( "target_asset_type", [])
+            ):
+                logger.info("Running script: {}".format(module_name))
+                mod.run()
 
 
 def get_scripts_dir(level="asset"):
@@ -44,6 +53,6 @@ def get_scripts_dir(level="asset"):
         return
     if dir_data["relative"]:
         scene_path = os.path.dirname(cmds.file(query=True, sceneName=True))
-        return os.path.join(scene_path, dir_data["path"])
+        return os.path.abspath(os.path.join(scene_path, dir_data["path"]))
     else:
         return dir_data["path"]

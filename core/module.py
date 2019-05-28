@@ -471,7 +471,7 @@ class RigModule(MopNode):
         # update the controller color based on its side
         current_data = shapeshifter.get_shape_data(ctl)
         new_data = []
-        side_color = mop.config.controller_colors[self.side.get()]
+        side_color = mop.config.controllers_data[self.side.get()]
         for shape_data in current_data:
             new_shape_data = shape_data.copy()
             new_shape_data.update(side_color)

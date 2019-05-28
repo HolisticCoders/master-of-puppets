@@ -1,6 +1,8 @@
 """Commands used throughout the GUI."""
-import sys
 import logging
+import sys
+import time
+import mop.custom_scripts
 
 
 logger = logging.getLogger(__name__)
@@ -64,7 +66,12 @@ def build_rig():
     import mop
     mop.incremental_save()
     rig = Rig()
+    start_time = time.time()
+    mop.custom_scripts.run_scripts("build_pre")
     rig.build()
+    mop.custom_scripts.run_scripts("build_post")
+    tot_time = time.time() - start_time
+    logger.info("Building the rig took {}s".format(tot_time))
 
 
 def unbuild_rig():
@@ -73,7 +80,9 @@ def unbuild_rig():
     import mop
     mop.incremental_save()
     rig = Rig()
+    mop.custom_scripts.run_scripts("unbuild_pre")
     rig.unbuild()
+    mop.custom_scripts.run_scripts("unbuild_post")
 
 
 def publish_rig():
@@ -82,6 +91,9 @@ def publish_rig():
     import mop
     mop.incremental_save()
     rig = Rig()
+    mop.custom_scripts.run_scripts("publish_pre")
     rig.publish()
+    mop.custom_scripts.run_scripts("publish_post")
     mop.save_publish()
+    mop.custom_scripts.run_scripts("publish_save_post")
 

@@ -14,7 +14,6 @@ from mop.core.fields import ObjectField, ObjectListField
 from mop.utils.undo import undoable
 from mop.utils.dg import find_mirror_node
 import mop.dag
-import mop.custom_scripts
 from shapeshifter import shapeshifter
 
 logger = logging.getLogger(__name__)
@@ -165,8 +164,6 @@ class Rig(MopNode):
 
     @undoable
     def build(self):
-        start_time = time.time()
-        mop.custom_scripts.run_scripts("pre_build")
 
         nodes_before_build = set(cmds.ls("*"))
         for module in self.rig_modules:
@@ -210,17 +207,12 @@ class Rig(MopNode):
                 elif points:
                     mop.dag.create_space_switching(ctl, points, "point")
 
-        mop.custom_scripts.run_scripts("post_build")
 
         self._tag_nodes_for_unbuild(build_nodes)
-        tot_time = time.time() - start_time
         self.is_built.set(True)
-        logger.info("Building the rig took {}s".format(tot_time))
 
     @undoable
     def unbuild(self):
-        mop.custom_scripts.run_scripts("pre_unbuild")
-
         self.reset_pose()
 
         for module in self.rig_modules:
@@ -251,15 +243,12 @@ class Rig(MopNode):
             module.is_built.set(False)
 
         self.is_built.set(False)
-        mop.custom_scripts.run_scripts("post_unbuild")
 
     def publish(self):
-        mop.custom_scripts.run_scripts("pre_publish")
         cmds.setAttr(self.skeleton_group.get() + ".visibility", False)
         for module in self.rig_modules:
             logger.info("Publishing: " + module.node_name)
             module.publish()
-        mop.custom_scripts.run_scripts("post_publish")
 
     @undoable
     def reset_pose(self):
