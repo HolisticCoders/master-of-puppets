@@ -110,6 +110,7 @@ class RigModule(MopNode):
                 mop.dag.matrix_constraint(parent_joint, self.node_name)
 
             self.initialize()
+            self.place_placement_nodes()
             self.update()
             self.is_initialized.set(True)
 
@@ -194,6 +195,30 @@ class RigModule(MopNode):
             )
         )
         cmds.setAttr(self.extras_group.get() + '.visibility', False)
+
+    def place_placement_nodes(self):
+        """Place the deform joints and placement locators based on the config."""
+        deform_joint_matrices = mop.config.default_module_placement.get(
+            self.__class__.__name__, {}
+        ).get("deform_joints")
+        for i, joint in enumerate(self.deform_joints):
+            try:
+                matrix = deform_joint_matrices[i]
+            except Exception:
+                logger.warning("No default matrix found of {}".format(joint))
+            else:
+                cmds.xform(joint, matrix=matrix, worldSpace=True)
+
+        placement_locators_matrices = mop.config.default_module_placement.get(
+            self.__class__.__name__, {}
+        ).get("placement_locators")
+        for i, joint in enumerate(self.placement_locators):
+            try:
+                matrix = placement_locators_matrices[i]
+            except Exception:
+                logger.warning("No default matrix found of {}".format(joint))
+            else:
+                cmds.xform(joint, matrix=matrix, worldSpace=True)
 
     def update(self):
         """Update the maya scene based on the module's fields
