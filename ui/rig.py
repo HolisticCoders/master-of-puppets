@@ -89,61 +89,102 @@ class RigPanel(QtWidgets.QWidget):
         return id(item) in (id(x) for x in self._module_items.values())
 
     def _populate_model(self, modules):
-        new_module_items = {}
-        new_joint_items = {}
+        new_module_items = []
+        new_joint_items = []
         for module in modules:
-            item = QtGui.QStandardItem(module.node_name)
-            item.setIcon(self._module_icon)
-            item.setEditable(False)
-
-            new_module_items[module] = item
-
-            self._module_items[module] = item
-            self._items[item.text()] = module
-
+            module_item = self._create_module_item(module)
+            new_module_items.append((module, module_item))
             for joint in module.deform_joints:
-                joint_item = QtGui.QStandardItem(joint)
-                joint_item.setIcon(self._joint_icon)
-                joint_item.setEditable(False)
-
-                new_joint_items[joint] = joint_item
-
-                self._joint_items[joint] = joint_item
-                self._joint_parent_modules[joint] = module
-                self._items[joint_item.text()] = joint
+                joint_item = self._create_joint_item(module, joint)
+                new_joint_items.append((joint, joint_item))
 
         root = self.model.invisibleRootItem()
 
-        for module, item in new_module_items.iteritems():
-            if module.parent_joint.get():
-                parent_item = self._joint_items[module.parent_joint.get()]
-            else:
-                parent_item = root
-            parent_item.appendRow(item)
+        for module, item in new_module_items:
+            self._auto_parent_module_item(module, item, root)
 
-        for joint, item in new_joint_items.iteritems():
-            module = self._joint_parent_modules[joint]
-            parent_item = self._module_items[module]
-            parent_item.appendRow(item)
+        for joint, item in new_joint_items:
+            self._auto_parent_joint_item(joint, item)
+
+    def _create_module_item(self, module):
+        item = QtGui.QStandardItem(module.node_name)
+        item.setIcon(self._module_icon)
+        item.setEditable(False)
+        self._module_items[module] = item
+        self._items[item.text()] = module
+        return item
+
+    def _create_joint_item(self, module, joint):
+        item = QtGui.QStandardItem(joint)
+        item.setIcon(self._joint_icon)
+        item.setEditable(False)
+        self._joint_items[joint] = item
+        self._joint_parent_modules[joint] = module
+        self._items[item.text()] = joint
+        return item
+
+    def _auto_parent_module_item(self, module, item, default_parent=None):
+        if module.parent_joint.get():
+            parent_item = self._joint_items[module.parent_joint.get()]
+        else:
+            parent_item = default_parent or self.model.invisibleRootItem()
+        parent_item.appendRow(item)
+
+    def _auto_parent_joint_item(self, joint, item):
+        module = self._joint_parent_modules[joint]
+        parent_item = self._module_items[module]
+        parent_item.appendRow(item)
 
     def _on_modules_created(self, modules):
         self._populate_model(modules)
 
     def _on_modules_updated(self, modules):
         for module in modules:
-            item = self._module_items[module]
+            module_item = self._module_items[module]
 
             module_name = module.node_name
-            was_renamed = item.text() != module_name
+            was_renamed = module_item.text() != module_name
             if was_renamed:
-                item.setText(module_name)
+                module_item.setText(module_name)
 
-            joint_items = [item.child(row) for row in xrange(item.rowCount())]
-            joint_item_names = [item.text() for item in joint_items]
+            joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
             joints = module.deform_joints.get()
 
             if len(joints) > len(joint_items):
-                pass
+                self._fill_missing_joint_items(module, joints, joint_items)
+            else:
+                self._remove_unused_items(joints, joint_items)
+
+            if was_renamed:
+                self._rename_child_joint_items(module_item, joints)
+
+    def _fill_missing_joint_items(self, module, joints, joint_items):
+        added_joints = joints[len(joint_items):]
+        for joint in added_joints:
+            joint_item = self._create_joint_item(module, joint)
+            self._auto_parent_joint_item(joint, joint_item)
+
+    def _remove_unused_items(self, joints, joint_items):
+        items_to_remove = joint_items[len(joints):]
+        for joint_item in items_to_remove:
+            parent = joint_item.parent()
+            row = joint_item.row()
+            if joint_item.rowCount() > 0:
+                self._reparent_child_items_to_previous_sibling(joint_item)
+            parent.removeRow(row)
+
+    def _reparent_child_items_to_previous_sibling(self, item):
+        parent = item.parent()
+        row = item.row()
+        big_brother = parent.child(row - 1)
+        for child_row in range(item.rowCount()):
+            child_item = item.takeChild(child_row)
+            big_brother.appendRow(child_item)
+
+    def _rename_child_joint_items(self, module_item, joint_names):
+        joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
+        for name, joint_item in zip(joint_names, joint_items):
+            joint_item.setText(name)
 
     def _on_modules_deleted(self, modules):
         for module in modules:
