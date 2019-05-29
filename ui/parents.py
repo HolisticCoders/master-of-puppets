@@ -9,6 +9,7 @@ from mop.ui.settings import get_settings
 from mop.ui.signals import clear_all_signals, publish, subscribe
 from mop.vendor.Qt import QtWidgets, QtCore
 import mop.dag
+from mop.core.rig import Rig
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,7 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
             mop.dag.remove_parent_spaces(ctl)
 
         if drivers:
+            Rig.reset_pose()
             mop.dag.create_space_switching(ctl, drivers, space_type)
 
         data = json.dumps({

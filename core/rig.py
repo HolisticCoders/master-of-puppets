@@ -250,8 +250,9 @@ class Rig(MopNode):
             logger.info("Publishing: " + module.node_name)
             module.publish()
 
+    @staticmethod
     @undoable
-    def reset_pose(self):
+    def reset_pose():
         for control in cmds.ls("*_ctl"):
             mop.dag.reset_node(control)
 
