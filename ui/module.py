@@ -1,3 +1,4 @@
+import logging
 from functools import partial
 from operator import attrgetter
 from weakref import WeakValueDictionary
@@ -13,6 +14,8 @@ from mop.ui.fieldwidgets import map_field_to_widget
 from mop.core.rig import Rig
 import mop.metadata
 from mop.core.fields import ObjectField, ObjectListField
+
+logger = logging.getLogger(__name__)
 
 
 class ModulePanel(QtWidgets.QDockWidget):
@@ -141,9 +144,14 @@ class ModulePanel(QtWidgets.QDockWidget):
         if button != QtWidgets.QMessageBox.Yes:
             return
         rig = Rig()
+        modules = self.modules[:]
         for module in self.modules:
+            if module.name.get() == 'root':
+                logger.warning('Cannot delete root module.')
+                modules.remove(module)
+                continue
             rig.delete_module(module.node_name)
-        publish('modules-deleted', self.modules)
+        publish('modules-deleted', modules)
 
     def _duplicate_module(self):
         """Duplicate the selected module."""
