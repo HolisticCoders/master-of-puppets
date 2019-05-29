@@ -167,6 +167,7 @@ class RigModule(MopNode):
                 parent=self.node_name
             )
         )
+        cmds.setAttr(self.placement_group.get() + '.inheritsTransform', False)
         self.controls_group.set(
             self.add_node(
                 'transform',
