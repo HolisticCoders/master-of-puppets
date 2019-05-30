@@ -22,7 +22,7 @@ class Chain(AbstractChain):
 
     def build(self):
         fk_parent = self.controls_group.get()
-        for fk_id, joint in enumerate(self.driving_joints):
+        for fk_id, joint in enumerate(self.deform_joints):
             # Add the fk control
             fk_ctl, parent_group = self.add_control(joint)
             cmds.parent(parent_group, fk_parent)

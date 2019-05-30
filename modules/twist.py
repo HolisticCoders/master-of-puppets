@@ -110,12 +110,12 @@ class Twist(RigModule):
             quat_to_euler + '.inputQuatW',
         )
 
-        driving_joints = self.driving_joints
+        deform_joints = self.deform_joints
         if not self.reverse.get():
-            driving_joints.reverse()
+            deform_joints.reverse()
         factor = 1.0 / self.joint_count.get()
 
-        for i, joint in enumerate(driving_joints):
+        for i, joint in enumerate(deform_joints):
             current_factor = (i + 1) * factor
             current_factor_reverse = 1 - current_factor
             if self.counter_twist.get():

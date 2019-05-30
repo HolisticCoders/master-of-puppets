@@ -69,10 +69,7 @@ class RigModule(MopNode):
     # group holding all this module's controls
     controls_group = ObjectField()
 
-    # group holding all this module's driving joints
-    driving_group = ObjectField()
-
-    # group holding all this module's driving joints
+    # group holding all this module's extra stuff
     extras_group = ObjectField()
 
     # list of all of this module's deform joints
@@ -115,15 +112,6 @@ class RigModule(MopNode):
             self.is_initialized.set(True)
 
     @property
-    def driving_joints(self):
-        joints = cmds.listRelatives(self.driving_group.get(), type='joint', allDescendents=True)
-        if joints is None:
-            return []
-        else:
-            # listRelative returns a reversed list (children first)
-            return list(reversed(joints))
-
-    @property
     def parent_module(self):
         parent_joint = self.parent_joint.get()
         if parent_joint:
@@ -154,7 +142,8 @@ class RigModule(MopNode):
     def initialize(self):
         """Creation of all the needed placement nodes.
 
-        This must at least include all the module's driving joints.
+        This must at least include all the module's deform joints.
+        Some module may inclue placement locators as well.
 
         Will be called automatically when creating the module.
         You need to overwrite this method in your subclasses.
@@ -176,16 +165,6 @@ class RigModule(MopNode):
                 parent = self.node_name
             )
         )
-
-        self.driving_group.set(
-            self.add_node(
-                'transform',
-                role='grp',
-                description='driving',
-                parent = self.node_name
-            )
-        )
-        cmds.setAttr(self.driving_group.get() + '.visibility', False)
 
         self.extras_group.set(
             self.add_node(
@@ -304,14 +283,13 @@ class RigModule(MopNode):
         Call this method instead of `build()` to make sure
         everything is setup properly
         """
-        self.create_driving_joints()
         self.build()
         self.is_built.set(True)
 
     def build(self):
         """Actual rigging of the module.
 
-        The end result should _always_ drive your module's driving joints
+        The end result should _always_ drive your module's deform joints
         You need to overwrite this method in your subclasses.
         """
         raise NotImplementedError
@@ -442,40 +420,6 @@ class RigModule(MopNode):
 
         self.placement_locators.append(locator)
         return locator
-
-    def create_driving_joints(self):
-        deform_joints = self.deform_joints.get()
-        duplicate = cmds.duplicate(
-            deform_joints,
-            parentOnly=True,
-            renameChildren=True
-        )
-        driving_joints = []
-        for joint in duplicate:
-            metadata = mop.metadata.metadata_from_name(joint)
-            metadata['role'] = 'driving'
-            new_name = mop.metadata.name_from_metadata(metadata)
-            joint = cmds.rename(joint, new_name)
-            driving_joints.append(joint)
-
-        for deform, driving in zip(deform_joints, driving_joints):
-            # Find out who the father is.
-            deform_parent = cmds.listRelatives(deform, parent=True)
-            if deform_parent:
-                deform_parent = deform_parent[0]
-            if (
-                deform_parent == self.parent_joint.get() or
-                deform_parent == self.rig.skeleton_group.get()
-            ):
-                parent = self.driving_group.get()
-            else:
-                # deform_parent should be one of the module's deform joints.
-                parent = deform_parent.replace('deform', 'driving')
-            # Reunite the family.
-            if parent != cmds.listRelatives(driving, parent=True)[0]:
-                cmds.parent(driving, parent)
-
-            mop.dag.matrix_constraint(driving, deform)
 
     def add_control(
         self,

@@ -72,7 +72,7 @@ class Corrective(RigModule):
 
         self.create_locators()
         value_range = self._build_angle_reader()
-        for joint in self.driving_joints:
+        for joint in self.deform_joints:
             ctl = self._add_control(joint)
             condition_nodes = []
             metadata = mop.metadata.metadata_from_name(joint)

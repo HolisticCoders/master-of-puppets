@@ -19,7 +19,7 @@ class Rivet(RigModule):
         self._add_deform_joint()
 
     def build(self):
-        joint = self.driving_joints[0]
+        joint = self.deform_joints[0]
         ctl, parent_group = self.add_control(joint)
         mop.dag.snap_first_to_last(parent_group, joint)
         cmds.parent(parent_group, self.controls_group.get())
