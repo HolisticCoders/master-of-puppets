@@ -1,7 +1,6 @@
 import maya.cmds as cmds
 import json
 import random
-import pdb
 from collections import defaultdict
 from weakref import WeakValueDictionary
 
@@ -54,11 +53,8 @@ class RigPanel(QtWidgets.QWidget):
         actions_layout.addWidget(self.publish_button)
 
         self._module_icon = QtGui.QIcon(':QR_settings.png')
-        self._joint_icon = QtGui.QIcon(':kinJoint.png')
-        self._items = {}
+        self._item_modules = {}
         self._module_items = {}
-        self._joint_items = {}
-        self._joint_parent_modules = WeakValueDictionary()
 
         self.model = ModulesModel()
         self._populate_model(Rig().rig_modules)
@@ -82,60 +78,33 @@ class RigPanel(QtWidgets.QWidget):
         subscribe('modules-updated', self._on_modules_updated)
         subscribe('modules-deleted', self._on_modules_deleted)
 
-    def _is_module_item(self, item):
-        # HACK: 'cause you know, nothing's perfect.
-        # https://bugreports.qt.io/browse/PYSIDE-74
-        return id(item) in (id(x) for x in self._module_items.values())
-
     def _populate_model(self, modules):
         new_module_items = []
-        new_joint_items = []
         for module in modules:
             module_item = self._create_module_item(module)
             new_module_items.append((module, module_item))
-            for joint in module.deform_joints:
-                joint_item = self._create_joint_item(module, joint)
-                new_joint_items.append((joint, joint_item))
 
         root = self.model.invisibleRootItem()
 
         for module, item in new_module_items:
             self._auto_parent_module_item(module, item, root)
 
-        for joint, item in new_joint_items:
-            self._auto_parent_joint_item(joint, item)
-
     def _create_module_item(self, module):
         item = QtGui.QStandardItem(module.node_name)
         item.setIcon(self._module_icon)
         item.setEditable(False)
-        item.setDropEnabled(False)
+        item.setDropEnabled(True)
         if module.name.get() == 'root':
             item.setDragEnabled(False)
         self._module_items[module] = item
-        self._items[item.text()] = module
-        return item
-
-    def _create_joint_item(self, module, joint):
-        item = QtGui.QStandardItem(joint)
-        item.setIcon(self._joint_icon)
-        item.setEditable(False)
-        item.setDragEnabled(False)
-        self._joint_items[joint] = item
-        self._joint_parent_modules[joint] = module
-        self._items[item.text()] = joint
+        self._item_modules[item.text()] = module
         return item
 
     def _auto_parent_module_item(self, module, item, default_parent=None):
-        if module.parent_joint.get():
-            parent_item = self._joint_items[module.parent_joint.get()]
+        if module.parent_module:
+            parent_item = self._module_items[module.parent_module]
         else:
             parent_item = default_parent or self.model.invisibleRootItem()
-        parent_item.appendRow(item)
-
-    def _auto_parent_joint_item(self, joint, item):
-        module = self._joint_parent_modules[joint]
-        parent_item = self._module_items[module]
         parent_item.appendRow(item)
 
     def _on_modules_created(self, modules):
@@ -148,50 +117,14 @@ class RigPanel(QtWidgets.QWidget):
             module_name = module.node_name
             was_renamed = module_item.text() != module_name
             if was_renamed:
+                del self._item_modules[module_item.text()]
+                self._item_modules[module_name] = module
                 module_item.setText(module_name)
-
-            joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
-            joints = module.deform_joints.get()
-
-            if len(joints) > len(joint_items):
-                self._fill_missing_joint_items(module, joints, joint_items)
-            else:
-                self._remove_unused_items(joints, joint_items)
-
-            if was_renamed:
-                self._rename_child_joint_items(module_item, joints)
-
-    def _fill_missing_joint_items(self, module, joints, joint_items):
-        added_joints = joints[len(joint_items):]
-        for joint in added_joints:
-            joint_item = self._create_joint_item(module, joint)
-            self._auto_parent_joint_item(joint, joint_item)
-
-    def _remove_unused_items(self, joints, joint_items):
-        items_to_remove = joint_items[len(joints):]
-        for joint_item in items_to_remove:
-            parent = joint_item.parent()
-            row = joint_item.row()
-            if joint_item.rowCount() > 0:
-                self._reparent_child_items_to_previous_sibling(joint_item)
-            parent.removeRow(row)
-
-    def _reparent_child_items_to_previous_sibling(self, item):
-        parent = item.parent()
-        row = item.row()
-        big_brother = parent.child(row - 1)
-        for child_row in range(item.rowCount()):
-            child_item = item.takeChild(child_row)
-            big_brother.appendRow(child_item)
-
-    def _rename_child_joint_items(self, module_item, joint_names):
-        joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
-        for name, joint_item in zip(joint_names, joint_items):
-            joint_item.setText(name)
 
     def _on_modules_deleted(self, modules):
         for module in modules:
-            item = self._module_items[module]
+            item = self._module_items.pop(module)
+            del self._item_modules[item.text()]
             parent_item = item.parent()
             if not parent_item:
                 continue
@@ -201,36 +134,6 @@ class RigPanel(QtWidgets.QWidget):
     def _refresh_model(self, modules=None):
         # TODO: update buttons state
         pass
-
-    def _find_index(self, module, index=QtCore.QModelIndex()):
-        """Return a Qt index to ``module``.
-
-        If there is no modules model yet, or the module cannot be
-        found, return ``None``.
-
-        A matching index is an index containing a module of the same
-        :attr:`mop.core.module.RigModule.node_name` as the passed
-        module.
-
-        :param module: Module to find the index of.
-        :param index: Parent index of the search, since we are in a
-                      tree view.
-        :type module: mop.core.module.RigModule
-        :type index: PySide2.QtCore.QModelIndex
-        :rtype: PySide2.QtCore.QModelIndex
-        """
-        if not self.model:
-            return None
-        name = module.node_name
-        for i in xrange(self.model.rowCount(index)):
-            child = self.model.index(i, 0, index)
-            pointer = child.internalPointer()
-            if not isinstance(pointer, basestring):
-                if pointer.node_name == name:
-                    return child
-            _index = self._find_index(module, child)
-            if _index:
-                return _index
 
     def _on_random_colors_toggled(self, checked):
         if not self.model:
@@ -266,24 +169,14 @@ class RigPanel(QtWidgets.QWidget):
         selection = self.tree_view.selectionModel()
         selected = selection.selectedRows()
         items = [self.model.itemFromIndex(index) for index in selected]
-        joints = [
-            self._items[item.text()]
-            for item in items
-            if not self._is_module_item(item)
-        ]
-        modules = [
-            self._items[item.text()]
-            for item in items
-            if self._is_module_item(item)
-        ]
-        cmds.select(joints)
+        modules = [self._item_modules[item.text()] for item in items]
         publish('selected-modules-changed', modules)
 
 
 class ModulesTree(QtWidgets.QTreeView):
-    """A tree view for modules and their deform joints.
+    """A tree view for modules.
 
-    You can drag and drop a module on a joint to parent it.
+    You can drag and drop a module on another one to parent it.
     """
 
     def __init__(self, parent=None):
@@ -297,10 +190,9 @@ class ModulesTree(QtWidgets.QTreeView):
 
 
 class ModulesModel(QtGui.QStandardItemModel):
-    """A model storing modules and their deform joints.
+    """A model storing modules.
 
-    In this model, joints are stored as :class:`str` instances,
-    and modules as :class:`mop.core.module.RigModule`.
+    In this model, modules are stored as :class:`mop.core.module.RigModule`.
     """
 
     def __init__(self, parent=None):
@@ -366,14 +258,15 @@ class ModulesModel(QtGui.QStandardItemModel):
         if action == QtCore.Qt.IgnoreAction:
             return True
 
-        names = json.loads(data.data('application/text').data())
-        joint = self.data(parent, QtCore.Qt.DisplayRole)
-
         rig = Rig()
+
+        names = json.loads(data.data('application/text').data())
+        module_name = self.data(parent, QtCore.Qt.DisplayRole)
+        parent_module = rig.get_module(module_name)
         modules = []
         for name in names:
             module = rig.get_module(name)
-            module.parent_joint.set(joint)
+            module.parent_module = parent_module
             module.update()
             modules.append(module)
 
