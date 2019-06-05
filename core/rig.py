@@ -168,7 +168,7 @@ class Rig(MopNode):
 
     @undoable
     def build(self):
-
+        self.deactivate_move_joints_mode()
         nodes_before_build = set(cmds.ls("*"))
         for module in self.rig_modules:
             logger.info("Building: " + module.node_name)
@@ -239,7 +239,7 @@ class Rig(MopNode):
                     json.dumps(attributes_state),
                     type="string",
                 )
-            cmds.setAttr(module.placement_group.get() + ".visibility", True)
+            cmds.setAttr(module.guide_group.get() + ".visibility", True)
 
         for node in self.skeleton:
             for attribute in [".translate", ".rotate", ".scale"]:
@@ -255,6 +255,7 @@ class Rig(MopNode):
         # make the deform joints unselectable
         cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", True)
         cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 2)
+        self.activate_move_joints_mode()
         self.is_built.set(False)
 
     def publish(self):
@@ -349,3 +350,30 @@ class Rig(MopNode):
                     cmds.setAttr(new_node + "." + attr_name, value)
         return new_module
 
+    def activate_move_joints_mode(self):
+        for module in self.rig_modules:
+            for joint in module.deform_joints:
+                plugs = cmds.listConnections(joint + '.worldMatrix[0]', type='skinCluster', plugs=True)
+                if not plugs:
+                    continue
+                for plug in plugs:
+                    regex = re.match("(.*).matrix\[([0-9])\]", plug)
+                    node, index = regex.groups()
+                    cmds.connectAttr(joint + ".worldInverseMatrix[0]", node + '.bindPreMatrix[{}]'.format(index))
+
+    def deactivate_move_joints_mode(self):
+        for module in self.rig_modules:
+            for joint in module.deform_joints:
+                plugs = cmds.listConnections(joint + '.worldInverseMatrix[0]', type='skinCluster', plugs=True)
+                if not plugs:
+                    continue
+                for plug in plugs:
+                    regex = re.match("(.*).bindPreMatrix\[([0-9])\]", plug)
+                    node, index = regex.groups()
+                    cmds.disconnectAttr(joint + ".worldInverseMatrix[0]", node + ".bindPreMatrix[{}]".format(index))
+                    mat = cmds.getAttr(joint + ".worldInverseMatrix[0]")
+                    cmds.setAttr(node + ".bindPreMatrix[{}]".format(index), mat, type="matrix")
+
+                bind_poses = cmds.dagPose(joint, bindPose=True, q=True)
+                for bind_pose in bind_poses:
+                    cmds.dagPose(joint, reset=True, n=bind_pose)
