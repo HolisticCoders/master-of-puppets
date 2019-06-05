@@ -85,6 +85,10 @@ class Rig(MopNode):
         if not cmds.objExists("SKELETON"):
             self.skeleton_group.set(cmds.createNode("transform", name="SKELETON"))
             cmds.parent(self.skeleton_group.get(), "RIG")
+            
+            # make the deform_joints unselectable
+            cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", True)
+            cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 2)
 
     def _add_default_modules(self):
         for module_type, data in default_modules.iteritems():
@@ -176,7 +180,7 @@ class Rig(MopNode):
                 if attributes_state:
                     attributes_state = json.loads(attributes_state)
                     mop.attributes.set_attributes_state(ctl, attributes_state)
-            cmds.setAttr(module.placement_group.get() + ".visibility", False)
+            cmds.setAttr(module.guide_group.get() + ".visibility", False)
 
         nodes_after_build = set(cmds.ls("*"))
         build_nodes = list(nodes_after_build - nodes_before_build)
@@ -209,6 +213,11 @@ class Rig(MopNode):
 
 
         self._tag_nodes_for_unbuild(build_nodes)
+
+        # make the deform joints selectable
+        cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", False)
+        cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 0)
+
         self.is_built.set(True)
 
     @undoable
@@ -240,8 +249,12 @@ class Rig(MopNode):
                     cmds.disconnectAttr(input_attr, attr)
         cmds.delete(self.build_nodes)
         for module in self.rig_modules:
+            module._constraint_deforms_to_guides()
             module.is_built.set(False)
 
+        # make the deform joints unselectable
+        cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", True)
+        cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 2)
         self.is_built.set(False)
 
     def publish(self):

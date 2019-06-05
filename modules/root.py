@@ -10,9 +10,17 @@ logger = logging.getLogger(__name__)
 
 class Root(RigModule):
 
-    def initialize(self):
-        super(Root, self).initialize()
-        self._add_deform_joint()
+    def create_guide_nodes(self):
+        """The root module doesn't need guide joints."""
+        pass
+
+    def constraint_deforms_to_guides(self):
+        pass
+
+    def create_deform_joints(self):
+        if len(self.deform_joints) == 0:
+            joint = self.add_deform_joint()
+            self.end_joint.set(joint)
 
     def build(self):
         global_ctl, global_buffer = self.add_control(self.deform_joints[0])

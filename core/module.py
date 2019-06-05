@@ -15,6 +15,7 @@ from mop.modules import all_rig_modules
 from mop.utils.dg import find_mirror_node
 import mop.attributes
 import mop.dag
+import mop.utils.dg as _dgutils
 import mop.metadata
 import mop.config
 
@@ -26,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 class RigModule(MopNode):
 
+    # The base name of the module
+    # for example: the name of the module "root_M_mod" is "root"
     name = StringField(
         displayable=True,
         editable=True,
@@ -33,6 +36,8 @@ class RigModule(MopNode):
         unique=True,
         tooltip="Base name of the module"
     )
+
+    # The side of this module.
     side = EnumField(
         choices=['M', 'L', 'R'],
         displayable=True,
@@ -44,6 +49,8 @@ class RigModule(MopNode):
         "R: Right"
     )
 
+    # The mirror type of this module.
+    # The two modes mimic maya's mirror modes.
     mirror_type = EnumField(
         choices=['Behavior', 'Orientation'],
         displayable=True,
@@ -52,35 +59,47 @@ class RigModule(MopNode):
         tooltip="How to mirror the module."
     )
 
+    # The mirror module of this module.
     _module_mirror = ObjectField()
 
+    # Side of this module when it's created.
     default_side = 'M'
 
+    # all the nodes created by this modules `self.add_node`.
     owned_nodes = ObjectListField()
 
-    # Joint of the rig skeleton under which the deform joints will be parented.
-    parent_joint = ObjectField()
+    # Parent module of this module.
+    # the deform joints will be parented under the parent_module.end_joint.
+    # this is accessed by the `property` self.parent_module
+    _parent_module = ObjectField()
 
+    # Joint under which the child modules' joints will be parented to.
+    end_joint = ObjectField()
+
+    # The type of this module. Used to re-instantiate the object from the maya node.
     module_type = StringField()
 
-    # group holding all this module's placement nodes
-    placement_group = ObjectField()
+    # group holding all this module's guide nodes.
+    guide_group = ObjectField()
 
-    # group holding all this module's controls
+    # group holding all this module's controls.
     controls_group = ObjectField()
 
-    # group holding all this module's extra stuff
+    # group holding all this module's extra stuff.
     extras_group = ObjectField()
 
-    # list of all of this module's deform joints
+    # list of all of this module's deform joints.
     deform_joints = ObjectListField()
 
-    # list of all of this module's placement_locators
-    placement_locators = ObjectListField()
+    # list of all of this module's guide_nodes.
+    guide_nodes = ObjectListField()
 
+    # All the controllers of this module.
     controllers = ObjectListField()
 
-    def __init__(self, name, side='M', parent_joint=None, rig=None):
+    guide_to_def_constraints = ObjectListField()
+
+    def __init__(self, name, side='M', parent_module=None, rig=None):
         if cmds.objExists(name):
             self.node_name = name
         else:
@@ -102,23 +121,26 @@ class RigModule(MopNode):
             if not parent or parent[0] != rig.modules_group.get():
                 cmds.parent(self.node_name, rig.modules_group.get())
 
-            if parent_joint:
-                self.parent_joint.set(parent_joint)
-                mop.dag.matrix_constraint(parent_joint, self.node_name)
+            if parent_module:
+                self.parent_module = parent_module
+                # mop.dag.matrix_constraint(parent_joint, self.node_name)
 
             self.initialize()
-            self.place_placement_nodes()
+            self.place_guide_nodes()
             self.update()
             self.is_initialized.set(True)
 
     @property
     def parent_module(self):
-        parent_joint = self.parent_joint.get()
-        if parent_joint:
-            parent_module = cmds.listConnections(parent_joint + '.module', source=True)[0]
+        parent_module = self._parent_module.get()
+        if parent_module:
             module_type = cmds.getAttr(parent_module + '.module_type')
             parent_module = all_rig_modules[module_type](parent_module, rig=self.rig)
             return parent_module
+
+    @parent_module.setter
+    def parent_module(self, value):
+        self._parent_module.set(value)
 
     @property
     def module_mirror(self):
@@ -142,21 +164,20 @@ class RigModule(MopNode):
     def initialize(self):
         """Creation of all the needed placement nodes.
 
-        This must at least include all the module's deform joints.
-        Some module may inclue placement locators as well.
+        This must at least include all the module's Guide nodes and Deform joints.
 
         Will be called automatically when creating the module.
         You need to overwrite this method in your subclasses.
         """
-        self.placement_group.set(
+        self.guide_group.set(
             self.add_node(
                 'transform',
                 'grp',
-                description='placement',
+                description='guide',
                 parent=self.node_name
             )
         )
-        cmds.setAttr(self.placement_group.get() + '.inheritsTransform', False)
+        cmds.setAttr(self.guide_group.get() + '.inheritsTransform', False)
         self.controls_group.set(
             self.add_node(
                 'transform',
@@ -175,30 +196,29 @@ class RigModule(MopNode):
             )
         )
         cmds.setAttr(self.extras_group.get() + '.visibility', False)
+        self.create_guide_nodes()
+        self.create_deform_joints()
 
-    def place_placement_nodes(self):
-        """Place the deform joints and placement locators based on the config."""
-        deform_joint_matrices = mop.config.default_module_placement.get(
-            self.__class__.__name__, {}
-        ).get("deform_joints")
-        for i, joint in enumerate(self.deform_joints):
-            try:
-                matrix = deform_joint_matrices[i]
-            except Exception:
-                logger.warning("No default matrix found of {}".format(joint))
-            else:
-                cmds.xform(joint, matrix=matrix, worldSpace=True)
+    def create_guide_nodes(self):
+        """Create all the guide nodes for this module."""
+        raise NotImplementedError
 
-        placement_locators_matrices = mop.config.default_module_placement.get(
+    def create_deform_joints(self):
+        """Create all the deform joints for this module."""
+        raise NotImplementedError
+
+    def place_guide_nodes(self):
+        """Place the deform joints and guide nodes based on the config."""
+        matrices = mop.config.default_guides_placement.get(
             self.__class__.__name__, {}
-        ).get("placement_locators")
-        for i, joint in enumerate(self.placement_locators):
+        )
+        for i, node in enumerate(self.guide_nodes):
             try:
-                matrix = placement_locators_matrices[i]
+                matrix = matrices[i]
             except Exception:
-                logger.warning("No default matrix found of {}".format(joint))
+                logger.debug("No default matrix found of {}".format(node))
             else:
-                cmds.xform(joint, matrix=matrix, worldSpace=True)
+                cmds.xform(node, matrix=matrix, worldSpace=True)
 
     def update(self):
         """Update the maya scene based on the module's fields
@@ -244,30 +264,37 @@ class RigModule(MopNode):
                         self.node_name + '.' + attr,
                         new_node + '__' + attr_name
                     )
+        self.create_guide_nodes()
+        self.create_deform_joints()
+        self._constraint_deforms_to_guides()
 
     def update_parent_joint(self):
+        """Snap and constraint the module's node to the parent_module.end_joint.
+
+        This lets the module's owned DAG nodes be in the same space as its deform_joints.
+        """
         # delete the old constraint
-        old_constraint_nodes = []
+        # old_constraint_nodes = []
 
-        first_level_nodes = cmds.listConnections(
-            self.node_name + '.translate',
-            source=True
-        ) or []
-        old_constraint_nodes.extend(first_level_nodes)
+        # first_level_nodes = cmds.listConnections(
+        #     self.node_name + '.translate',
+        #     source=True
+        # ) or []
+        # old_constraint_nodes.extend(first_level_nodes)
 
-        for node in first_level_nodes:
-            second_level_nodes = cmds.listConnections(
-                node + '.inputMatrix',
-                source=True
-            ) or []
-            old_constraint_nodes.extend(second_level_nodes)
+        # for node in first_level_nodes:
+        #     second_level_nodes = cmds.listConnections(
+        #         node + '.inputMatrix',
+        #         source=True
+        #     ) or []
+        #     old_constraint_nodes.extend(second_level_nodes)
 
-        if old_constraint_nodes:
-            cmds.delete(old_constraint_nodes)
+        # if old_constraint_nodes:
+        #     cmds.delete(old_constraint_nodes)
 
-        parent = self.parent_joint.get()
-        if parent:
-            mop.dag.matrix_constraint(parent, self.node_name)
+        # parent = self.parent_joint.get()
+        # if parent:
+        #     mop.dag.matrix_constraint(parent, self.node_name)
 
     def _update_node_name(self, node):
         metadata = mop.metadata.metadata_from_name(node)
@@ -283,6 +310,7 @@ class RigModule(MopNode):
         Call this method instead of `build()` to make sure
         everything is setup properly
         """
+        cmds.delete(self.guide_to_def_constraints.get())
         self.build()
         self.is_built.set(True)
 
@@ -353,7 +381,7 @@ class RigModule(MopNode):
         self.owned_nodes.append(node)
         return node
 
-    def _add_deform_joint(
+    def add_deform_joint(
         self,
         parent=None,
         object_id=None,
@@ -374,8 +402,8 @@ class RigModule(MopNode):
             description=description
         )
 
-        if not parent:
-            parent = self.parent_joint.get()
+        if not parent and self.parent_module:
+            parent = self.parent_module.end_joint.get()
         if not parent:
             parent = self.rig.skeleton_group.get()
 
@@ -393,21 +421,25 @@ class RigModule(MopNode):
         self.deform_joints.append(new_joint)
         return new_joint
 
-    def _add_placement_locator(self, description=None, object_id=None, parent=None):
-        """Creates a new placement locator for this module.
+    def add_guide_node(
+        self,
+        parent=None,
+        object_id=None,
+        description=None,
+    ):
+        """Creates a new guide node for this module."""
+        if object_id is None:
+            object_id = len(self.guide_nodes)
 
-        A placement locator is a way to get placement data without polluting
-        the deform skeleton.
-        """
-        locator = self.add_node(
+        guide = self.add_node(
             'locator',
-            role='placement',
+            role='guide',
             object_id=object_id,
             description=description
         )
         if not parent:
             parent = self.placement_group.get()
-        cmds.parent(locator, parent)
+        cmds.parent(guide, parent)
 
         for transform in ['translate', 'rotate', 'scale']:
             if transform == 'scale':
@@ -416,10 +448,10 @@ class RigModule(MopNode):
                 value = 0
             for axis in 'XYZ':
                 attr = transform + axis
-                cmds.setAttr(locator + '.' + attr, value)
+                cmds.setAttr(guide + '.' + attr, value)
 
-        self.placement_locators.append(locator)
-        return locator
+        self.guide_nodes.append(guide)
+        return guide
 
     def add_control(
         self,
@@ -487,6 +519,21 @@ class RigModule(MopNode):
         self.controllers.append(ctl)
         return ctl, parent_group
 
+    def _constraint_deforms_to_guides(self):
+        """Catch all the nodes created by `self.constraint_deforms_to_guides` to delete them later on."""
+        cmds.delete(self.guide_to_def_constraints.get())
+        with _dgutils.CatchCreatedNodes() as constraint_nodes:
+            self.constraint_deforms_to_guides()
+        self.guide_to_def_constraints.set(constraint_nodes)
+
+
+    def constraint_deforms_to_guides(self):
+        """Constraint the deform joints to the guide nodes
+
+        You need to overwrite this in subclasses.
+        """
+        raise NotImplementedError
+
     def find_non_mirrored_parents(self, non_mirrored_parents=None):
         """Recursively find the parent module that are not mirrored."""
 
@@ -500,7 +547,7 @@ class RigModule(MopNode):
             RigModule.find_non_mirrored_parents(parent, non_mirrored_parents)
 
         return non_mirrored_parents
-    
+
     def update_mirror(self):
 
         # update all the fields to match the mirror module
@@ -562,3 +609,4 @@ class RigModule(MopNode):
                 cmds.setAttr(new_node + '.scale', 1, 1, 1)
                 orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
                 cmds.xform(new_node, rotation=orig_orient, ws=True)
+
