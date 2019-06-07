@@ -302,15 +302,15 @@ class Rig(MopNode):
         orig_name = module.name.get()
         orig_type = module.module_type.get()
 
-        orig_parent_joint = module.parent_joint.get()
-        metadata = mop.metadata.metadata_from_name(orig_parent_joint)
+        orig_parent_module = module.parent_module
+        metadata = mop.metadata.metadata_from_name(orig_parent_module.node_name)
         metadata["side"] = new_side
-        new_parent_joint = mop.metadata.name_from_metadata(metadata)
-        if not cmds.objExists(new_parent_joint):
-            new_parent_joint = orig_parent_joint
+        new_parent_module = mop.metadata.name_from_metadata(metadata)
+        if not cmds.objExists(new_parent_module):
+            new_parent_module = orig_parent_module
 
         new_module = self.add_module(
-            orig_type, name=orig_name, side=new_side, parent_joint=new_parent_joint
+            orig_type, name=orig_name, side=new_side, parent_module=new_parent_module
         )
 
         module.module_mirror = self.node_name
@@ -326,9 +326,8 @@ class Rig(MopNode):
         module_type = module.module_type.get()
         name = module.name.get()
         side = module.side.get()
-        parent_joint = module.parent_joint.get()
         new_module = module.rig.add_module(
-            module_type, name=name, side=side, parent_joint=parent_joint
+            module_type, name=name, side=side, parent_module=module.parent_module
         )
         for field in module.fields:
             if field.name in ["name", "side"]:
@@ -338,9 +337,9 @@ class Rig(MopNode):
                 getattr(new_module, field.name).set(value)
         new_module.update()
 
-        orig_nodes = module.deform_joints.get() + module.placement_locators.get()
-        new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
-        for orig_node, new_node in zip(orig_nodes, new_nodes):
+        # orig_nodes = module.deform_joints.get() + module.guide_nodes.get()
+        # new_nodes = new_module.deform_joints.get() + new_module.guide_nodes.get()
+        for orig_node, new_node in zip(module.guide_nodes, new_module.guide_nodes):
             for attr in ["translate", "rotate", "scale", "jointOrient"]:
                 for axis in "XYZ":
                     attr_name = attr + axis

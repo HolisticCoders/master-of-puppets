@@ -571,10 +571,8 @@ class RigModule(MopNode):
         self.update()
 
         # mirror the nodes based on the mirror type
-        orig_nodes = self.module_mirror.deform_joints.get() + self.module_mirror.placement_locators.get()
-        new_nodes = self.deform_joints.get() + self.placement_locators.get()
         mirror_type = self.mirror_type.get()
-        for orig_node, new_node in zip(orig_nodes, new_nodes):
+        for orig_node, new_node in zip(self.module_mirror.guide_nodes, self.guide_nodes):
             if mirror_type.lower() == 'behavior':
                 world_reflexion_mat = om2.MMatrix([
                     -1.0, -0.0, -0.0, 0.0,
