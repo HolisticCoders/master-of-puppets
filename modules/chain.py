@@ -40,19 +40,23 @@ class Chain(RigModule):
             for index in range(diff):
                 new_joint = self.add_deform_joint()
                 cmds.setAttr(new_joint + '.translateX', 5)
+                self.end_joint.set(new_joint)
+
+                # parent the child modules to the new last_joint
+                for module in self.rig.rig_modules:
+                    if module.parent_module == self:
+                        module.update()
+
         elif diff < 0:
             joints = self.deform_joints.get()
             joints_to_delete = joints[diff:]
             joints_to_keep = joints[:len(joints) + diff]
+            self.end_joint.set(joints_to_keep[-1])
 
-            # for module in self.rig.rig_modules:
-            #     if module.parent_joint.get() in joints_to_delete:
-            #         if joints_to_keep:
-            #             new_parent_joint = joints_to_keep[-1]
-            #         else:
-            #             new_parent_joint = self.parent_joint.get()
-            #         module.parent_joint.set(new_parent_joint)
-            #         module.update()
+            # parent the child modules to the new last_joint
+            for module in self.rig.rig_modules:
+                if module.parent_module == self:
+                    module.update()
 
             cmds.delete(joints_to_delete)
 
