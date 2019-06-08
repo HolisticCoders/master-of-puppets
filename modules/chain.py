@@ -43,9 +43,9 @@ class Chain(RigModule):
                 self.end_joint.set(new_joint)
 
                 # parent the child modules to the new last_joint
-                for module in self.rig.rig_modules:
-                    if module.parent_module == self:
-                        module.update()
+                # for module in self.rig.rig_modules:
+                #     if module.parent_module == self:
+                #         module.update()
 
         elif diff < 0:
             joints = self.deform_joints.get()
@@ -54,9 +54,9 @@ class Chain(RigModule):
             self.end_joint.set(joints_to_keep[-1])
 
             # parent the child modules to the new last_joint
-            for module in self.rig.rig_modules:
-                if module.parent_module == self:
-                    module.update()
+            # for module in self.rig.rig_modules:
+            #     if module.parent_module == self:
+            #         module.update()
 
             cmds.delete(joints_to_delete)
 
