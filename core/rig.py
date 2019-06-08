@@ -157,14 +157,12 @@ class Rig(MopNode):
             return
 
         module_to_del = self.get_module(module_node_name)
-        deform_joints = module_to_del.deform_joints.get()
         for module in self.rig_modules:
-            if module.parent_joint.get() in deform_joints:
-                new_parent_joint = module_to_del.parent_joint.get()
-                module.parent_joint.set(new_parent_joint)
+            if module.parent_module == module_to_del:
+                module.parent_module.set(module_to_del.parent_module.get())
                 module.update()
         cmds.delete(module_to_del.node_name)
-        cmds.delete(deform_joints)
+        cmds.delete(module_to_del.deform_joints.get())
 
     @undoable
     def build(self):
