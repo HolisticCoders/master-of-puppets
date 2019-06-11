@@ -1,4 +1,6 @@
 """Qt widgets for mop fields."""
+import maya.cmds as cmds
+
 from mop.vendor.Qt import QtWidgets
 
 
@@ -62,21 +64,50 @@ class ComboBox(QtWidgets.QComboBox):
         super(ComboBox, self).__init__(*args, **kwargs)
         self.field = field
         self.addItems(field.choices)
-    
+
     def set(self, value):
         self.setCurrentText(value)
 
     def get(self):
         return self.currentText()
-    
+
     def signal(self):
         return self.currentTextChanged
+
+
+class ObjectPicker(QtWidgets.QWidget):
+    def __init__(self, field, *args, **kwargs):
+        super(ObjectPicker, self).__init__(*args, **kwargs)
+        self.field = field
+
+        self.setLayout(QtWidgets.QHBoxLayout())
+        self._name = QtWidgets.QLineEdit()
+        self._picker = QtWidgets.QPushButton('<<')
+        self.layout().addWidget(self._name)
+        self.layout().addWidget(self._picker)
+
+        self._picker.released.connect(self._on_pick_pressed)
+
+    def _on_pick_pressed(self):
+        selection = cmds.ls(selection=True)
+        if not selection:
+            return
+        self._name.setText(selection[-1])
+
+    def set(self, value):
+        self._name.setText(value)
+
+    def get(self):
+        return self._name.text()
+
+    def signal(self):
+        return self._name.textChanged
 
 
 map_field_to_widget = {
     'BoolField': CheckBox,
     'IntField': SpinBox,
     'StringField': LineEdit,
-    'ObjectField': LineEdit,
+    'ObjectField': ObjectPicker,
     'EnumField': ComboBox,
 }
