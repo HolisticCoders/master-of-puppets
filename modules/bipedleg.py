@@ -19,8 +19,6 @@ class BipedLeg(FkIkRotatePlaneChain):
         maxValue=5,
     )
 
-    foot_driving_joints = ObjectListField()
-
     twist_placement = ObjectField()
     heel_placement = ObjectField()
     ball_placement = ObjectField()

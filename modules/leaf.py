@@ -46,7 +46,7 @@ class Leaf(RigModule):
             cmds.delete(joints_to_delete)
 
     def build(self):
-        for joint in self.driving_joints:
+        for joint in self.deform_joints:
             ctl, parent_group = self.add_control(joint, shape_type='sphere')
             cmds.parent(parent_group, self.controls_group.get())
             mop.dag.matrix_constraint(ctl, joint)

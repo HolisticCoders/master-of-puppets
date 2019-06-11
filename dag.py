@@ -35,7 +35,6 @@ def dict_to_hierarchy(tree, create_nodes=True, node_type='transform'):
     """
     if tree:
         for parent, child_tree in tree.iteritems():
-            print (parent, child_tree)
             if child_tree:
                 for child in child_tree:
                     if not cmds.objExists(child):

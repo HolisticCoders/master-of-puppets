@@ -30,7 +30,7 @@ class AbstractChain(RigModule):
 
     def build(self):
         parent = self.controls_group.get()
-        for joint in self.driving_joints:
+        for joint in self.deform_joints:
             ctl, parent_group = self.add_control(joint)
             cmds.parent(parent_group, parent)
             mop.dag.matrix_constraint(ctl, joint)

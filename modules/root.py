@@ -15,8 +15,8 @@ class Root(RigModule):
         self._add_deform_joint()
 
     def build(self):
-        global_ctl, global_buffer = self.add_control(self.driving_joints[0])
-        mop.dag.matrix_constraint(global_ctl, self.driving_joints[0])
+        global_ctl, global_buffer = self.add_control(self.deform_joints[0])
+        mop.dag.matrix_constraint(global_ctl, self.deform_joints[0])
         cmds.parent(global_buffer, self.controls_group.get())
 
 

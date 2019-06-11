@@ -38,14 +38,14 @@ class Spine(AbstractChain):
 
     def build(self):
         parent = self.controls_group.get()
-        for i, joint in enumerate(self.driving_joints):
+        for i, joint in enumerate(self.deform_joints):
             fk_ctl, parent_group = self.add_control(joint, description='fk')
             cmds.parent(parent_group, parent)
             parent = fk_ctl
             if i == 0:
                 # pelvis joint, setup the reverse pelvis behavior.
                 # but first, rename the FK control to avoid conflicts later on.
-                next_joint = self.driving_joints[i+1]
+                next_joint = self.deform_joints[i+1]
                 reverse_pelvis_ctl, reverse_pelvis_grp = self.add_control(
                     next_joint,
                     description='reverse_pelvis',

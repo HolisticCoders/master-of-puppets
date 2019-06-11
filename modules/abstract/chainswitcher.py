@@ -37,7 +37,7 @@ class ChainSwitcher(AbstractChain):
     def _create_chains(self):
         self.chain_a.set(
             cmds.duplicate(
-                self.driving_joints,
+                self.deform_joints,
                 renameChildren=True,
                 parentOnly=True
             )
@@ -51,7 +51,7 @@ class ChainSwitcher(AbstractChain):
 
         self.chain_b.set(
             cmds.duplicate(
-                self.driving_joints,
+                self.deform_joints,
                 renameChildren=True,
                 parentOnly=True
             )
@@ -70,7 +70,7 @@ class ChainSwitcher(AbstractChain):
         :type node: str
         """
         if node is None:
-            node = self.driving_joints[-1]
+            node = self.deform_joints[-1]
         ctl, buffer_grp = self.add_control(
             node,
             description='settings',
@@ -119,8 +119,7 @@ class ChainSwitcher(AbstractChain):
             self.reverse_switch.get() + ".inputX"
         )
 
-        for i in xrange(len(self.driving_joints)):
-            driving = self.driving_joints[i]
+        for i, deform in enumerate(self.deform_joints):
             a = self.chain_a[i]
             b = self.chain_b[i]
             metadata = mop.metadata.metadata_from_name(a)
@@ -160,7 +159,7 @@ class ChainSwitcher(AbstractChain):
                 mult_mat + '.matrixIn[0]',
             )
             cmds.connectAttr(
-                driving + '.parentInverseMatrix[0]',
+                deform + '.parentInverseMatrix[0]',
                 mult_mat + '.matrixIn[1]',
             )
             cmds.connectAttr(
@@ -191,7 +190,7 @@ class ChainSwitcher(AbstractChain):
             )
 
             cmds.connectAttr(
-                driving + '.jointOrient',
+                deform + '.jointOrient',
                 euler_to_quat + '.inputRotate',
             )
             cmds.connectAttr(
@@ -211,16 +210,16 @@ class ChainSwitcher(AbstractChain):
                 quat_to_euler + '.inputQuat',
             )
 
-            # connect the graph to the driving joint's transform attributes
+            # connect the graph to the deform joint's transform attributes
             cmds.connectAttr(
                 decompose_mat + '.outputTranslate',
-                driving + '.translate'
+                deform + '.translate'
             )
             cmds.connectAttr(
                 quat_to_euler + '.outputRotate',
-                driving + '.rotate',
+                deform + '.rotate',
             )
             cmds.connectAttr(
                 decompose_mat + '.outputScale',
-                driving + '.scale'
+                deform + '.scale'
             )
