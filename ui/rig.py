@@ -23,7 +23,6 @@ class RigPanel(QtWidgets.QWidget):
         self.modules_group = QtWidgets.QGroupBox('Modules')
         self.actions_group = QtWidgets.QGroupBox('Actions')
 
-        random_colors = QtWidgets.QCheckBox('Random Colors')
         self.tree_view = ModulesTree()
         refresh_button = QtWidgets.QPushButton('Refresh')
         self.build_button = QtWidgets.QPushButton('Build Rig')
@@ -44,7 +43,6 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
-        options_layout.addWidget(random_colors)
 
         modules_layout.addWidget(self.tree_view)
 
@@ -60,19 +58,16 @@ class RigPanel(QtWidgets.QWidget):
         self._joint_items = {}
         self._joint_parent_modules = WeakValueDictionary()
 
-        self.model = ModulesModel()
+        self.model = QtGui.QStandardItemModel()
         self._populate_model(Rig().rig_modules)
         self.tree_view.setModel(self.model)
         self.tree_view.header().hide()
         self.tree_view.expandAll()
         selection_model = self.tree_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_changed)
-        if self.model.is_colored:
-            random_colors.setChecked(True)
 
         self._update_buttons_enabled()
 
-        random_colors.toggled.connect(self._on_random_colors_toggled)
         refresh_button.released.connect(self._refresh_model)
         self.build_button.released.connect(self._on_build_rig)
         self.unbuild_button.released.connect(self._on_unbuild_rig)
@@ -127,8 +122,8 @@ class RigPanel(QtWidgets.QWidget):
         return item
 
     def _auto_parent_module_item(self, module, item, default_parent=None):
-        if module.parent_joint.get():
-            parent_item = self._joint_items[module.parent_joint.get()]
+        if module.parent_module:
+            parent_item = self._module_items[module.parent_module]
         else:
             parent_item = default_parent or self.model.invisibleRootItem()
         parent_item.appendRow(item)
@@ -150,7 +145,9 @@ class RigPanel(QtWidgets.QWidget):
             if was_renamed:
                 module_item.setText(module_name)
 
-            joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
+            joint_items = [
+                module_item.child(row) for row in xrange(module_item.rowCount())
+            ]
             joints = module.deform_joints.get()
 
             if len(joints) > len(joint_items):
@@ -162,13 +159,13 @@ class RigPanel(QtWidgets.QWidget):
                 self._rename_child_joint_items(module_item, joints)
 
     def _fill_missing_joint_items(self, module, joints, joint_items):
-        added_joints = joints[len(joint_items):]
+        added_joints = joints[len(joint_items) :]
         for joint in added_joints:
             joint_item = self._create_joint_item(module, joint)
             self._auto_parent_joint_item(joint, joint_item)
 
     def _remove_unused_items(self, joints, joint_items):
-        items_to_remove = joint_items[len(joints):]
+        items_to_remove = joint_items[len(joints) :]
         for joint_item in items_to_remove:
             parent = joint_item.parent()
             row = joint_item.row()
@@ -232,14 +229,6 @@ class RigPanel(QtWidgets.QWidget):
             if _index:
                 return _index
 
-    def _on_random_colors_toggled(self, checked):
-        if not self.model:
-            return
-        if checked:
-            self.model.random_colors_on()
-        else:
-            self.model.random_colors_off()
-
     def _on_build_rig(self):
         build_rig()
         self._update_buttons_enabled()
@@ -267,16 +256,13 @@ class RigPanel(QtWidgets.QWidget):
         selected = selection.selectedRows()
         items = [self.model.itemFromIndex(index) for index in selected]
         joints = [
-            self._items[item.text()]
-            for item in items
-            if not self._is_module_item(item)
+            self._items[item.text()] for item in items if not self._is_module_item(item)
         ]
         modules = [
-            self._items[item.text()]
-            for item in items
-            if self._is_module_item(item)
+            self._items[item.text()] for item in items if self._is_module_item(item)
         ]
-        cmds.select(joints)
+        if joints:
+            cmds.select(joints)
         publish('selected-modules-changed', modules)
 
 
@@ -288,95 +274,5 @@ class ModulesTree(QtWidgets.QTreeView):
 
     def __init__(self, parent=None):
         super(ModulesTree, self).__init__(parent)
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
-        self.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection
-        )
+        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
-
-class ModulesModel(QtGui.QStandardItemModel):
-    """A model storing modules and their deform joints.
-
-    In this model, joints are stored as :class:`str` instances,
-    and modules as :class:`mop.core.module.RigModule`.
-    """
-
-    def __init__(self, parent=None):
-        super(ModulesModel, self).__init__(parent)
-        self._random_colors = False
-
-        settings = get_settings()
-        random_colors = bool(int(settings.value('modules/random_colors') or 0))
-        if random_colors:
-            self.random_colors_on()
-
-    @property
-    def is_colored(self):
-        """Return ``True`` if this model is randomly colored.
-
-        :rtype: bool
-        """
-        return self._random_colors
-
-    def random_colors_on(self):
-        self._random_colors = True
-        settings = get_settings()
-        settings.setValue('modules/random_colors', 1)
-
-    def random_colors_off(self):
-        self._random_colors = False
-        settings = get_settings()
-        settings.setValue('modules/random_colors', 0)
-
-    def supportedDropActions(self):
-        return QtCore.Qt.MoveAction
-
-    def mimeTypes(self):
-        types = super(ModulesModel, self).mimeTypes()
-        types.append('application/text')
-        return types
-
-    def mimeData(self, indices):
-        data = super(ModulesModel, self).mimeData(indices) or QtCore.QMimeData()
-        names = []
-        for index in indices:
-            if not index.isValid():
-                continue
-            names.append(self.data(index, QtCore.Qt.DisplayRole))
-        data.setData('application/text', json.dumps(names))
-        return data
-
-    def canDropMimeData(self, data, action, row, column, parent):
-        res = super(ModulesModel, self).canDropMimeData(data, action, row, column, parent)
-        if not res:
-            return False
-        if Rig().is_built.get():
-            return False
-        if not data.hasFormat('application/text'):
-            return False
-        if not parent.isValid():
-            return False
-        return True
-
-    def dropMimeData(self, data, action, row, column, parent):
-        if not self.canDropMimeData(data, action, row, column, parent):
-            return False
-        if action == QtCore.Qt.IgnoreAction:
-            return True
-
-        names = json.loads(data.data('application/text').data())
-        joint = self.data(parent, QtCore.Qt.DisplayRole)
-
-        rig = Rig()
-        modules = []
-        for name in names:
-            module = rig.get_module(name)
-            module.parent_joint.set(joint)
-            module.update()
-            modules.append(module)
-
-        publish('modules-updated', modules)
-
-        return super(ModulesModel, self).dropMimeData(data, action, row, column, parent)
