@@ -85,7 +85,7 @@ class Rig(MopNode):
         if not cmds.objExists("SKELETON"):
             self.skeleton_group.set(cmds.createNode("transform", name="SKELETON"))
             cmds.parent(self.skeleton_group.get(), "RIG")
-            
+
             # make the deform_joints unselectable
             cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", True)
             cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 2)
@@ -153,16 +153,18 @@ class Rig(MopNode):
         :type module_node_name: str
         """
         if self.is_built.get():
-            logger.error("Cannot delete a module if the rig is built.")
+            logger.error('Cannot delete a module if the rig is built.')
             return
 
         module_to_del = self.get_module(module_node_name)
+        deform_joints = module_to_del.deform_joints.get()
         for module in self.rig_modules:
-            if module.parent_module == module_to_del:
-                module.parent_module.set(module_to_del.parent_module.get())
+            if module.parent_joint.get() in deform_joints:
+                new_parent_joint = module_to_del.parent_joint.get()
+                module.parent_joint.set(new_parent_joint)
                 module.update()
+        cmds.delete(deform_joints)
         cmds.delete(module_to_del.node_name)
-        cmds.delete(module_to_del.deform_joints.get())
 
     @undoable
     def build(self):
@@ -208,7 +210,6 @@ class Rig(MopNode):
                     mop.dag.create_space_switching(ctl, orients, "orient")
                 elif points:
                     mop.dag.create_space_switching(ctl, points, "point")
-
 
         self._tag_nodes_for_unbuild(build_nodes)
 
@@ -350,26 +351,38 @@ class Rig(MopNode):
     def activate_move_joints_mode(self):
         for module in self.rig_modules:
             for joint in module.deform_joints:
-                plugs = cmds.listConnections(joint + '.worldMatrix[0]', type='skinCluster', plugs=True)
+                plugs = cmds.listConnections(
+                    joint + '.worldMatrix[0]', type='skinCluster', plugs=True
+                )
                 if not plugs:
                     continue
                 for plug in plugs:
                     regex = re.match("(.*).matrix\[([0-9])\]", plug)
                     node, index = regex.groups()
-                    cmds.connectAttr(joint + ".worldInverseMatrix[0]", node + '.bindPreMatrix[{}]'.format(index))
+                    cmds.connectAttr(
+                        joint + ".worldInverseMatrix[0]",
+                        node + '.bindPreMatrix[{}]'.format(index),
+                    )
 
     def deactivate_move_joints_mode(self):
         for module in self.rig_modules:
             for joint in module.deform_joints:
-                plugs = cmds.listConnections(joint + '.worldInverseMatrix[0]', type='skinCluster', plugs=True)
+                plugs = cmds.listConnections(
+                    joint + '.worldInverseMatrix[0]', type='skinCluster', plugs=True
+                )
                 if not plugs:
                     continue
                 for plug in plugs:
                     regex = re.match("(.*).bindPreMatrix\[([0-9])\]", plug)
                     node, index = regex.groups()
-                    cmds.disconnectAttr(joint + ".worldInverseMatrix[0]", node + ".bindPreMatrix[{}]".format(index))
+                    cmds.disconnectAttr(
+                        joint + ".worldInverseMatrix[0]",
+                        node + ".bindPreMatrix[{}]".format(index),
+                    )
                     mat = cmds.getAttr(joint + ".worldInverseMatrix[0]")
-                    cmds.setAttr(node + ".bindPreMatrix[{}]".format(index), mat, type="matrix")
+                    cmds.setAttr(
+                        node + ".bindPreMatrix[{}]".format(index), mat, type="matrix"
+                    )
 
                 bind_poses = cmds.dagPose(joint, bindPose=True, q=True)
                 for bind_pose in bind_poses:

@@ -20,7 +20,6 @@ class Root(RigModule):
     def create_deform_joints(self):
         if len(self.deform_joints) == 0:
             joint = self.add_deform_joint()
-            self.end_joint.set(joint)
 
     def build(self):
         global_ctl, global_buffer = self.add_control(self.deform_joints[0])

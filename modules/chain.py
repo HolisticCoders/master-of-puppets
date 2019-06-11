@@ -40,7 +40,6 @@ class Chain(RigModule):
             for index in range(diff):
                 new_joint = self.add_deform_joint()
                 cmds.setAttr(new_joint + '.translateX', 5)
-                self.end_joint.set(new_joint)
 
                 # parent the child modules to the new last_joint
                 # for module in self.rig.rig_modules:
@@ -51,7 +50,6 @@ class Chain(RigModule):
             joints = self.deform_joints.get()
             joints_to_delete = joints[diff:]
             joints_to_keep = joints[:len(joints) + diff]
-            self.end_joint.set(joints_to_keep[-1])
 
             # parent the child modules to the new last_joint
             # for module in self.rig.rig_modules:
@@ -89,7 +87,7 @@ class Chain(RigModule):
         if deform_joints:
             parent = deform_joints[-1]
         else:
-            parent = self.parent_module.end_joint.get()
+            parent = self.parent_joint.get()
         joint = super(Chain, self).add_deform_joint(
             parent=parent,
             object_id=len(self.deform_joints)
@@ -103,7 +101,7 @@ class Chain(RigModule):
     def update_parent_joint(self):
         """Reparent the first joint to the proper parent_joint if needed."""
         super(Chain, self).update_parent_joint()
-        expected_parent = self.parent_module.end_joint.get()
+        expected_parent = self.parent_joint.get()
         first_joint = self.deform_joints[0]
         actual_parent = cmds.listRelatives(first_joint, parent=True)[0]
 
