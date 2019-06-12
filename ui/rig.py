@@ -153,6 +153,20 @@ class RigPanel(QtWidgets.QWidget):
             if was_renamed:
                 module_item.setText(module_name)
 
+            old_parent = module_item.parent().text()
+            current_parent = module.parent_module.node_name
+            if old_parent != current_parent:
+                search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
+                matching_items = self.model.findItems(current_parent, search_flags)
+                if not matching_items:
+                    raise ValueError(
+                        'New parent %s has no item in the GUI.' % current_parent
+                    )
+                new_parent_item = matching_items[0]
+                module_item.parent().takeRow(module_item.row())
+                index = self._child_index_before_joints(new_parent_item)
+                new_parent_item.insertRow(index, module_item)
+
             joint_items = [
                 module_item.child(row) for row in xrange(module_item.rowCount())
             ]
