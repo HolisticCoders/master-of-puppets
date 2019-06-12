@@ -128,11 +128,14 @@ class ModulePanel(QtWidgets.QDockWidget):
                 field = getattr(module, name)
                 value = widget.get()
                 field.set(value)
-                widget.setStyleSheet('')
+                label = self.form.labelForField(widget)
+                label.setStyleSheet('')
+                self._initial_values[widget] = value
             module.update()
 
         self.apply_button.setEnabled(False)
         self.reset_button.setEnabled(False)
+        self._modified_fields.clear()
 
         publish('modules-updated', self.modules)
 
@@ -196,8 +199,8 @@ class ModulePanel(QtWidgets.QDockWidget):
             module.update_mirror()
 
     def _update_ui(self):
-        self._modified_fields = set()
-        self._initial_values = {}
+        self._modified_fields.clear()
+        self._initial_values.clear()
         clear_layout(self.form)
         if not self.modules:
             self.apply_button.hide()
