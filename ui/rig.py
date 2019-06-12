@@ -126,12 +126,20 @@ class RigPanel(QtWidgets.QWidget):
             parent_item = self._module_items[module.parent_module]
         else:
             parent_item = default_parent or self.model.invisibleRootItem()
-        parent_item.appendRow(item)
+        index = self._child_index_before_joints(parent_item)
+        parent_item.insertRow(index, item)
 
     def _auto_parent_joint_item(self, joint, item):
         module = self._joint_parent_modules[joint]
         parent_item = self._module_items[module]
         parent_item.appendRow(item)
+
+    def _child_index_before_joints(self, item):
+        for row in xrange(item.rowCount()):
+            child = item.child(row)
+            if not self._is_module_item(child):
+                return row
+        return 0
 
     def _on_modules_created(self, modules):
         self._populate_model(modules)
