@@ -1,16 +1,20 @@
-import maya.cmds as cmds
 import json
-import random
 import pdb
+import random
 from collections import defaultdict
+from math import floor
 from weakref import WeakValueDictionary
 
-from mop.vendor.Qt import QtCore, QtGui, QtWidgets
+import maya.cmds as cmds
+
+from mop.config.default_config import side_color
 from mop.core.rig import Rig
 from mop.ui.settings import get_settings
 from mop.ui.signals import publish, subscribe
 from mop.ui.commands import build_rig, unbuild_rig, publish_rig
 from mop.ui.utils import hsv_to_rgb
+from mop.utils.colorspace import linear_to_srgb
+from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 
 
 class RigPanel(QtWidgets.QWidget):
@@ -51,8 +55,29 @@ class RigPanel(QtWidgets.QWidget):
         actions_layout.addWidget(self.unbuild_button)
         actions_layout.addWidget(self.publish_button)
 
+        # Icons
         self._module_icon = QtGui.QIcon(':QR_settings.png')
         self._joint_icon = QtGui.QIcon(':kinJoint.png')
+
+        # GUI colors
+        raw_left = side_color['L']
+        raw_right = side_color['R']
+        raw_middle = side_color['M']
+        srgb_left = map(linear_to_srgb, raw_left)
+        srgb_right = map(linear_to_srgb, raw_right)
+        srgb_middle = map(linear_to_srgb, raw_middle)
+        left_color = self._float_to_256_color(srgb_left)
+        right_color = self._float_to_256_color(srgb_right)
+        middle_color = self._float_to_256_color(srgb_middle)
+        self._left_brush = QtGui.QBrush(QtGui.QColor(*left_color))
+        self._right_brush = QtGui.QBrush(QtGui.QColor(*right_color))
+        self._middle_brush = QtGui.QBrush(QtGui.QColor(*middle_color))
+        self._colors = {
+            'L': self._left_brush,
+            'R': self._right_brush,
+            'M': self._middle_brush,
+        }
+
         self._items = {}
         self._module_items = {}
         self._joint_items = {}
@@ -76,6 +101,12 @@ class RigPanel(QtWidgets.QWidget):
         subscribe('modules-created', self._on_modules_created)
         subscribe('modules-updated', self._on_modules_updated)
         subscribe('modules-deleted', self._on_modules_deleted)
+
+    def _float_to_256_color(self, color):
+        def _float_to_256(value):
+            return int(floor(255 if value >= 1.0 else value * 256))
+
+        return map(_float_to_256, color)
 
     def _is_module_item(self, item):
         # HACK: 'cause you know, nothing's perfect.
@@ -104,9 +135,7 @@ class RigPanel(QtWidgets.QWidget):
         item = QtGui.QStandardItem(module.node_name)
         item.setIcon(self._module_icon)
         item.setEditable(False)
-        item.setDropEnabled(False)
-        if module.name.get() == 'root':
-            item.setDragEnabled(False)
+        item.setForeground(self._colors[module.side.get()])
         self._module_items[module] = item
         self._items[item.text()] = module
         return item
@@ -115,7 +144,7 @@ class RigPanel(QtWidgets.QWidget):
         item = QtGui.QStandardItem(joint)
         item.setIcon(self._joint_icon)
         item.setEditable(False)
-        item.setDragEnabled(False)
+        item.setForeground(self._colors[module.side.get()])
         self._joint_items[joint] = item
         self._joint_parent_modules[joint] = module
         self._items[item.text()] = joint
