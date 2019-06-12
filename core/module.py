@@ -232,6 +232,10 @@ class RigModule(MopNode):
                     cmds.renameAttr(
                         self.node_name + '.' + attr, new_node + '__' + attr_name
                     )
+        if side_changed:
+            new_color = mop.config.side_color[self.side.get()]
+            for guide in self.guide_nodes:
+                shapeshifter.change_controller_color(guide, new_color)
         self.create_guide_nodes()
         self.create_deform_joints()
         self._constraint_deforms_to_guides()
@@ -386,6 +390,8 @@ class RigModule(MopNode):
         guide_name = mop.metadata.name_from_metadata(metadata)
 
         guide = shapeshifter.create_controller_from_name(shape_type)
+        color = mop.config.side_color[self.side.get()]
+        shapeshifter.change_controller_color(guide, color)
         guide = cmds.rename(guide, guide_name)
 
         if not parent:
@@ -414,20 +420,11 @@ class RigModule(MopNode):
             metadata['description'] = description
         metadata['role'] = 'ctl'
         ctl_name = mop.metadata.name_from_metadata(metadata)
+
         ctl = shapeshifter.create_controller_from_name(shape_type)
         ctl = cmds.rename(ctl, ctl_name)
-
-        # update the controller color based on its side
-        current_data = shapeshifter.get_shape_data(ctl)
-        new_data = []
-        side_color = mop.config.side_color[self.side.get()]
-        for shape_data in current_data:
-            new_shape_data = shape_data.copy()
-            new_shape_data['enable_overrides'] = True
-            new_shape_data['use_rgb'] = True
-            new_shape_data['color_rgb'] = side_color
-            new_data.append(new_shape_data)
-        shapeshifter.change_controller_shape(ctl, new_data)
+        color = mop.config.side_color[self.side.get()]
+        shapeshifter.change_controller_color(ctl, color)
 
         # get the existing shape data if it exists
         mop.attributes.create_persistent_attribute(
