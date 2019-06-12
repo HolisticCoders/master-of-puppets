@@ -108,7 +108,6 @@ class RigModule(MopNode):
 
             self.initialize()
             self.place_guide_nodes()
-            self.update()
             self.is_initialized.set(True)
 
     @property
@@ -178,7 +177,7 @@ class RigModule(MopNode):
         raise NotImplementedError
 
     def place_guide_nodes(self):
-        """Place the deform joints and guide nodes based on the config."""
+        """Place the guide nodes based on the config."""
         matrices = mop.config.default_guides_placement.get(self.__class__.__name__, {})
         for i, node in enumerate(self.guide_nodes):
             try:
@@ -236,8 +235,8 @@ class RigModule(MopNode):
             new_color = mop.config.side_color[self.side.get()]
             for guide in self.guide_nodes:
                 shapeshifter.change_controller_color(guide, new_color)
-        self.create_guide_nodes()
-        self.create_deform_joints()
+        self.update_guide_nodes()
+        self.update_deform_joints()
         self._constraint_deforms_to_guides()
 
     def update_parent_joint(self):
@@ -246,27 +245,25 @@ class RigModule(MopNode):
         This lets the module's owned DAG nodes be in the same space as its deform_joints.
         """
         # delete the old constraint
-        # old_constraint_nodes = []
+        old_constraint_nodes = []
 
-        # first_level_nodes = cmds.listConnections(
-        #     self.node_name + '.translate',
-        #     source=True
-        # ) or []
-        # old_constraint_nodes.extend(first_level_nodes)
+        first_level_nodes = (
+            cmds.listConnections(self.node_name + '.translate', source=True) or []
+        )
+        old_constraint_nodes.extend(first_level_nodes)
 
-        # for node in first_level_nodes:
-        #     second_level_nodes = cmds.listConnections(
-        #         node + '.inputMatrix',
-        #         source=True
-        #     ) or []
-        #     old_constraint_nodes.extend(second_level_nodes)
+        for node in first_level_nodes:
+            second_level_nodes = (
+                cmds.listConnections(node + '.inputMatrix', source=True) or []
+            )
+            old_constraint_nodes.extend(second_level_nodes)
 
-        # if old_constraint_nodes:
-        #     cmds.delete(old_constraint_nodes)
+        if old_constraint_nodes:
+            cmds.delete(old_constraint_nodes)
 
-        # parent = self.parent_joint.get()
-        # if parent:
-        #     mop.dag.matrix_constraint(parent, self.node_name)
+        parent = self.parent_joint.get()
+        if parent:
+            mop.dag.matrix_constraint(parent, self.node_name)
 
     def _update_node_name(self, node):
         metadata = mop.metadata.metadata_from_name(node)
@@ -398,14 +395,7 @@ class RigModule(MopNode):
             parent = self.guide_group.get()
         cmds.parent(guide, parent)
 
-        for transform in ['translate', 'rotate', 'scale']:
-            if transform == 'scale':
-                value = 1
-            else:
-                value = 0
-            for axis in 'XYZ':
-                attr = transform + axis
-                cmds.setAttr(guide + '.' + attr, value)
+        mop.dag.reset_node(guide)
 
         self.guide_nodes.append(guide)
         return guide
