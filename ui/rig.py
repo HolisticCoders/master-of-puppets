@@ -145,33 +145,20 @@ class RigPanel(QtWidgets.QWidget):
         self._populate_model(modules)
 
     def _on_modules_updated(self, modules):
+        selected_items, current_item = self._save_selection()
+        parents_have_changed = False
         for module in modules:
             module_item = self._module_items[module]
 
-            module_name = module.node_name
-            was_renamed = module_item.text() != module_name
-            if was_renamed:
-                module_item.setText(module_name)
+            was_renamed = self._handle_renaming(module, module_item)
 
-            old_parent = module_item.parent().text()
-            current_parent = module.parent_module.node_name
-            if old_parent != current_parent:
-                search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
-                matching_items = self.model.findItems(current_parent, search_flags)
-                if not matching_items:
-                    raise ValueError(
-                        'New parent %s has no item in the GUI.' % current_parent
-                    )
-                new_parent_item = matching_items[0]
-                module_item.parent().takeRow(module_item.row())
-                index = self._child_index_before_joints(new_parent_item)
-                new_parent_item.insertRow(index, module_item)
+            parent_has_changed = self._handle_reparenting(module, module_item)
+            parents_have_changed = parents_have_changed or parent_has_changed
 
+            joints = module.deform_joints.get()
             joint_items = [
                 module_item.child(row) for row in xrange(module_item.rowCount())
             ]
-            joints = module.deform_joints.get()
-
             if len(joints) > len(joint_items):
                 self._fill_missing_joint_items(module, joints, joint_items)
             else:
@@ -179,6 +166,53 @@ class RigPanel(QtWidgets.QWidget):
 
             if was_renamed:
                 self._rename_child_joint_items(module_item, joints)
+
+        if parents_have_changed:
+            self._restore_selection(selected_items, current_item)
+
+    def _handle_renaming(self, module, module_item):
+        module_name = module.node_name
+        was_renamed = module_item.text() != module_name
+        if not was_renamed:
+            return False
+        module_item.setText(module_name)
+        return True
+
+    def _handle_reparenting(self, module, module_item):
+        old_parent = module_item.parent().text()
+        current_parent = module.parent_module.node_name
+        if old_parent == current_parent:
+            return False
+
+        search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
+        matching_items = self.model.findItems(current_parent, search_flags)
+        if not matching_items:
+            raise ValueError('New parent %s has no item in the GUI.' % current_parent)
+        new_parent_item = matching_items[0]
+        module_item.parent().takeRow(module_item.row())
+        index = self._child_index_before_joints(new_parent_item)
+        new_parent_item.insertRow(index, module_item)
+
+        return True
+
+    def _save_selection(self):
+        selection_model = self.tree_view.selectionModel()
+        selection = selection_model.selectedRows()
+        selected_items = map(self.model.itemFromIndex, selection)
+        current_index = selection_model.currentIndex()
+        current_item = self.model.itemFromIndex(current_index)
+        return selected_items, current_item
+
+    def _restore_selection(self, selected_items, current_item):
+        selection_model = self.tree_view.selectionModel()
+        selection_model.clear()
+        for item in selected_items:
+            index = self.model.indexFromItem(item)
+            selection_model.select(index, QtCore.QItemSelectionModel.Select)
+        current_index = self.model.indexFromItem(current_item)
+        selection_model.setCurrentIndex(
+            current_index, QtCore.QItemSelectionModel.Current
+        )
 
     def _fill_missing_joint_items(self, module, joints, joint_items):
         added_joints = joints[len(joint_items) :]
