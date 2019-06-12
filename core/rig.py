@@ -301,15 +301,15 @@ class Rig(MopNode):
         orig_name = module.name.get()
         orig_type = module.module_type.get()
 
-        orig_parent_module = module.parent_module
-        metadata = mop.metadata.metadata_from_name(orig_parent_module.node_name)
+        orig_parent_joint = module.parent_joint.get()
+        metadata = mop.metadata.metadata_from_name(orig_parent_joint)
         metadata["side"] = new_side
-        new_parent_module = mop.metadata.name_from_metadata(metadata)
-        if not cmds.objExists(new_parent_module):
-            new_parent_module = orig_parent_module
+        new_parent_joint = mop.metadata.name_from_metadata(metadata)
+        if not cmds.objExists(new_parent_joint):
+            new_parent_joint = orig_parent_joint
 
         new_module = self.add_module(
-            orig_type, name=orig_name, side=new_side, parent_module=new_parent_module
+            orig_type, name=orig_name, side=new_side, parent_joint=new_parent_joint
         )
 
         module.module_mirror = self.node_name
@@ -326,7 +326,7 @@ class Rig(MopNode):
         name = module.name.get()
         side = module.side.get()
         new_module = module.rig.add_module(
-            module_type, name=name, side=side, parent_module=module.parent_module
+            module_type, name=name, side=side, parent_joint=module.parent_joint.get()
         )
         for field in module.fields:
             if field.name in ["name", "side"]:
