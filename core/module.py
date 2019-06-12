@@ -368,16 +368,28 @@ class RigModule(MopNode):
         self.deform_joints.append(new_joint)
         return new_joint
 
-    def add_guide_node(self, parent=None, object_id=None, description=None):
+    def add_guide_node(
+        self, parent=None, object_id=None, description=None, shape_type='circle'
+    ):
         """Creates a new guide node for this module."""
         if object_id is None:
             object_id = len(self.guide_nodes)
 
-        guide = self.add_node(
-            'locator', role='guide', object_id=object_id, description=description
-        )
+        module_matadata = mop.metadata.metadata_from_name(self.node_name)
+        metadata = {}
+        metadata['base_name'] = module_matadata['base_name']
+        metadata['side'] = module_matadata['side']
+        metadata['id'] = object_id
+        if description is not None:
+            metadata['description'] = description
+        metadata['role'] = 'guide'
+        guide_name = mop.metadata.name_from_metadata(metadata)
+
+        guide = shapeshifter.create_controller_from_name(shape_type)
+        guide = cmds.rename(guide, guide_name)
+
         if not parent:
-            parent = self.placement_group.get()
+            parent = self.guide_group.get()
         cmds.parent(guide, parent)
 
         for transform in ['translate', 'rotate', 'scale']:
@@ -501,71 +513,41 @@ class RigModule(MopNode):
             self.module_mirror.guide_nodes, self.guide_nodes
         ):
             if mirror_type.lower() == 'behavior':
+                # disable black formatting to keep the matrices 4x4
+                # fmt: off
                 world_reflexion_mat = om2.MMatrix(
                     [
-                        -1.0,
-                        -0.0,
-                        -0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
+                        -1.0, -0.0, -0.0, 0.0,
+                        0.0, 1.0, 0.0, 0.0,
+                        0.0, 0.0, 1.0, 0.0,
+                        0.0, 0.0, 0.0, 1.0,
                     ]
                 )
                 local_reflexion_mat = om2.MMatrix(
                     [
-                        -1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        -1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        -1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
+                        -1.0, 0.0, 0.0, 0.0,
+                        0.0, -1.0, 0.0, 0.0,
+                        0.0, 0.0, -1.0, 0.0,
+                        0.0, 0.0, 0.0, 1.0,
                     ]
                 )
+                # fmt: on
                 orig_node_mat = om2.MMatrix(cmds.getAttr(orig_node + '.worldMatrix'))
                 new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
                 cmds.xform(new_node, matrix=new_mat, worldSpace=True)
                 cmds.setAttr(new_node + '.scale', 1, 1, 1)
             if mirror_type.lower() == 'orientation':
+                # disable black formatting to keep the matrices 4x4
+                # fmt: off
                 world_reflexion_mat = om2.MMatrix(
                     [
-                        -1.0,
-                        -0.0,
-                        -0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
+                        -1.0, -0.0, -0.0, 0.0,
+                        0.0, 1.0, 0.0, 0.0,
+                        0.0, 0.0, 1.0, 0.0,
+                        0.0, 0.0, 0.0, 1.0,
                     ]
                 )
+                # fmt: on
                 orig_node_mat = om2.MMatrix(cmds.getAttr(orig_node + '.worldMatrix'))
                 new_mat = orig_node_mat * world_reflexion_mat
                 cmds.xform(new_node, matrix=new_mat, worldSpace=True)
