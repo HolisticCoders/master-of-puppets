@@ -60,7 +60,11 @@ class Chain(RigModule):
 
             for module in self.rig.rig_modules:
                 if module.parent_joint in joints_to_delete:
-                    module.parent_joint.set(joints_to_keep[-1])
+                    if joints_to_keep:
+                        new_parent_joint = joints_to_keep[-1]
+                    else:
+                        new_parent_joint = self.parent_joint.get()
+                    module.parent_joint.set(new_parent_joint)
                     module.update()
 
             cmds.delete(joints_to_delete)
