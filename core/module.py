@@ -167,6 +167,7 @@ class RigModule(MopNode):
         cmds.setAttr(self.extras_group.get() + '.visibility', False)
         self.create_guide_nodes()
         self.create_deform_joints()
+        self._constraint_deforms_to_guides()
 
     def create_guide_nodes(self):
         """Create all the guide nodes for this module."""
