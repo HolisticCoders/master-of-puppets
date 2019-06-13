@@ -15,27 +15,46 @@ class Leaf(RigModule):
         defaultValue=1,
         hasMinValue=True,
         minValue=1,
-        tooltip="The number of joints for the module.\n"
+        tooltip="The number of joints for the module.\n",
     )
 
-    def initialize(self):
-        super(Leaf, self).initialize()
-        for i in xrange(self.joint_count.get()):
-            self._add_deform_joint()
+    def create_guide_nodes(self):
+        for i in range(self.joint_count.get()):
+            self.add_guide_node()
 
-    def update(self):
-        super(Leaf, self).update()
+    def create_deform_joints(self):
+        for i in range(self.joint_count.get()):
+            self.add_deform_joint()
+
+    def constraint_deforms_to_guides(self):
+        for guide, deform in zip(self.guide_nodes, self.deform_joints):
+            mop.dag.matrix_constraint(guide, deform)
+
+    def update_guide_nodes(self):
+        diff = self.joint_count.get() - len(self.guide_nodes)
+        if diff > 0:
+            for index in range(diff):
+                guide = self.add_guide_node()
+        elif diff < 0:
+            guides = self.guide_nodes.get()
+            guides_to_delete = guides[diff:]
+            guides_to_keep = guides[: len(guides) + diff]
+
+            cmds.delete(guides_to_delete)
+
+    def update_deform_joints(self):
         diff = self.joint_count.get() - len(self.deform_joints)
         if diff > 0:
             for index in range(diff):
-                self._add_deform_joint()
+                new_joint = self.add_deform_joint()
+
         elif diff < 0:
             joints = self.deform_joints.get()
             joints_to_delete = joints[diff:]
-            joints_to_keep = joints[:len(joints) + diff]
+            joints_to_keep = joints[: len(joints) + diff]
 
             for module in self.rig.rig_modules:
-                if module.parent_joint.get() in joints_to_delete:
+                if module.parent_joint in joints_to_delete:
                     if joints_to_keep:
                         new_parent_joint = joints_to_keep[-1]
                     else:
