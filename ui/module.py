@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 class ModulePanel(QtWidgets.QDockWidget):
-
     def __init__(self, parent=None):
         super(ModulePanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -121,6 +120,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         """Update the Maya module."""
         if not self.modules:
             return
+
         for module in self.modules:
             for name, widget in self._module_widgets.iteritems():
                 if widget not in self._modified_fields:
@@ -128,7 +128,15 @@ class ModulePanel(QtWidgets.QDockWidget):
                 field = getattr(module, name)
                 value = widget.get()
                 field.set(value)
+                label = self.form.labelForField(widget)
+                label.setStyleSheet('')
+                self._initial_values[widget] = value
             module.update()
+
+        self.apply_button.setEnabled(False)
+        self.reset_button.setEnabled(False)
+        self._modified_fields.clear()
+
         publish('modules-updated', self.modules)
 
     def _delete_module(self):
@@ -191,8 +199,8 @@ class ModulePanel(QtWidgets.QDockWidget):
             module.update_mirror()
 
     def _update_ui(self):
-        self._modified_fields = set()
-        self._initial_values = {}
+        self._modified_fields.clear()
+        self._initial_values.clear()
         clear_layout(self.form)
         if not self.modules:
             self.apply_button.hide()
@@ -246,18 +254,14 @@ class ModulePanel(QtWidgets.QDockWidget):
                 field_names.remove(field.name)
 
         fields = [f for f in self.modules[-1].fields if f.name in field_names]
-        ordered_fields = sorted(
-            fields,
-            key=attrgetter('gui_order')
-        )
+        ordered_fields = sorted(fields, key=attrgetter('gui_order'))
         for field in ordered_fields:
             if not field.displayable:
                 continue
 
             class_name = field.__class__.__name__
             widget_data = map_field_to_widget.get(
-                class_name,
-                map_field_to_widget['StringField']
+                class_name, map_field_to_widget['StringField']
             )
             widget = widget_data(field)
             if field.tooltip:
