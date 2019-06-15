@@ -95,7 +95,9 @@ class ModulePanel(QtWidgets.QDockWidget):
         """
 
         def is_module(module):
-            return not isinstance(module, basestring)
+            return not isinstance(module, basestring) and cmds.objExists(
+                module.node_name
+            )
 
         self.modules = filter(is_module, modules)
         self._update_ui()
