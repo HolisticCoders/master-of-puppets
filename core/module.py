@@ -327,19 +327,21 @@ class RigModule(MopNode):
             'id': object_id,
         }
         name = mop.metadata.name_from_metadata(metadata)
+
         if cmds.objExists(name):
             raise ValueError("A node with the name `{}` already exists".format(name))
-        if node_type == 'locator':
-            node = cmds.spaceLocator(name=name)[0]
-        if node_type == 'follicle':
-            follicle = cmds.createNode(node_type, *args, **kwargs)
-            node = cmds.listRelatives(follicle, parent=True)[0]
+
+        node = cmds.createNode(node_type, name=name, *args, **kwargs)
+        if node_type == 'locator' or node_type == 'follicle':
+            shape = node + 'Shape'
+            cmds.rename(node, shape)
+            node = cmds.listRelatives(shape, parent=True)[0]
             node = cmds.rename(node, name)
-        else:
-            node = cmds.createNode(node_type, name=name, *args, **kwargs)
+
         cmds.addAttr(node, longName='module', attributeType='message')
         cmds.connectAttr(self.node_name + '.message', node + '.module')
         self.owned_nodes.append(node)
+
         return node
 
     def add_deform_joint(self, parent=None, object_id=None, description=None):
@@ -370,6 +372,9 @@ class RigModule(MopNode):
             for axis in 'XYZ':
                 attr = transform + axis
                 cmds.setAttr(new_joint + '.' + attr, value)
+
+        # prevent maya from messing with the joint orient when parenting the joint
+        cmds.setAttr(new_joint + '.jointOrient', lock=True)
 
         self.deform_joints.append(new_joint)
         return new_joint
