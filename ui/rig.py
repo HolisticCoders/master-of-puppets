@@ -281,8 +281,7 @@ class RigPanel(QtWidgets.QWidget):
             parent_item.removeRow(row)
 
     def _refresh_model(self, modules=None):
-        # TODO: update buttons state
-        pass
+        self._update_buttons_enabled()
 
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.
