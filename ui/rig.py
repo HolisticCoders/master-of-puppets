@@ -98,9 +98,18 @@ class RigPanel(QtWidgets.QWidget):
         self.unbuild_button.released.connect(self._on_unbuild_rig)
         self.publish_button.released.connect(self._on_publish_rig)
 
+        self._refresh_script_job_ids = self._setup_refresh_script_job()
+
         subscribe('modules-created', self._on_modules_created)
         subscribe('modules-updated', self._on_modules_updated)
         subscribe('modules-deleted', self._on_modules_deleted)
+
+    def closeEvent(self, event):
+        for event, script_job_id in self._refresh_script_job_ids:
+            try:
+                cmds.scriptJob(kill=script_job_id)
+            except RuntimeError:
+                logger.warning('Refresh script job for %s was already deleted.', event)
 
     def _float_to_256_color(self, color):
         def _float_to_256(value):
@@ -112,6 +121,15 @@ class RigPanel(QtWidgets.QWidget):
         # HACK: 'cause you know, nothing's perfect.
         # https://bugreports.qt.io/browse/PYSIDE-74
         return id(item) in (id(x) for x in self._module_items.values())
+
+    def _setup_refresh_script_job(self):
+        ids = []
+        for event in ('Undo', 'Redo'):
+            script_job_id = cmds.scriptJob(
+                event=(event, self._update_buttons_enabled), parent='mop_rig_panel'
+            )
+            ids.append((event, script_job_id))
+        return ids
 
     def _populate_model(self, modules, expand_new_modules=True):
         new_module_items = []
