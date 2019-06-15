@@ -4,8 +4,9 @@ import maya.cmds as cmds
 
 from mop.config.default_config import side_color
 from mop.core.rig import Rig
-from mop.ui.signals import publish, subscribe
 from mop.ui.commands import build_rig, unbuild_rig, publish_rig
+from mop.ui.settings import get_settings
+from mop.ui.signals import publish, subscribe
 from mop.utils.colorspace import linear_to_srgb
 from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 
@@ -20,6 +21,7 @@ class RigPanel(QtWidgets.QWidget):
         self.modules_group = QtWidgets.QGroupBox('Modules')
         self.actions_group = QtWidgets.QGroupBox('Actions')
 
+        color_by_side = QtWidgets.QCheckBox('Colors by Side')
         self.tree_view = ModulesTree()
         self.build_button = QtWidgets.QPushButton('Build Rig')
         self.unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
@@ -39,6 +41,7 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
+        options_layout.addWidget(color_by_side)
 
         modules_layout.addWidget(self.tree_view)
 
@@ -67,7 +70,14 @@ class RigPanel(QtWidgets.QWidget):
             'L': self._left_brush,
             'R': self._right_brush,
             'M': self._middle_brush,
+            'base': QtGui.QBrush(QtGui.QColor(187, 187, 187)),
         }
+
+        settings = get_settings()
+        self._color_by_side = bool(int(settings.value('modules/color_by_side') or 0))
+
+        if self._color_by_side:
+            color_by_side.setChecked(True)
 
         self.model = QtGui.QStandardItemModel()
         self._populate_model(Rig().rig_modules, expand_new_modules=False)
@@ -79,6 +89,7 @@ class RigPanel(QtWidgets.QWidget):
 
         self._update_buttons_enabled()
 
+        color_by_side.toggled.connect(self._on_color_by_side_toggled)
         self.build_button.released.connect(self._on_build_rig)
         self.unbuild_button.released.connect(self._on_unbuild_rig)
         self.publish_button.released.connect(self._on_publish_rig)
@@ -95,6 +106,36 @@ class RigPanel(QtWidgets.QWidget):
                 cmds.scriptJob(kill=script_job_id)
             except RuntimeError:
                 logger.warning('Refresh script job for %s was already deleted.', event)
+
+    def _on_color_by_side_toggled(self, checked):
+        self._color_by_side = checked
+        settings = get_settings()
+        settings.setValue('modules/color_by_side', 1 if checked else 0)
+
+        if not self.model:
+            return
+
+        root = self.model.invisibleRootItem()
+        if checked:
+            self._show_colors_recursively(root)
+        else:
+            self._hide_colors_recursively(root)
+
+    def _show_colors_recursively(self, parent):
+        for row in xrange(parent.rowCount()):
+            item = parent.child(row)
+            if self._is_module_item(item):
+                module = Rig().get_module(item.text())
+            else:
+                module = self._joint_parent_module(item.text())
+            item.setForeground(self._colors[module.side.get()])
+            self._show_colors_recursively(item)
+
+    def _hide_colors_recursively(self, parent):
+        for row in xrange(parent.rowCount()):
+            item = parent.child(row)
+            item.setForeground(self._colors['base'])
+            self._hide_colors_recursively(item)
 
     def _float_to_256_color(self, color):
         def _float_to_256(value):
@@ -160,14 +201,16 @@ class RigPanel(QtWidgets.QWidget):
         item = QtGui.QStandardItem(module.node_name)
         item.setIcon(self._module_icon)
         item.setEditable(False)
-        item.setForeground(self._colors[module.side.get()])
+        if self._color_by_side:
+            item.setForeground(self._colors[module.side.get()])
         return item
 
     def _create_joint_item(self, module, joint):
         item = QtGui.QStandardItem(joint)
         item.setIcon(self._joint_icon)
         item.setEditable(False)
-        item.setForeground(self._colors[module.side.get()])
+        if self._color_by_side:
+            item.setForeground(self._colors[module.side.get()])
         return item
 
     def _auto_parent_module_item(self, module, item, default_parent=None):
