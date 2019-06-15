@@ -121,21 +121,24 @@ class RigPanel(QtWidgets.QWidget):
         else:
             self._hide_colors_recursively(root)
 
-    def _show_colors_recursively(self, parent):
+    def _iter_items_recursively(self, parent):
         for row in xrange(parent.rowCount()):
             item = parent.child(row)
+            yield item
+            for child in self._iter_items_recursively(item):
+                yield child
+
+    def _show_colors_recursively(self, parent):
+        for item in self._iter_items_recursively(parent):
             if self._is_module_item(item):
                 module = Rig().get_module(item.text())
             else:
                 module = self._joint_parent_module(item.text())
             item.setForeground(self._colors[module.side.get()])
-            self._show_colors_recursively(item)
 
     def _hide_colors_recursively(self, parent):
-        for row in xrange(parent.rowCount()):
-            item = parent.child(row)
+        for item in self._iter_items_recursively(parent):
             item.setForeground(self._colors['base'])
-            self._hide_colors_recursively(item)
 
     def _float_to_256_color(self, color):
         def _float_to_256(value):
@@ -238,6 +241,7 @@ class RigPanel(QtWidgets.QWidget):
 
     def _on_modules_updated(self, modified_fields):
         selected_items, current_item = self._save_selection()
+        expanded_modules = self._save_expanded_modules()
         parents_have_changed = False
         sides_have_changed = False
         for module, modified_values in modified_fields.iteritems():
@@ -289,6 +293,9 @@ class RigPanel(QtWidgets.QWidget):
         if sides_have_changed and self._color_by_side:
             self._show_colors_recursively(self.model.invisibleRootItem())
 
+        if expanded_modules:
+            self._restore_expanded_modules(expanded_modules)
+
     def _handle_reparenting(self, module, module_item):
         old_parent = module_item.parent().text()
         current_parent = module.parent_module.node_name
@@ -305,6 +312,27 @@ class RigPanel(QtWidgets.QWidget):
         new_parent_item.appendRow(module_item)
 
         return True
+
+    def _save_expanded_modules(self):
+        modules = []
+        if not self.model:
+            return modules
+
+        for item in self._iter_items_recursively(self.model.invisibleRootItem()):
+            if not self._is_module_item(item):
+                continue
+            if self.tree_view.isExpanded(self.model.indexFromItem(item)):
+                module = Rig().get_module(item.text())
+                modules.append(module)
+
+        return modules
+
+    def _restore_expanded_modules(self, modules):
+        if not self.model:
+            return
+        for module in modules:
+            item = self._item_for_name(module.node_name)
+            self.tree_view.setExpanded(self.model.indexFromItem(item), True)
 
     def _save_selection(self):
         selection_model = self.tree_view.selectionModel()
