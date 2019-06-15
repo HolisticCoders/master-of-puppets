@@ -236,41 +236,58 @@ class RigPanel(QtWidgets.QWidget):
     def _on_modules_created(self, modules):
         self._populate_model(modules)
 
-    def _on_modules_updated(self, modules):
+    def _on_modules_updated(self, modified_fields):
         selected_items, current_item = self._save_selection()
         parents_have_changed = False
-        for module in modules:
-            module_item = self._item_for_name(module.node_name)
+        sides_have_changed = False
+        for module, modified_values in modified_fields.iteritems():
+            if 'node_name' in modified_values:
+                was_renamed = True
+                module_item_name = modified_values['node_name'][0]
+                module_item = self._item_for_name(module_item_name)
+                module_item.setText(module.node_name)
+            else:
+                was_renamed = False
+                module_item = self._item_for_name(module.node_name)
 
-            was_renamed = self._handle_renaming(module, module_item)
+            if 'parent_joint' in modified_values:
+                parent_has_changed = True
+                self._handle_reparenting(module, module_item)
+            else:
+                parent_has_changed = False
 
-            parent_has_changed = self._handle_reparenting(module, module_item)
             parents_have_changed = parents_have_changed or parent_has_changed
 
             joints = module.deform_joints.get()
-            joint_items = [
-                module_item.child(row)
-                for row in xrange(module_item.rowCount())
-                if not self._is_module_item(module_item.child(row))
-            ]
-            if len(joints) > len(joint_items):
-                self._fill_missing_joint_items(module, joints, joint_items)
-            else:
-                self._remove_unused_items(module_item)
+
+            if 'joint_count' in modified_values:
+                old_joint_count = modified_values['joint_count'][0]
+                new_joint_count = modified_values['joint_count'][1]
+                joint_items = [
+                    module_item.child(row)
+                    for row in xrange(module_item.rowCount())
+                    if not self._is_module_item(module_item.child(row))
+                ]
+                if new_joint_count > old_joint_count:
+                    self._fill_missing_joint_items(module, joints, joint_items)
+                else:
+                    self._remove_unused_items(module_item)
 
             if was_renamed:
                 self._rename_child_joint_items(module_item, joints)
 
+            if 'side' in modified_values:
+                side_has_changed = True
+            else:
+                side_has_changed = False
+
+            sides_have_changed = sides_have_changed or side_has_changed
+
         if parents_have_changed:
             self._restore_selection(selected_items, current_item)
 
-    def _handle_renaming(self, module, module_item):
-        module_name = module.node_name
-        was_renamed = module_item.text() != module_name
-        if not was_renamed:
-            return False
-        module_item.setText(module_name)
-        return True
+        if sides_have_changed and self._color_by_side:
+            self._show_colors_recursively(self.model.invisibleRootItem())
 
     def _handle_reparenting(self, module, module_item):
         old_parent = module_item.parent().text()
