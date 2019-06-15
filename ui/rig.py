@@ -82,7 +82,7 @@ class RigPanel(QtWidgets.QWidget):
         self._joint_parent_modules = WeakValueDictionary()
 
         self.model = QtGui.QStandardItemModel()
-        self._populate_model(Rig().rig_modules, expand_new_modules=False)
+        self._populate_model(reversed(Rig().rig_modules), expand_new_modules=False)
         self.tree_view.setModel(self.model)
         self.tree_view.header().hide()
         self.tree_view.expandAll()
