@@ -1,18 +1,11 @@
-import json
-import pdb
-import random
-from collections import defaultdict
 from math import floor
-from weakref import WeakValueDictionary
 
 import maya.cmds as cmds
 
 from mop.config.default_config import side_color
 from mop.core.rig import Rig
-from mop.ui.settings import get_settings
 from mop.ui.signals import publish, subscribe
 from mop.ui.commands import build_rig, unbuild_rig, publish_rig
-from mop.ui.utils import hsv_to_rgb
 from mop.utils.colorspace import linear_to_srgb
 from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 
@@ -76,13 +69,8 @@ class RigPanel(QtWidgets.QWidget):
             'M': self._middle_brush,
         }
 
-        self._items = {}
-        self._module_items = {}
-        self._joint_items = {}
-        self._joint_parent_modules = WeakValueDictionary()
-
         self.model = QtGui.QStandardItemModel()
-        self._populate_model(reversed(Rig().rig_modules), expand_new_modules=False)
+        self._populate_model(Rig().rig_modules, expand_new_modules=False)
         self.tree_view.setModel(self.model)
         self.tree_view.header().hide()
         self.tree_view.expandAll()
@@ -114,10 +102,30 @@ class RigPanel(QtWidgets.QWidget):
 
         return map(_float_to_256, color)
 
+    def _item_for_name(self, name):
+        search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
+        matching_items = self.model.findItems(name, search_flags)
+        if not matching_items:
+            raise ValueError('No item with text "%s" found' % name)
+        return matching_items[0]
+
+    def _joint_parent_module(self, joint):
+        modules = cmds.listConnections(joint + '.module', source=True)
+        if not modules:
+            raise AttributeError('Joint %s is not connected to a module !' % joint)
+        module = modules[0]
+        return Rig().get_module(module)
+
     def _is_module_item(self, item):
-        # HACK: 'cause you know, nothing's perfect.
-        # https://bugreports.qt.io/browse/PYSIDE-74
-        return id(item) in (id(x) for x in self._module_items.values())
+        return self._is_item_of_type(item, 'transform')
+
+    def _is_joint_item(self, item):
+        return self._is_item_of_type(item, 'joint')
+
+    def _is_item_of_type(self, item, node_type):
+        if not cmds.objExists(item.text()):
+            return False
+        return cmds.objectType(item.text()) == node_type
 
     def _setup_refresh_script_job(self):
         ids = []
@@ -153,8 +161,6 @@ class RigPanel(QtWidgets.QWidget):
         item.setIcon(self._module_icon)
         item.setEditable(False)
         item.setForeground(self._colors[module.side.get()])
-        self._module_items[module] = item
-        self._items[item.text()] = module
         return item
 
     def _create_joint_item(self, module, joint):
@@ -162,23 +168,20 @@ class RigPanel(QtWidgets.QWidget):
         item.setIcon(self._joint_icon)
         item.setEditable(False)
         item.setForeground(self._colors[module.side.get()])
-        self._joint_items[joint] = item
-        self._joint_parent_modules[joint] = module
-        self._items[item.text()] = joint
         return item
 
     def _auto_parent_module_item(self, module, item, default_parent=None):
         if module.parent_module:
-            parent_item = self._module_items[module.parent_module]
+            parent_item = self._item_for_name(module.parent_module.node_name)
         else:
             parent_item = default_parent or self.model.invisibleRootItem()
         parent_item.appendRow(item)
 
     def _auto_parent_joint_item(self, joint, item):
-        module = self._joint_parent_modules[joint]
-        parent_item = self._module_items[module]
+        module = self._joint_parent_module(joint)
+        parent_item = self._item_for_name(module.node_name)
         index = self._child_index_before_modules(parent_item)
-        parent_item.insertRow(index, item)
+        parent_item.insertRow(index, [item])
 
     def _child_index_before_modules(self, item):
         for row in xrange(item.rowCount()):
@@ -194,7 +197,7 @@ class RigPanel(QtWidgets.QWidget):
         selected_items, current_item = self._save_selection()
         parents_have_changed = False
         for module in modules:
-            module_item = self._module_items[module]
+            module_item = self._item_for_name(module.node_name)
 
             was_renamed = self._handle_renaming(module, module_item)
 
@@ -203,12 +206,14 @@ class RigPanel(QtWidgets.QWidget):
 
             joints = module.deform_joints.get()
             joint_items = [
-                module_item.child(row) for row in xrange(module_item.rowCount())
+                module_item.child(row)
+                for row in xrange(module_item.rowCount())
+                if not self._is_module_item(module_item.child(row))
             ]
             if len(joints) > len(joint_items):
                 self._fill_missing_joint_items(module, joints, joint_items)
             else:
-                self._remove_unused_items(joints, joint_items)
+                self._remove_unused_items(module_item)
 
             if was_renamed:
                 self._rename_child_joint_items(module_item, joints)
@@ -230,12 +235,13 @@ class RigPanel(QtWidgets.QWidget):
         if old_parent == current_parent:
             return False
 
-        search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
-        matching_items = self.model.findItems(current_parent, search_flags)
-        if not matching_items:
+        try:
+            new_parent_item = self._item_for_name(current_parent)
+        except ValueError:
             raise ValueError('New parent %s has no item in the GUI.' % current_parent)
-        new_parent_item = matching_items[0]
-        module_item.parent().takeRow(module_item.row())
+
+        child_items = module_item.parent().takeRow(module_item.row())
+        module_item = child_items[0]
         new_parent_item.appendRow(module_item)
 
         return True
@@ -265,22 +271,11 @@ class RigPanel(QtWidgets.QWidget):
             joint_item = self._create_joint_item(module, joint)
             self._auto_parent_joint_item(joint, joint_item)
 
-    def _remove_unused_items(self, joints, joint_items):
-        items_to_remove = joint_items[len(joints) :]
-        for joint_item in items_to_remove:
-            parent = joint_item.parent()
-            row = joint_item.row()
-            if joint_item.rowCount() > 0:
-                self._reparent_child_items_to_previous_sibling(joint_item)
-            parent.removeRow(row)
-
-    def _reparent_child_items_to_previous_sibling(self, item):
-        parent = item.parent()
-        row = item.row()
-        big_brother = parent.child(row - 1)
-        for child_row in range(item.rowCount()):
-            child_item = item.takeChild(child_row)
-            big_brother.appendRow(child_item)
+    def _remove_unused_items(self, parent_item):
+        for row in xrange(parent_item.rowCount()):
+            child = parent_item.child(row)
+            if not cmds.objExists(child.text()):
+                parent_item.removeRow(row)
 
     def _rename_child_joint_items(self, module_item, joint_names):
         joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
@@ -289,7 +284,7 @@ class RigPanel(QtWidgets.QWidget):
 
     def _on_modules_deleted(self, modules):
         for module in modules:
-            item = self._module_items[module]
+            item = self._item_for_name(module.node_name)
             parent_item = item.parent()
             if not parent_item:
                 continue
@@ -352,11 +347,11 @@ class RigPanel(QtWidgets.QWidget):
         selection = self.tree_view.selectionModel()
         selected = selection.selectedRows()
         items = [self.model.itemFromIndex(index) for index in selected]
-        joints = [
-            self._items[item.text()] for item in items if not self._is_module_item(item)
-        ]
+        joints = [item.text() for item in items if self._is_joint_item(item)]
         modules = [
-            self._items[item.text()] for item in items if self._is_module_item(item)
+            Rig().get_module(item.text())
+            for item in items
+            if self._is_module_item(item)
         ]
         if joints:
             cmds.select(joints)
