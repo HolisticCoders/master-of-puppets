@@ -182,9 +182,13 @@ class RigPanel(QtWidgets.QWidget):
 
     def _populate_model(self, modules, expand_new_modules=True):
         new_module_items = []
+        new_joint_items = []
         for module in modules:
             module_item = self._create_module_item(module)
             new_module_items.append((module, module_item))
+            for joint in module.deform_joints:
+                joint_item = self._create_joint_item(module, joint)
+                new_joint_items.append((joint, joint_item))
 
         root = self.model.invisibleRootItem()
 
@@ -192,6 +196,9 @@ class RigPanel(QtWidgets.QWidget):
             self._auto_parent_module_item(module, item, root)
             if expand_new_modules:
                 self.tree_view.setExpanded(self.model.indexFromItem(item), True)
+
+        for joint, item in new_joint_items:
+            self._auto_parent_joint_item(joint, item)
 
     def _create_module_item(self, module):
         item = QtGui.QStandardItem(module.node_name)
@@ -440,9 +447,9 @@ class RigPanel(QtWidgets.QWidget):
 
 
 class ModulesTree(QtWidgets.QTreeView):
-    """A tree view for modules.
+    """A tree view for modules and their deform joints.
 
-    You can drag and drop a module on another one to parent it.
+    You can drag and drop a module on a joint to parent it.
     """
 
     def __init__(self, parent=None):
