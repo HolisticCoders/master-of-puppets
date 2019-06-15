@@ -331,6 +331,10 @@ class RigModule(MopNode):
             raise ValueError("A node with the name `{}` already exists".format(name))
         if node_type == 'locator':
             node = cmds.spaceLocator(name=name)[0]
+        if node_type == 'follicle':
+            follicle = cmds.createNode(node_type, *args, **kwargs)
+            node = cmds.listRelatives(follicle, parent=True)[0]
+            node = cmds.rename(node, name)
         else:
             node = cmds.createNode(node_type, name=name, *args, **kwargs)
         cmds.addAttr(node, longName='module', attributeType='message')
