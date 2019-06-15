@@ -1,18 +1,12 @@
-import json
-import pdb
-import random
-from collections import defaultdict
 from math import floor
-from weakref import WeakValueDictionary
 
 import maya.cmds as cmds
 
 from mop.config.default_config import side_color
 from mop.core.rig import Rig
+from mop.ui.commands import build_rig, unbuild_rig, publish_rig
 from mop.ui.settings import get_settings
 from mop.ui.signals import publish, subscribe
-from mop.ui.commands import build_rig, unbuild_rig, publish_rig
-from mop.ui.utils import hsv_to_rgb
 from mop.utils.colorspace import linear_to_srgb
 from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 
@@ -27,8 +21,8 @@ class RigPanel(QtWidgets.QWidget):
         self.modules_group = QtWidgets.QGroupBox('Modules')
         self.actions_group = QtWidgets.QGroupBox('Actions')
 
+        color_by_side = QtWidgets.QCheckBox('Colors by Side')
         self.tree_view = ModulesTree()
-        refresh_button = QtWidgets.QPushButton('Refresh')
         self.build_button = QtWidgets.QPushButton('Build Rig')
         self.unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
         self.publish_button = QtWidgets.QPushButton('Publish Rig')
@@ -47,10 +41,10 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
+        options_layout.addWidget(color_by_side)
 
         modules_layout.addWidget(self.tree_view)
 
-        actions_layout.addWidget(refresh_button)
         actions_layout.addWidget(self.build_button)
         actions_layout.addWidget(self.unbuild_button)
         actions_layout.addWidget(self.publish_button)
@@ -76,13 +70,17 @@ class RigPanel(QtWidgets.QWidget):
             'L': self._left_brush,
             'R': self._right_brush,
             'M': self._middle_brush,
+            'base': QtGui.QBrush(QtGui.QColor(187, 187, 187)),
         }
 
-        self._items = {}
-        self._module_items = {}
+        settings = get_settings()
+        self._color_by_side = bool(int(settings.value('modules/color_by_side') or 0))
+
+        if self._color_by_side:
+            color_by_side.setChecked(True)
 
         self.model = QtGui.QStandardItemModel()
-        self._populate_model(Rig().rig_modules)
+        self._populate_model(Rig().rig_modules, expand_new_modules=False)
         self.tree_view.setModel(self.model)
         self.tree_view.header().hide()
         self.tree_view.expandAll()
@@ -91,14 +89,56 @@ class RigPanel(QtWidgets.QWidget):
 
         self._update_buttons_enabled()
 
-        refresh_button.released.connect(self._refresh_model)
+        color_by_side.toggled.connect(self._on_color_by_side_toggled)
         self.build_button.released.connect(self._on_build_rig)
         self.unbuild_button.released.connect(self._on_unbuild_rig)
         self.publish_button.released.connect(self._on_publish_rig)
 
+        self._refresh_script_job_ids = self._setup_refresh_script_job()
+
         subscribe('modules-created', self._on_modules_created)
         subscribe('modules-updated', self._on_modules_updated)
         subscribe('modules-deleted', self._on_modules_deleted)
+
+    def closeEvent(self, event):
+        for event, script_job_id in self._refresh_script_job_ids:
+            try:
+                cmds.scriptJob(kill=script_job_id)
+            except RuntimeError:
+                logger.warning('Refresh script job for %s was already deleted.', event)
+
+    def _on_color_by_side_toggled(self, checked):
+        self._color_by_side = checked
+        settings = get_settings()
+        settings.setValue('modules/color_by_side', 1 if checked else 0)
+
+        if not self.model:
+            return
+
+        root = self.model.invisibleRootItem()
+        if checked:
+            self._show_colors_recursively(root)
+        else:
+            self._hide_colors_recursively(root)
+
+    def _iter_items_recursively(self, parent):
+        for row in xrange(parent.rowCount()):
+            item = parent.child(row)
+            yield item
+            for child in self._iter_items_recursively(item):
+                yield child
+
+    def _show_colors_recursively(self, parent):
+        for item in self._iter_items_recursively(parent):
+            if self._is_module_item(item):
+                module = Rig().get_module(item.text())
+            else:
+                module = self._joint_parent_module(item.text())
+            item.setForeground(self._colors[module.side.get()])
+
+    def _hide_colors_recursively(self, parent):
+        for item in self._iter_items_recursively(parent):
+            item.setForeground(self._colors['base'])
 
     def _float_to_256_color(self, color):
         def _float_to_256(value):
@@ -106,12 +146,41 @@ class RigPanel(QtWidgets.QWidget):
 
         return map(_float_to_256, color)
 
-    def _is_module_item(self, item):
-        # HACK: 'cause you know, nothing's perfect.
-        # https://bugreports.qt.io/browse/PYSIDE-74
-        return id(item) in (id(x) for x in self._module_items.values())
+    def _item_for_name(self, name):
+        search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
+        matching_items = self.model.findItems(name, search_flags)
+        if not matching_items:
+            raise ValueError('No item with text "%s" found' % name)
+        return matching_items[0]
 
-    def _populate_model(self, modules):
+    def _joint_parent_module(self, joint):
+        modules = cmds.listConnections(joint + '.module', source=True)
+        if not modules:
+            raise AttributeError('Joint %s is not connected to a module !' % joint)
+        module = modules[0]
+        return Rig().get_module(module)
+
+    def _is_module_item(self, item):
+        return self._is_item_of_type(item, 'transform')
+
+    def _is_joint_item(self, item):
+        return self._is_item_of_type(item, 'joint')
+
+    def _is_item_of_type(self, item, node_type):
+        if not cmds.objExists(item.text()):
+            return False
+        return cmds.objectType(item.text()) == node_type
+
+    def _setup_refresh_script_job(self):
+        ids = []
+        for event in ('Undo', 'Redo'):
+            script_job_id = cmds.scriptJob(
+                event=(event, self._update_buttons_enabled), parent='mop_rig_panel'
+            )
+            ids.append((event, script_job_id))
+        return ids
+
+    def _populate_model(self, modules, expand_new_modules=True):
         new_module_items = []
         for module in modules:
             module_item = self._create_module_item(module)
@@ -121,82 +190,104 @@ class RigPanel(QtWidgets.QWidget):
 
         for module, item in new_module_items:
             self._auto_parent_module_item(module, item, root)
+            if expand_new_modules:
+                self.tree_view.setExpanded(self.model.indexFromItem(item), True)
 
     def _create_module_item(self, module):
         item = QtGui.QStandardItem(module.node_name)
         item.setIcon(self._module_icon)
         item.setEditable(False)
-        item.setForeground(self._colors[module.side.get()])
-        self._module_items[module] = item
-        self._items[item.text()] = module
+        if self._color_by_side:
+            item.setForeground(self._colors[module.side.get()])
         return item
 
     def _create_joint_item(self, module, joint):
         item = QtGui.QStandardItem(joint)
         item.setIcon(self._joint_icon)
         item.setEditable(False)
-        item.setForeground(self._colors[module.side.get()])
-        self._joint_items[joint] = item
-        self._joint_parent_modules[joint] = module
-        self._items[item.text()] = joint
+        if self._color_by_side:
+            item.setForeground(self._colors[module.side.get()])
         return item
 
     def _auto_parent_module_item(self, module, item, default_parent=None):
         if module.parent_module:
-            parent_item = self._module_items[module.parent_module]
+            parent_item = self._item_for_name(module.parent_module.node_name)
         else:
             parent_item = default_parent or self.model.invisibleRootItem()
-        index = self._child_index_before_joints(parent_item)
-        parent_item.insertRow(index, item)
-
-    def _auto_parent_joint_item(self, joint, item):
-        module = self._joint_parent_modules[joint]
-        parent_item = self._module_items[module]
         parent_item.appendRow(item)
 
-    def _child_index_before_joints(self, item):
+    def _auto_parent_joint_item(self, joint, item):
+        module = self._joint_parent_module(joint)
+        parent_item = self._item_for_name(module.node_name)
+        index = self._child_index_before_modules(parent_item)
+        parent_item.insertRow(index, [item])
+
+    def _child_index_before_modules(self, item):
         for row in xrange(item.rowCount()):
             child = item.child(row)
-            if not self._is_module_item(child):
+            if self._is_module_item(child):
                 return row
         return 0
 
     def _on_modules_created(self, modules):
         self._populate_model(modules)
 
-    def _on_modules_updated(self, modules):
+    def _on_modules_updated(self, modified_fields):
         selected_items, current_item = self._save_selection()
+        expanded_modules = self._save_expanded_modules()
         parents_have_changed = False
-        for module in modules:
-            module_item = self._module_items[module]
+        sides_have_changed = False
+        for module, modified_values in modified_fields.iteritems():
+            if 'node_name' in modified_values:
+                was_renamed = True
+                module_item_name = modified_values['node_name'][0]
+                module_item = self._item_for_name(module_item_name)
+                module_item.setText(module.node_name)
+            else:
+                was_renamed = False
+                module_item = self._item_for_name(module.node_name)
 
-            was_renamed = self._handle_renaming(module, module_item)
+            if 'parent_joint' in modified_values:
+                parent_has_changed = True
+                self._handle_reparenting(module, module_item)
+            else:
+                parent_has_changed = False
 
-            parent_has_changed = self._handle_reparenting(module, module_item)
             parents_have_changed = parents_have_changed or parent_has_changed
 
             joints = module.deform_joints.get()
-            joint_items = [
-                module_item.child(row) for row in xrange(module_item.rowCount())
-            ]
-            if len(joints) > len(joint_items):
-                self._fill_missing_joint_items(module, joints, joint_items)
-            else:
-                self._remove_unused_items(joints, joint_items)
+
+            if 'joint_count' in modified_values:
+                old_joint_count = modified_values['joint_count'][0]
+                new_joint_count = modified_values['joint_count'][1]
+                joint_items = [
+                    module_item.child(row)
+                    for row in xrange(module_item.rowCount())
+                    if not self._is_module_item(module_item.child(row))
+                ]
+                if new_joint_count > old_joint_count:
+                    self._fill_missing_joint_items(module, joints, joint_items)
+                else:
+                    self._remove_unused_items(module_item)
 
             if was_renamed:
                 self._rename_child_joint_items(module_item, joints)
 
+            if 'side' in modified_values:
+                side_has_changed = True
+            else:
+                side_has_changed = False
+
+            sides_have_changed = sides_have_changed or side_has_changed
+
         if parents_have_changed:
             self._restore_selection(selected_items, current_item)
 
-    def _handle_renaming(self, module, module_item):
-        module_name = module.node_name
-        was_renamed = module_item.text() != module_name
-        if not was_renamed:
-            return False
-        module_item.setText(module_name)
-        return True
+        if sides_have_changed and self._color_by_side:
+            self._show_colors_recursively(self.model.invisibleRootItem())
+
+        if expanded_modules:
+            self._restore_expanded_modules(expanded_modules)
 
     def _handle_reparenting(self, module, module_item):
         old_parent = module_item.parent().text()
@@ -204,16 +295,37 @@ class RigPanel(QtWidgets.QWidget):
         if old_parent == current_parent:
             return False
 
-        search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
-        matching_items = self.model.findItems(current_parent, search_flags)
-        if not matching_items:
+        try:
+            new_parent_item = self._item_for_name(current_parent)
+        except ValueError:
             raise ValueError('New parent %s has no item in the GUI.' % current_parent)
-        new_parent_item = matching_items[0]
-        module_item.parent().takeRow(module_item.row())
-        index = self._child_index_before_joints(new_parent_item)
-        new_parent_item.insertRow(index, module_item)
+
+        child_items = module_item.parent().takeRow(module_item.row())
+        module_item = child_items[0]
+        new_parent_item.appendRow(module_item)
 
         return True
+
+    def _save_expanded_modules(self):
+        modules = []
+        if not self.model:
+            return modules
+
+        for item in self._iter_items_recursively(self.model.invisibleRootItem()):
+            if not self._is_module_item(item):
+                continue
+            if self.tree_view.isExpanded(self.model.indexFromItem(item)):
+                module = Rig().get_module(item.text())
+                modules.append(module)
+
+        return modules
+
+    def _restore_expanded_modules(self, modules):
+        if not self.model:
+            return
+        for module in modules:
+            item = self._item_for_name(module.node_name)
+            self.tree_view.setExpanded(self.model.indexFromItem(item), True)
 
     def _save_selection(self):
         selection_model = self.tree_view.selectionModel()
@@ -240,22 +352,11 @@ class RigPanel(QtWidgets.QWidget):
             joint_item = self._create_joint_item(module, joint)
             self._auto_parent_joint_item(joint, joint_item)
 
-    def _remove_unused_items(self, joints, joint_items):
-        items_to_remove = joint_items[len(joints) :]
-        for joint_item in items_to_remove:
-            parent = joint_item.parent()
-            row = joint_item.row()
-            if joint_item.rowCount() > 0:
-                self._reparent_child_items_to_previous_sibling(joint_item)
-            parent.removeRow(row)
-
-    def _reparent_child_items_to_previous_sibling(self, item):
-        parent = item.parent()
-        row = item.row()
-        big_brother = parent.child(row - 1)
-        for child_row in range(item.rowCount()):
-            child_item = item.takeChild(child_row)
-            big_brother.appendRow(child_item)
+    def _remove_unused_items(self, parent_item):
+        for row in xrange(parent_item.rowCount()):
+            child = parent_item.child(row)
+            if not cmds.objExists(child.text()):
+                parent_item.removeRow(row)
 
     def _rename_child_joint_items(self, module_item, joint_names):
         joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
@@ -264,17 +365,12 @@ class RigPanel(QtWidgets.QWidget):
 
     def _on_modules_deleted(self, modules):
         for module in modules:
-            item = self._module_items.pop(module)
-            del self._item_modules[item.text()]
+            item = self._item_for_name(module.node_name)
             parent_item = item.parent()
             if not parent_item:
                 continue
             row = item.row()
             parent_item.removeRow(row)
-
-    def _refresh_model(self, modules=None):
-        # TODO: update buttons state
-        pass
 
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.
@@ -332,11 +428,11 @@ class RigPanel(QtWidgets.QWidget):
         selection = self.tree_view.selectionModel()
         selected = selection.selectedRows()
         items = [self.model.itemFromIndex(index) for index in selected]
-        joints = [
-            self._items[item.text()] for item in items if not self._is_module_item(item)
-        ]
+        joints = [item.text() for item in items if self._is_joint_item(item)]
         modules = [
-            self._items[item.text()] for item in items if self._is_module_item(item)
+            Rig().get_module(item.text())
+            for item in items
+            if self._is_module_item(item)
         ]
         if joints:
             cmds.select(joints)

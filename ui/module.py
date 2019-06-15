@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from functools import partial
 from operator import attrgetter
 from weakref import WeakValueDictionary
@@ -95,7 +96,9 @@ class ModulePanel(QtWidgets.QDockWidget):
         """
 
         def is_module(module):
-            return not isinstance(module, basestring)
+            return not isinstance(module, basestring) and cmds.objExists(
+                module.node_name
+            )
 
         self.modules = filter(is_module, modules)
         self._update_ui()
@@ -121,23 +124,30 @@ class ModulePanel(QtWidgets.QDockWidget):
         if not self.modules:
             return
 
+        modified_fields = defaultdict(dict)
         for module in self.modules:
+            old_name = module.node_name
             for name, widget in self._module_widgets.iteritems():
                 if widget not in self._modified_fields:
                     continue
                 field = getattr(module, name)
+                old_value = field.get()
                 value = widget.get()
                 field.set(value)
                 label = self.form.labelForField(widget)
                 label.setStyleSheet('')
                 self._initial_values[widget] = value
+                modified_fields[module][name] = (old_value, value)
             module.update()
+            new_name = module.node_name
+            if new_name != old_name:
+                modified_fields[module]['node_name'] = (old_name, new_name)
 
         self.apply_button.setEnabled(False)
         self.reset_button.setEnabled(False)
         self._modified_fields.clear()
 
-        publish('modules-updated', self.modules)
+        publish('modules-updated', modified_fields)
 
     def _delete_module(self):
         """Delete the selected module."""
