@@ -172,18 +172,18 @@ class RigPanel(QtWidgets.QWidget):
             parent_item = self._module_items[module.parent_module]
         else:
             parent_item = default_parent or self.model.invisibleRootItem()
-        index = self._child_index_before_joints(parent_item)
-        parent_item.insertRow(index, item)
+        parent_item.appendRow(item)
 
     def _auto_parent_joint_item(self, joint, item):
         module = self._joint_parent_modules[joint]
         parent_item = self._module_items[module]
-        parent_item.appendRow(item)
+        index = self._child_index_before_modules(parent_item)
+        parent_item.insertRow(index, item)
 
-    def _child_index_before_joints(self, item):
+    def _child_index_before_modules(self, item):
         for row in xrange(item.rowCount()):
             child = item.child(row)
-            if not self._is_module_item(child):
+            if self._is_module_item(child):
                 return row
         return 0
 
@@ -236,8 +236,7 @@ class RigPanel(QtWidgets.QWidget):
             raise ValueError('New parent %s has no item in the GUI.' % current_parent)
         new_parent_item = matching_items[0]
         module_item.parent().takeRow(module_item.row())
-        index = self._child_index_before_joints(new_parent_item)
-        new_parent_item.insertRow(index, module_item)
+        new_parent_item.appendRow(module_item)
 
         return True
 
