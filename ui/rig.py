@@ -28,7 +28,6 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group = QtWidgets.QGroupBox('Actions')
 
         self.tree_view = ModulesTree()
-        refresh_button = QtWidgets.QPushButton('Refresh')
         self.build_button = QtWidgets.QPushButton('Build Rig')
         self.unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
         self.publish_button = QtWidgets.QPushButton('Publish Rig')
@@ -50,7 +49,6 @@ class RigPanel(QtWidgets.QWidget):
 
         modules_layout.addWidget(self.tree_view)
 
-        actions_layout.addWidget(refresh_button)
         actions_layout.addWidget(self.build_button)
         actions_layout.addWidget(self.unbuild_button)
         actions_layout.addWidget(self.publish_button)
@@ -93,7 +91,6 @@ class RigPanel(QtWidgets.QWidget):
 
         self._update_buttons_enabled()
 
-        refresh_button.released.connect(self._refresh_model)
         self.build_button.released.connect(self._on_build_rig)
         self.unbuild_button.released.connect(self._on_unbuild_rig)
         self.publish_button.released.connect(self._on_publish_rig)
@@ -299,9 +296,6 @@ class RigPanel(QtWidgets.QWidget):
                 continue
             row = item.row()
             parent_item.removeRow(row)
-
-    def _refresh_model(self, modules=None):
-        self._update_buttons_enabled()
 
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.
