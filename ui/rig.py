@@ -84,7 +84,7 @@ class RigPanel(QtWidgets.QWidget):
         self._joint_parent_modules = WeakValueDictionary()
 
         self.model = QtGui.QStandardItemModel()
-        self._populate_model(Rig().rig_modules)
+        self._populate_model(Rig().rig_modules, expand_new_modules=False)
         self.tree_view.setModel(self.model)
         self.tree_view.header().hide()
         self.tree_view.expandAll()
@@ -113,7 +113,7 @@ class RigPanel(QtWidgets.QWidget):
         # https://bugreports.qt.io/browse/PYSIDE-74
         return id(item) in (id(x) for x in self._module_items.values())
 
-    def _populate_model(self, modules):
+    def _populate_model(self, modules, expand_new_modules=True):
         new_module_items = []
         new_joint_items = []
         for module in modules:
@@ -127,6 +127,8 @@ class RigPanel(QtWidgets.QWidget):
 
         for module, item in new_module_items:
             self._auto_parent_module_item(module, item, root)
+            if expand_new_modules:
+                self.tree_view.setExpanded(self.model.indexFromItem(item), True)
 
         for joint, item in new_joint_items:
             self._auto_parent_joint_item(joint, item)
