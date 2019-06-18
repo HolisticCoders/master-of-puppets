@@ -380,10 +380,16 @@ class RigModule(MopNode):
         return new_joint
 
     def add_guide_node(
-        self, parent=None, object_id=None, description=None, shape_type='circle'
+        self,
+        parent=None,
+        object_id=None,
+        skip_id=False,
+        description=None,
+        shape_type='circle',
     ):
         """Creates a new guide node for this module."""
-        if object_id is None:
+        print(description, skip_id, object_id)
+        if not skip_id and object_id is None:
             object_id = len(self.guide_nodes)
 
         module_matadata = mop.metadata.metadata_from_name(self.node_name)

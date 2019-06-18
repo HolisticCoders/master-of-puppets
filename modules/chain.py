@@ -77,19 +77,32 @@ class Chain(RigModule):
             mop.dag.matrix_constraint(ctl, joint)
             parent = ctl
 
-    def add_guide_node(self):
+    def add_guide_node(
+        self,
+        parent=None,
+        object_id=None,
+        skip_id=False,
+        description=None,
+        shape_type='circle',
+    ):
         """Parent the new deform joint to the last one."""
         guide_nodes = self.guide_nodes.get()
-        if guide_nodes:
-            parent = guide_nodes[-1]
-        else:
-            parent = self.guide_group.get()
+        if parent is None:
+            if guide_nodes:
+                parent = guide_nodes[-1]
+            else:
+                parent = self.guide_group.get()
+
         guide = super(Chain, self).add_guide_node(
-            parent=parent, object_id=len(self.guide_nodes)
+            parent=parent,
+            object_id=object_id,
+            skip_id=skip_id,
+            description=description,
+            shape_type=shape_type,
         )
         return guide
 
-    def add_deform_joint(self):
+    def add_deform_joint(self, parent=None, object_id=None, description=None):
         """Parent the new deform joint to the last one."""
         deform_joints = self.deform_joints.get()
         if deform_joints:
