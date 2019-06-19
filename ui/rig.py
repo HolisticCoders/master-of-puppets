@@ -1,16 +1,14 @@
-import maya.cmds as cmds
-import json
-import random
-import pdb
-from collections import defaultdict
-from weakref import WeakKeyDictionary, WeakSet
+from math import floor
 
-from mop.vendor.Qt import QtCore, QtGui, QtWidgets
+import maya.cmds as cmds
+
+from mop.config.default_config import side_color
 from mop.core.rig import Rig
+from mop.ui.commands import build_rig, unbuild_rig, publish_rig
 from mop.ui.settings import get_settings
 from mop.ui.signals import publish, subscribe
-from mop.ui.commands import build_rig, unbuild_rig, publish_rig
-from mop.ui.utils import hsv_to_rgb
+from mop.utils.colorspace import linear_to_srgb
+from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 
 
 class RigPanel(QtWidgets.QWidget):
@@ -23,9 +21,8 @@ class RigPanel(QtWidgets.QWidget):
         self.modules_group = QtWidgets.QGroupBox('Modules')
         self.actions_group = QtWidgets.QGroupBox('Actions')
 
-        random_colors = QtWidgets.QCheckBox('Random Colors')
+        color_by_side = QtWidgets.QCheckBox('Colors by Side')
         self.tree_view = ModulesTree()
-        refresh_button = QtWidgets.QPushButton('Refresh')
         self.build_button = QtWidgets.QPushButton('Build Rig')
         self.unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
         self.publish_button = QtWidgets.QPushButton('Publish Rig')
@@ -44,61 +41,343 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group.setLayout(actions_layout)
 
         modules_layout.addLayout(options_layout)
-        options_layout.addWidget(random_colors)
+        options_layout.addWidget(color_by_side)
 
         modules_layout.addWidget(self.tree_view)
 
-        actions_layout.addWidget(refresh_button)
         actions_layout.addWidget(self.build_button)
         actions_layout.addWidget(self.unbuild_button)
         actions_layout.addWidget(self.publish_button)
 
-        self._refresh_model()
-        if self.model.is_colored:
-            random_colors.setChecked(True)
+        # Icons
+        self._module_icon = QtGui.QIcon(':QR_settings.png')
+        self._joint_icon = QtGui.QIcon(':kinJoint.png')
+
+        # GUI colors
+        raw_left = side_color['L']
+        raw_right = side_color['R']
+        raw_middle = side_color['M']
+        srgb_left = map(linear_to_srgb, raw_left)
+        srgb_right = map(linear_to_srgb, raw_right)
+        srgb_middle = map(linear_to_srgb, raw_middle)
+        left_color = self._float_to_256_color(srgb_left)
+        right_color = self._float_to_256_color(srgb_right)
+        middle_color = self._float_to_256_color(srgb_middle)
+        self._left_brush = QtGui.QBrush(QtGui.QColor(*left_color))
+        self._right_brush = QtGui.QBrush(QtGui.QColor(*right_color))
+        self._middle_brush = QtGui.QBrush(QtGui.QColor(*middle_color))
+        self._colors = {
+            'L': self._left_brush,
+            'R': self._right_brush,
+            'M': self._middle_brush,
+            'base': QtGui.QBrush(QtGui.QColor(187, 187, 187)),
+        }
+
+        settings = get_settings()
+        self._color_by_side = bool(int(settings.value('modules/color_by_side') or 0))
+
+        if self._color_by_side:
+            color_by_side.setChecked(True)
+
+        self.model = QtGui.QStandardItemModel()
+        self._populate_model(Rig().rig_modules, expand_new_modules=False)
+        self.tree_view.setModel(self.model)
+        self.tree_view.header().hide()
+        self.tree_view.expandAll()
+        selection_model = self.tree_view.selectionModel()
+        selection_model.selectionChanged.connect(self._on_selection_changed)
 
         self._update_buttons_enabled()
 
-        random_colors.toggled.connect(self._on_random_colors_toggled)
-        refresh_button.released.connect(self._refresh_model)
+        color_by_side.toggled.connect(self._on_color_by_side_toggled)
         self.build_button.released.connect(self._on_build_rig)
         self.unbuild_button.released.connect(self._on_unbuild_rig)
         self.publish_button.released.connect(self._on_publish_rig)
 
-        subscribe('modules-created', self._refresh_model)
-        subscribe('modules-updated', self._refresh_model)
-        subscribe('modules-deleted', self._refresh_model)
+        self._refresh_script_job_ids = self._setup_refresh_script_job()
 
-    def _refresh_model(self, modules=None):
-        self.model = ModulesModel()
-        self.tree_view.setModel(self.model)
-        self.tree_view.header().hide()
-        self.tree_view.expandAll()
+        subscribe('modules-created', self._on_modules_created)
+        subscribe('modules-updated', self._on_modules_updated)
+        subscribe('modules-deleted', self._on_modules_deleted)
 
+    def closeEvent(self, event):
+        for event, script_job_id in self._refresh_script_job_ids:
+            try:
+                cmds.scriptJob(kill=script_job_id)
+            except RuntimeError:
+                logger.warning('Refresh script job for %s was already deleted.', event)
+
+    def _on_color_by_side_toggled(self, checked):
+        self._color_by_side = checked
+        settings = get_settings()
+        settings.setValue('modules/color_by_side', 1 if checked else 0)
+
+        if not self.model:
+            return
+
+        root = self.model.invisibleRootItem()
+        if checked:
+            self._show_colors_recursively(root)
+        else:
+            self._hide_colors_recursively(root)
+
+    def _iter_items_recursively(self, parent):
+        for row in xrange(parent.rowCount()):
+            item = parent.child(row)
+            yield item
+            for child in self._iter_items_recursively(item):
+                yield child
+
+    def _show_colors_recursively(self, parent):
+        for item in self._iter_items_recursively(parent):
+            if self._is_module_item(item):
+                module = Rig().get_module(item.text())
+            else:
+                module = self._joint_parent_module(item.text())
+            item.setForeground(self._colors[module.side.get()])
+
+    def _hide_colors_recursively(self, parent):
+        for item in self._iter_items_recursively(parent):
+            item.setForeground(self._colors['base'])
+
+    def _float_to_256_color(self, color):
+        def _float_to_256(value):
+            return int(floor(255 if value >= 1.0 else value * 256))
+
+        return map(_float_to_256, color)
+
+    def _item_for_name(self, name):
+        search_flags = QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive
+        matching_items = self.model.findItems(name, search_flags)
+        if not matching_items:
+            raise ValueError('No item with text "%s" found' % name)
+        return matching_items[0]
+
+    def _joint_parent_module(self, joint):
+        modules = cmds.listConnections(joint + '.module', source=True)
+        if not modules:
+            raise AttributeError('Joint %s is not connected to a module !' % joint)
+        module = modules[0]
+        return Rig().get_module(module)
+
+    def _is_module_item(self, item):
+        return self._is_item_of_type(item, 'transform')
+
+    def _is_joint_item(self, item):
+        return self._is_item_of_type(item, 'joint')
+
+    def _is_item_of_type(self, item, node_type):
+        if not cmds.objExists(item.text()):
+            return False
+        return cmds.objectType(item.text()) == node_type
+
+    def _setup_refresh_script_job(self):
+        ids = []
+        for event in ('Undo', 'Redo'):
+            script_job_id = cmds.scriptJob(
+                event=(event, self._update_buttons_enabled), parent='mop_rig_panel'
+            )
+            ids.append((event, script_job_id))
+        return ids
+
+    def _populate_model(self, modules, expand_new_modules=True):
+        new_module_items = []
+        new_joint_items = []
+        for module in modules:
+            module_item = self._create_module_item(module)
+            new_module_items.append((module, module_item))
+            for joint in module.deform_joints:
+                joint_item = self._create_joint_item(module, joint)
+                new_joint_items.append((joint, joint_item))
+
+        root = self.model.invisibleRootItem()
+
+        for module, item in new_module_items:
+            self._auto_parent_module_item(module, item, root)
+            if expand_new_modules:
+                self.tree_view.setExpanded(self.model.indexFromItem(item), True)
+
+        for joint, item in new_joint_items:
+            self._auto_parent_joint_item(joint, item)
+
+    def _create_module_item(self, module):
+        item = QtGui.QStandardItem(module.node_name)
+        item.setIcon(self._module_icon)
+        item.setEditable(False)
+        if self._color_by_side:
+            item.setForeground(self._colors[module.side.get()])
+        return item
+
+    def _create_joint_item(self, module, joint):
+        item = QtGui.QStandardItem(joint)
+        item.setIcon(self._joint_icon)
+        item.setEditable(False)
+        if self._color_by_side:
+            item.setForeground(self._colors[module.side.get()])
+        return item
+
+    def _auto_parent_module_item(self, module, item, default_parent=None):
+        if module.parent_module:
+            parent_item = self._item_for_name(module.parent_module.node_name)
+        else:
+            parent_item = default_parent or self.model.invisibleRootItem()
+        parent_item.appendRow(item)
+
+    def _auto_parent_joint_item(self, joint, item):
+        module = self._joint_parent_module(joint)
+        parent_item = self._item_for_name(module.node_name)
+        index = self._child_index_before_modules(parent_item)
+        parent_item.insertRow(index, [item])
+
+    def _child_index_before_modules(self, item):
+        for row in xrange(item.rowCount()):
+            child = item.child(row)
+            if self._is_module_item(child):
+                return row
+        return 0
+
+    def _on_modules_created(self, modules):
+        self._populate_model(modules)
+
+    def _on_modules_updated(self, modified_fields):
+        selected_items, current_item = self._save_selection()
+        expanded_modules = self._save_expanded_modules()
+        parents_have_changed = False
+        sides_have_changed = False
+        for module, modified_values in modified_fields.iteritems():
+            if 'node_name' in modified_values:
+                was_renamed = True
+                module_item_name = modified_values['node_name'][0]
+                module_item = self._item_for_name(module_item_name)
+                module_item.setText(module.node_name)
+            else:
+                was_renamed = False
+                module_item = self._item_for_name(module.node_name)
+
+            if 'parent_joint' in modified_values:
+                parent_has_changed = True
+                self._handle_reparenting(module, module_item)
+            else:
+                parent_has_changed = False
+
+            parents_have_changed = parents_have_changed or parent_has_changed
+
+            joints = module.deform_joints.get()
+
+            if 'joint_count' in modified_values:
+                old_joint_count = modified_values['joint_count'][0]
+                new_joint_count = modified_values['joint_count'][1]
+                joint_items = [
+                    module_item.child(row)
+                    for row in xrange(module_item.rowCount())
+                    if not self._is_module_item(module_item.child(row))
+                ]
+                if new_joint_count > old_joint_count:
+                    self._fill_missing_joint_items(module, joints, joint_items)
+                else:
+                    self._remove_unused_items(module_item)
+
+            if was_renamed:
+                self._rename_child_joint_items(module_item, joints)
+
+            if 'side' in modified_values:
+                side_has_changed = True
+            else:
+                side_has_changed = False
+
+            sides_have_changed = sides_have_changed or side_has_changed
+
+        if parents_have_changed:
+            self._restore_selection(selected_items, current_item)
+
+        if sides_have_changed and self._color_by_side:
+            self._show_colors_recursively(self.model.invisibleRootItem())
+
+        if expanded_modules:
+            self._restore_expanded_modules(expanded_modules)
+
+    def _handle_reparenting(self, module, module_item):
+        old_parent = module_item.parent().text()
+        current_parent = module.parent_module.node_name
+        if old_parent == current_parent:
+            return False
+
+        try:
+            new_parent_item = self._item_for_name(current_parent)
+        except ValueError:
+            raise ValueError('New parent %s has no item in the GUI.' % current_parent)
+
+        child_items = module_item.parent().takeRow(module_item.row())
+        module_item = child_items[0]
+        new_parent_item.appendRow(module_item)
+
+        return True
+
+    def _save_expanded_modules(self):
+        modules = []
+        if not self.model:
+            return modules
+
+        for item in self._iter_items_recursively(self.model.invisibleRootItem()):
+            if not self._is_module_item(item):
+                continue
+            if self.tree_view.isExpanded(self.model.indexFromItem(item)):
+                module = Rig().get_module(item.text())
+                modules.append(module)
+
+        return modules
+
+    def _restore_expanded_modules(self, modules):
+        if not self.model:
+            return
+        for module in modules:
+            item = self._item_for_name(module.node_name)
+            self.tree_view.setExpanded(self.model.indexFromItem(item), True)
+
+    def _save_selection(self):
         selection_model = self.tree_view.selectionModel()
-        selection_model.selectionChanged.connect(self._on_selection_changed)
+        selection = selection_model.selectedRows()
+        selected_items = map(self.model.itemFromIndex, selection)
+        current_index = selection_model.currentIndex()
+        current_item = self.model.itemFromIndex(current_index)
+        return selected_items, current_item
 
-        # Restore selection.
-        # NOTE: maybe optimize this part, and keep the same
-        # model for the whole session, instead of discarding
-        # it for any module added/deleted/changed.
-        indices = []
-        if modules:
-            # Filter in case we stumble upon deleted module.
-            # In this case, they won't have any index in the tree.
-            indices = filter(None, map(self._find_index, modules))
-            selection = QtCore.QItemSelection()
-            selection_model.clear()
-            for index in indices:
-                selection.select(index, index)
-            selection_model.select(
-                selection,
-                QtCore.QItemSelectionModel.Select,
-            )
-            selection_model.setCurrentIndex(
-                indices[-1],
-                QtCore.QItemSelectionModel.Current,
-            )
+    def _restore_selection(self, selected_items, current_item):
+        selection_model = self.tree_view.selectionModel()
+        selection_model.clear()
+        for item in selected_items:
+            index = self.model.indexFromItem(item)
+            selection_model.select(index, QtCore.QItemSelectionModel.Select)
+        current_index = self.model.indexFromItem(current_item)
+        selection_model.setCurrentIndex(
+            current_index, QtCore.QItemSelectionModel.Current
+        )
+
+    def _fill_missing_joint_items(self, module, joints, joint_items):
+        added_joints = joints[len(joint_items) :]
+        for joint in added_joints:
+            joint_item = self._create_joint_item(module, joint)
+            self._auto_parent_joint_item(joint, joint_item)
+
+    def _remove_unused_items(self, parent_item):
+        for row in xrange(parent_item.rowCount()):
+            child = parent_item.child(row)
+            if not cmds.objExists(child.text()):
+                parent_item.removeRow(row)
+
+    def _rename_child_joint_items(self, module_item, joint_names):
+        joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
+        for name, joint_item in zip(joint_names, joint_items):
+            joint_item.setText(name)
+
+    def _on_modules_deleted(self, modules):
+        for module in modules:
+            item = self._item_for_name(module.node_name)
+            parent_item = item.parent()
+            if not parent_item:
+                continue
+            row = item.row()
+            parent_item.removeRow(row)
 
     def _find_index(self, module, index=QtCore.QModelIndex()):
         """Return a Qt index to ``module``.
@@ -130,14 +409,6 @@ class RigPanel(QtWidgets.QWidget):
             if _index:
                 return _index
 
-    def _on_random_colors_toggled(self, checked):
-        if not self.model:
-            return
-        if checked:
-            self.model.random_colors_on()
-        else:
-            self.model.random_colors_off()
-
     def _on_build_rig(self):
         build_rig()
         self._update_buttons_enabled()
@@ -163,10 +434,16 @@ class RigPanel(QtWidgets.QWidget):
     def _on_selection_changed(self, selected, deselected):
         selection = self.tree_view.selectionModel()
         selected = selection.selectedRows()
-        pointer = [index.internalPointer() for index in selected]
-        joints = [p for p in pointer if isinstance(p, basestring)]
-        cmds.select(joints)
-        publish('selected-modules-changed', pointer)
+        items = [self.model.itemFromIndex(index) for index in selected]
+        joints = [item.text() for item in items if self._is_joint_item(item)]
+        modules = [
+            Rig().get_module(item.text())
+            for item in items
+            if self._is_module_item(item)
+        ]
+        if joints:
+            cmds.select(joints)
+        publish('selected-modules-changed', modules)
 
 
 class ModulesTree(QtWidgets.QTreeView):
@@ -177,264 +454,5 @@ class ModulesTree(QtWidgets.QTreeView):
 
     def __init__(self, parent=None):
         super(ModulesTree, self).__init__(parent)
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
-        self.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection
-        )
+        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
-
-class ModulesModel(QtCore.QAbstractItemModel):
-    """A model storing modules and their deform joints.
-
-    In this model, joints are stored as :class:`str` instances,
-    and modules as :class:`mop.core.module.RigModule`.
-    """
-
-    def __init__(self, parent=None):
-        super(ModulesModel, self).__init__(parent)
-        self._random_colors = False
-        self.invalidate_cache()
-
-        settings = get_settings()
-        random_colors = bool(int(settings.value('modules/random_colors') or 0))
-        if random_colors:
-            self.random_colors_on()
-
-    def invalidate_cache(self):
-        """Refresh the cache."""
-        rig = Rig()
-        self.modules = rig.rig_modules
-
-        self._module_colors = {}
-        self._top_level_modules = []
-        self._joints_parent_module = {}
-        self._joints_child_modules = defaultdict(list)
-        self._modules_parent_joint = {}
-        self._modules_child_joints = defaultdict(list)
-
-        for module in self.modules:
-            self._module_colors[module] = random.random()
-            parent = module.parent_joint.get()
-            self._modules_parent_joint[module] = parent
-            self._joints_child_modules[parent].append(module)
-            if parent is None:
-                self._top_level_modules.append(module)
-            for joint in module.deform_joints:
-                self._joints_parent_module[joint] = module
-                self._modules_child_joints[module].append(joint)
-
-    @property
-    def is_colored(self):
-        """Return ``True`` if this model is randomly colored.
-
-        :rtype: bool
-        """
-        return self._random_colors
-
-    def random_colors_on(self):
-        self._random_colors = True
-        parent = QtCore.QModelIndex()
-        self.dataChanged.emit(
-            self.index(0, 0, parent),
-            self.index(self.rowCount(parent), 0, parent),
-            [QtCore.Qt.ForegroundRole],
-        )
-
-        settings = get_settings()
-        settings.setValue('modules/random_colors', 1)
-
-    def random_colors_off(self):
-        self._random_colors = False
-        parent = QtCore.QModelIndex()
-        self.dataChanged.emit(
-            self.index(0, 0, parent),
-            self.index(self.rowCount(parent), 0, parent),
-            [QtCore.Qt.ForegroundRole],
-        )
-
-        settings = get_settings()
-        settings.setValue('modules/random_colors', 0)
-
-    def rowCount(self, parent):
-        if not parent.isValid():
-            return len(self._top_level_modules)
-        else:
-            pointer = parent.internalPointer()
-            if isinstance(pointer, basestring):
-                # We got ourselves a joint.
-                return len(self._joints_child_modules[pointer])
-            elif pointer:
-                # We found a module.
-                return len(self._modules_child_joints[pointer])
-        return 0
-
-    def columnCount(self, parent):
-        return 1
-
-    def data(self, index, role):
-        if not index.isValid():
-            return None
-        pointer = index.internalPointer()
-        if role == QtCore.Qt.DisplayRole:
-            if isinstance(pointer, basestring):
-                return pointer
-            return pointer.node_name
-        elif role == QtCore.Qt.DecorationRole:
-            if isinstance(pointer, basestring):
-                return QtGui.QIcon(':kinJoint.png')
-            return QtGui.QIcon(':QR_settings.png')
-        elif role == QtCore.Qt.ForegroundRole:
-            if not self._random_colors:
-                return
-            if isinstance(pointer, basestring):
-                module = index.parent().internalPointer()
-            else:
-                module = index.internalPointer()
-            color = hsv_to_rgb(self._module_colors[module], .3, .80)
-            return QtGui.QBrush(QtGui.QColor(*color))
-
-    def index(self, row, column, parent):
-        if not parent.isValid():
-            # We have a top level module.
-            try:
-                module = self._top_level_modules[row]
-            except IndexError:
-                return QtCore.QModelIndex()
-            return self.createIndex(row, column, module)
-
-        parent_pointer = parent.internalPointer()
-        if isinstance(parent_pointer, basestring):
-            children = self._joints_child_modules[parent_pointer]
-        elif parent_pointer:
-            children = self._modules_child_joints[parent_pointer]
-
-        try:
-            pointer = children[row]
-        except IndexError:
-            return QtCore.QModelIndex()
-
-        return self.createIndex(row, column, pointer)
-
-    def parent(self, index):
-        if not index.isValid():
-            return QtCore.QModelIndex()
-
-        pointer = index.internalPointer()
-        if isinstance(pointer, basestring):
-            # We got a joint, so the parent pointer
-            # will be a module.
-            # We must find the module
-            parent_pointer = self._joints_parent_module[pointer]
-        elif pointer:
-            parent_pointer = self._modules_parent_joint[pointer]
-            if not parent_pointer:
-                # We hit a top-level module.
-                return QtCore.QModelIndex()
-
-        if isinstance(parent_pointer, basestring):
-            great_parent_pointer = self._joints_parent_module[parent_pointer]
-            great_children = self._modules_child_joints[great_parent_pointer]
-        elif parent_pointer:
-            great_parent_pointer = self._modules_parent_joint[parent_pointer]
-            if not great_parent_pointer:
-                # We hit a top-level module.
-                row = self._top_level_modules.index(parent_pointer)
-                return self.createIndex(row, 0, self._top_level_modules[row])
-            great_children = self._joints_child_modules[great_parent_pointer]
-
-        row = great_children.index(parent_pointer)
-        return self.createIndex(row, 0, parent_pointer)
-
-    def flags(self, index):
-        default_flags = super(ModulesModel, self).flags(index)
-        if Rig().is_built.get():
-            if not isinstance(index.internalPointer(), basestring):
-                return default_flags
-            return QtCore.Qt.ItemIsEnabled
-
-        if not index.isValid():
-            return default_flags
-
-        if not isinstance(index.internalPointer(), basestring):
-            # Only allow modules to be dragged.
-            return (QtCore.Qt.ItemIsDragEnabled
-                    | QtCore.Qt.ItemIsDropEnabled
-                    | default_flags)
-
-        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDropEnabled | QtCore.Qt.ItemIsSelectable
-
-    def supportedDropActions(self):
-        return QtCore.Qt.MoveAction
-
-    def mimeTypes(self):
-        return ['application/text']
-
-    def mimeData(self, indices):
-        data = QtCore.QMimeData()
-        names = []
-        for index in indices:
-            if not index.isValid():
-                continue
-            names.append(self.data(index, QtCore.Qt.DisplayRole))
-        data.setData('application/text', json.dumps(names))
-        return data
-
-    def canDropMimeData(self, data, action, row, column, parent):
-        if Rig().is_built.get():
-            return False
-        if not data.hasFormat('application/text'):
-            return False
-        if column > 0:
-            return False
-        if not parent.isValid():
-            return False
-        if not isinstance(parent.internalPointer(), basestring):
-            # Only allow modules to be dropped on joints.
-            return False
-        return True
-
-    def dropMimeData(self, data, action, row, column, parent):
-        if not self.canDropMimeData(data, action, row, column, parent):
-            return False
-        if action == QtCore.Qt.IgnoreAction:
-            return True
-
-        names = json.loads(data.data('application/text').data())
-
-        parent_pointer = None
-        if parent.isValid():
-            parent_pointer = parent.internalPointer()
-
-        drop_row = 0
-        if row != -1:
-            drop_row = row
-        elif parent.isValid():
-            drop_row = parent.row()
-        else:
-            drop_row = self.rowCount(QtCore.QModelIndex())
-
-        if parent_pointer and not isinstance(parent_pointer, basestring):
-            # We hit a parent module, selected module has been dropped
-            # after the deform joint and not on it, so select the deform
-            # joint just before `drop_row`.
-            joint_index = self.index(drop_row - 1, column, parent)
-        else:
-            joint_index = parent
-
-        joint = None
-        if joint_index.isValid():
-            joint = joint_index.internalPointer()
-
-        rig = Rig()
-        modules = []
-        for name in names:
-            module = rig.get_module(name)
-            module.parent_joint.set(joint)
-            module.update()
-            modules.append(module)
-
-        publish('modules-updated', modules)
-
-        return True

@@ -1,12 +1,7 @@
 import maya.api.OpenMaya as om2
 import maya.cmds as cmds
 
-from mop.core.fields import (
-    IntField,
-    StringField,
-    ObjectListField,
-    ObjectField,
-)
+from mop.core.fields import IntField, StringField, ObjectListField, ObjectField
 from mop.modules.abstract.chainswitcher import ChainSwitcher
 import mop.metadata
 
@@ -51,21 +46,12 @@ class FkIkChain(ChainSwitcher):
         for fk in self.chain_a:
             metadata = mop.metadata.metadata_from_name(fk)
             metadata['role'] = 'fk'
-            cmds.rename(
-                fk,
-                mop.metadata.name_from_metadata(metadata)
-            )
+            cmds.rename(fk, mop.metadata.name_from_metadata(metadata))
 
         for ik in self.chain_b:
             metadata = mop.metadata.metadata_from_name(ik)
             metadata['role'] = 'ik'
-            cmds.rename(
-                ik,
-                mop.metadata.name_from_metadata(metadata)
-            )
-
-    def _create_settings_control(self):
-        super(FkIkChain, self)._create_settings_control(self.ik_chain_end_joint.get())
+            cmds.rename(ik, mop.metadata.name_from_metadata(metadata))
 
     def build(self):
         super(FkIkChain, self).build()
@@ -75,11 +61,7 @@ class FkIkChain(ChainSwitcher):
 
     def _setup_fk(self):
         self.fk_controls_group.set(
-            self.add_node(
-                'transform',
-                role='grp',
-                description='FK_controls',
-            )
+            self.add_node('transform', role='grp', description='FK_controls')
         )
         cmds.parent(self.fk_controls_group.get(), self.controls_group.get())
         mop.dag.reset_node(self.fk_controls_group.get())
@@ -91,10 +73,7 @@ class FkIkChain(ChainSwitcher):
                 description = 'FK_' + metadata['description']
             else:
                 description = None
-            ctl, parent_group = self.add_control(
-                fk,
-                description=description
-            )
+            ctl, parent_group = self.add_control(fk, description=description)
             self.fk_controls.append(ctl)
             cmds.parent(parent_group, parent)
             mop.dag.matrix_constraint(ctl, fk)
@@ -103,13 +82,9 @@ class FkIkChain(ChainSwitcher):
     def _setup_ik(self):
         ik_chain = self.chain_b.get()
         if not self.ik_chain_end_joint.get():
-                self.ik_chain_end_joint.set(ik_chain[-1])
+            self.ik_chain_end_joint.set(ik_chain[-1])
         self.ik_controls_group.set(
-            self.add_node(
-                'transform',
-                role='grp',
-                description='IK_controls',
-            )
+            self.add_node('transform', role='grp', description='IK_controls')
         )
         cmds.parent(self.ik_controls_group.get(), self.controls_group.get())
         mop.dag.reset_node(self.ik_controls_group.get())
@@ -117,7 +92,7 @@ class FkIkChain(ChainSwitcher):
         end_ctl, parent_group = self.add_control(
             self.ik_chain_end_joint.get(),
             description=self.ik_end_description.get(),
-            shape_type='cube'
+            shape_type='cube',
         )
         self.ik_controls.append(end_ctl)
         self.ik_end_ctl.set(end_ctl)
@@ -129,28 +104,22 @@ class FkIkChain(ChainSwitcher):
             translate=False,
             rotate=True,
             scale=False,
-            maintain_offset=True
+            maintain_offset=True,
         )
 
         start_ctl, parent_group = self.add_control(
-            ik_chain[0],
-            description=self.ik_start_description.get(),
-            shape_type='cube'
+            ik_chain[0], description=self.ik_start_description.get(), shape_type='cube'
         )
         self.ik_controls.append(start_ctl)
         self.ik_start_ctl.set(start_ctl)
         cmds.setAttr(parent_group + '.rotate', 0, 0, 0)
         cmds.parent(parent_group, self.ik_controls_group.get())
-        mop.dag.matrix_constraint(
-            start_ctl,
-            ik_chain[0],
-            maintain_offset=True
-        )
+        mop.dag.matrix_constraint(start_ctl, ik_chain[0], maintain_offset=True)
 
         pole_vector_ctl, parent_group = self.add_control(
             self.ik_chain_end_joint.get(),
             description='IK_pole_vector',
-            shape_type='sphere'
+            shape_type='sphere',
         )
         self.ik_controls.append(pole_vector_ctl)
         self.ik_pv_ctl.set(pole_vector_ctl)
@@ -170,10 +139,10 @@ class FkIkChain(ChainSwitcher):
         settings_ctl = self.settings_ctl.get()
         cmds.connectAttr(
             self.reverse_switch.get() + '.outputX',
-            self.fk_controls_group.get() + '.visibility'
+            self.fk_controls_group.get() + '.visibility',
         )
         cmds.connectAttr(
             settings_ctl + '.' + self.switch_long_name.get(),
-            self.ik_controls_group.get() + '.visibility'
+            self.ik_controls_group.get() + '.visibility',
         )
 

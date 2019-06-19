@@ -86,6 +86,10 @@ class Rig(MopNode):
             self.skeleton_group.set(cmds.createNode("transform", name="SKELETON"))
             cmds.parent(self.skeleton_group.get(), "RIG")
 
+            # make the deform_joints unselectable
+            cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", True)
+            cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 2)
+
     def _add_default_modules(self):
         for module_type, data in default_modules.iteritems():
             self.add_module(module_type, **data)
@@ -149,7 +153,7 @@ class Rig(MopNode):
         :type module_node_name: str
         """
         if self.is_built.get():
-            logger.error("Cannot delete a module if the rig is built.")
+            logger.error('Cannot delete a module if the rig is built.')
             return
 
         module_to_del = self.get_module(module_node_name)
@@ -159,12 +163,12 @@ class Rig(MopNode):
                 new_parent_joint = module_to_del.parent_joint.get()
                 module.parent_joint.set(new_parent_joint)
                 module.update()
-        cmds.delete(module_to_del.node_name)
         cmds.delete(deform_joints)
+        cmds.delete(module_to_del.node_name)
 
     @undoable
     def build(self):
-
+        self.deactivate_move_joints_mode()
         nodes_before_build = set(cmds.ls("*"))
         for module in self.rig_modules:
             logger.info("Building: " + module.node_name)
@@ -176,7 +180,7 @@ class Rig(MopNode):
                 if attributes_state:
                     attributes_state = json.loads(attributes_state)
                     mop.attributes.set_attributes_state(ctl, attributes_state)
-            cmds.setAttr(module.placement_group.get() + ".visibility", False)
+            cmds.setAttr(module.guide_group.get() + ".visibility", False)
 
         nodes_after_build = set(cmds.ls("*"))
         build_nodes = list(nodes_after_build - nodes_before_build)
@@ -207,8 +211,12 @@ class Rig(MopNode):
                 elif points:
                     mop.dag.create_space_switching(ctl, points, "point")
 
-
         self._tag_nodes_for_unbuild(build_nodes)
+
+        # make the deform joints selectable
+        cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", False)
+        cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 0)
+
         self.is_built.set(True)
 
     @undoable
@@ -230,7 +238,7 @@ class Rig(MopNode):
                     json.dumps(attributes_state),
                     type="string",
                 )
-            cmds.setAttr(module.placement_group.get() + ".visibility", True)
+            cmds.setAttr(module.guide_group.get() + ".visibility", True)
 
         for node in self.skeleton:
             for attribute in [".translate", ".rotate", ".scale"]:
@@ -240,8 +248,13 @@ class Rig(MopNode):
                     cmds.disconnectAttr(input_attr, attr)
         cmds.delete(self.build_nodes)
         for module in self.rig_modules:
+            module._constraint_deforms_to_guides()
             module.is_built.set(False)
 
+        # make the deform joints unselectable
+        cmds.setAttr(self.skeleton_group.get() + ".overrideEnabled", True)
+        cmds.setAttr(self.skeleton_group.get() + ".overrideDisplayType", 2)
+        self.activate_move_joints_mode()
         self.is_built.set(False)
 
     def publish(self):
@@ -312,9 +325,8 @@ class Rig(MopNode):
         module_type = module.module_type.get()
         name = module.name.get()
         side = module.side.get()
-        parent_joint = module.parent_joint.get()
         new_module = module.rig.add_module(
-            module_type, name=name, side=side, parent_joint=parent_joint
+            module_type, name=name, side=side, parent_joint=module.parent_joint.get()
         )
         for field in module.fields:
             if field.name in ["name", "side"]:
@@ -324,9 +336,9 @@ class Rig(MopNode):
                 getattr(new_module, field.name).set(value)
         new_module.update()
 
-        orig_nodes = module.deform_joints.get() + module.placement_locators.get()
-        new_nodes = new_module.deform_joints.get() + new_module.placement_locators.get()
-        for orig_node, new_node in zip(orig_nodes, new_nodes):
+        # orig_nodes = module.deform_joints.get() + module.guide_nodes.get()
+        # new_nodes = new_module.deform_joints.get() + new_module.guide_nodes.get()
+        for orig_node, new_node in zip(module.guide_nodes, new_module.guide_nodes):
             for attr in ["translate", "rotate", "scale", "jointOrient"]:
                 for axis in "XYZ":
                     attr_name = attr + axis
@@ -336,3 +348,42 @@ class Rig(MopNode):
                     cmds.setAttr(new_node + "." + attr_name, value)
         return new_module
 
+    def activate_move_joints_mode(self):
+        for module in self.rig_modules:
+            for joint in module.deform_joints:
+                plugs = cmds.listConnections(
+                    joint + '.worldMatrix[0]', type='skinCluster', plugs=True
+                )
+                if not plugs:
+                    continue
+                for plug in plugs:
+                    regex = re.match("(.*).matrix\[([0-9])\]", plug)
+                    node, index = regex.groups()
+                    cmds.connectAttr(
+                        joint + ".worldInverseMatrix[0]",
+                        node + '.bindPreMatrix[{}]'.format(index),
+                    )
+
+    def deactivate_move_joints_mode(self):
+        for module in self.rig_modules:
+            for joint in module.deform_joints:
+                plugs = cmds.listConnections(
+                    joint + '.worldInverseMatrix[0]', type='skinCluster', plugs=True
+                )
+                if not plugs:
+                    continue
+                for plug in plugs:
+                    regex = re.match("(.*).bindPreMatrix\[([0-9])\]", plug)
+                    node, index = regex.groups()
+                    cmds.disconnectAttr(
+                        joint + ".worldInverseMatrix[0]",
+                        node + ".bindPreMatrix[{}]".format(index),
+                    )
+                    mat = cmds.getAttr(joint + ".worldInverseMatrix[0]")
+                    cmds.setAttr(
+                        node + ".bindPreMatrix[{}]".format(index), mat, type="matrix"
+                    )
+
+                bind_poses = cmds.dagPose(joint, bindPose=True, q=True)
+                for bind_pose in bind_poses:
+                    cmds.dagPose(joint, reset=True, n=bind_pose)

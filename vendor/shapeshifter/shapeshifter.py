@@ -6,7 +6,7 @@ import maya.cmds as cmds
 
 def get_shape_data(ctl):
     """Extract the shape data from a given controller
-    
+
     :param ctl: name of the controller.
     :type ctl: str
     """
@@ -84,7 +84,7 @@ def import_shape(name):
     shape_path = os.path.join(shapes_dir, name + '.json')
 
     with open(shape_path, 'r') as f:
-        return json.loads(f.read()) 
+        return json.loads(f.read())
 
 
 def create_controller_from_data(data):
@@ -95,10 +95,7 @@ def create_controller_from_data(data):
     """
     transform = cmds.createNode('transform')
     for shape_data in data:
-        crv = cmds.curve(
-            degree=shape_data['degree'],
-            point=shape_data['cvs'],
-        )
+        crv = cmds.curve(degree=shape_data['degree'], point=shape_data['cvs'])
         shape = cmds.listRelatives(crv, shapes=True)[0]
         cmds.parent(shape, transform, relative=True, shape=True)
         cmds.delete(crv)
@@ -149,3 +146,16 @@ def copy_shape(source, targets):
             cmds.parent(shape, target, relative=True, shape=True)
             cmds.rename(shape, target + 'Shape')
         cmds.delete(temp)
+
+
+def change_controller_color(ctl, color_rgb):
+    current_data = get_shape_data(ctl)
+    new_data = []
+    for shape_data in current_data:
+        new_shape_data = shape_data.copy()
+        new_shape_data['enable_overrides'] = True
+        new_shape_data['use_rgb'] = True
+        new_shape_data['color_rgb'] = color_rgb
+        new_data.append(new_shape_data)
+    change_controller_shape(ctl, new_data)
+
