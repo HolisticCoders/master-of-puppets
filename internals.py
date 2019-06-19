@@ -44,13 +44,13 @@ def increment_version(path):
     :rtype: str
     :raise ValueError: When the path does not contain a version number.
     """
-    pattern = r'v(?P<version>\d{3})'
+    pattern = r"v(?P<version>\d{3})"
     regex = re.compile(pattern)
     match = regex.search(path)
     if not match:
-        raise ValueError('%s does not contain a version number' % path)
-    version = match.group('version')
-    version = 'v' + str(int(version) + 1).zfill(3)
+        raise ValueError("%s does not contain a version number" % path)
+    version = match.group("version")
+    version = "v" + str(int(version) + 1).zfill(3)
     return regex.sub(version, path)
 
 
@@ -64,6 +64,7 @@ def incremental_save():
     can override the `mop.incremental_save` attribute.
     """
     import mop
+
     path = cmds.file(query=True, location=True)
     try:
         new_path = mop.increment_version(path)
@@ -80,21 +81,22 @@ def save_publish():
     This takes publish versions into account.
     """
     import mop
+
     path = cmds.file(query=True, location=True)
     work_dir = os.path.dirname(path)
-    publish_dir = os.path.join(work_dir, 'release')
+    publish_dir = os.path.join(work_dir, "release")
 
     highest_publish = None
-    highest_version = -1 
+    highest_version = -1
 
     for f in os.listdir(publish_dir):
         ext = os.path.splitext(f)[-1]
-        if ext == '.ma':
-            pattern = r'v(?P<version>\d{3})'
+        if ext == ".ma":
+            pattern = r"v(?P<version>\d{3})"
             regex = re.compile(pattern)
             match = regex.search(f)
             if match:
-                version = int(match.group('version'))
+                version = int(match.group("version"))
                 if version > highest_version:
                     highest_version = version
                     highest_publish = f

@@ -40,8 +40,8 @@ def run_scripts_from_path(scripts_path):
             script_target = mod.__dict__.get("target_asset_type", "all")
             if (
                 script_target == "all"
-                or not asset_type 
-                or asset_type in mod.__dict__.get( "target_asset_type", [])
+                or not asset_type
+                or asset_type in mod.__dict__.get("target_asset_type", [])
             ):
                 logger.info("Running script: {}".format(module_name))
                 mod.run()

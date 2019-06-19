@@ -15,4 +15,3 @@ try:
     from mop_project_config import *
 except ImportError:
     logger.info("No project config found")
-

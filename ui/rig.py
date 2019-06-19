@@ -14,18 +14,18 @@ from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 class RigPanel(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(RigPanel, self).__init__(parent)
-        self.setObjectName('mop_rig_panel')
+        self.setObjectName("mop_rig_panel")
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('Rig Panel')
+        self.setWindowTitle("Rig Panel")
 
-        self.modules_group = QtWidgets.QGroupBox('Modules')
-        self.actions_group = QtWidgets.QGroupBox('Actions')
+        self.modules_group = QtWidgets.QGroupBox("Modules")
+        self.actions_group = QtWidgets.QGroupBox("Actions")
 
-        color_by_side = QtWidgets.QCheckBox('Colors by Side')
+        color_by_side = QtWidgets.QCheckBox("Colors by Side")
         self.tree_view = ModulesTree()
-        self.build_button = QtWidgets.QPushButton('Build Rig')
-        self.unbuild_button = QtWidgets.QPushButton('Unbuild Rig')
-        self.publish_button = QtWidgets.QPushButton('Publish Rig')
+        self.build_button = QtWidgets.QPushButton("Build Rig")
+        self.unbuild_button = QtWidgets.QPushButton("Unbuild Rig")
+        self.publish_button = QtWidgets.QPushButton("Publish Rig")
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
@@ -50,13 +50,13 @@ class RigPanel(QtWidgets.QWidget):
         actions_layout.addWidget(self.publish_button)
 
         # Icons
-        self._module_icon = QtGui.QIcon(':QR_settings.png')
-        self._joint_icon = QtGui.QIcon(':kinJoint.png')
+        self._module_icon = QtGui.QIcon(":QR_settings.png")
+        self._joint_icon = QtGui.QIcon(":kinJoint.png")
 
         # GUI colors
-        raw_left = side_color['L']
-        raw_right = side_color['R']
-        raw_middle = side_color['M']
+        raw_left = side_color["L"]
+        raw_right = side_color["R"]
+        raw_middle = side_color["M"]
         srgb_left = map(linear_to_srgb, raw_left)
         srgb_right = map(linear_to_srgb, raw_right)
         srgb_middle = map(linear_to_srgb, raw_middle)
@@ -67,14 +67,14 @@ class RigPanel(QtWidgets.QWidget):
         self._right_brush = QtGui.QBrush(QtGui.QColor(*right_color))
         self._middle_brush = QtGui.QBrush(QtGui.QColor(*middle_color))
         self._colors = {
-            'L': self._left_brush,
-            'R': self._right_brush,
-            'M': self._middle_brush,
-            'base': QtGui.QBrush(QtGui.QColor(187, 187, 187)),
+            "L": self._left_brush,
+            "R": self._right_brush,
+            "M": self._middle_brush,
+            "base": QtGui.QBrush(QtGui.QColor(187, 187, 187)),
         }
 
         settings = get_settings()
-        self._color_by_side = bool(int(settings.value('modules/color_by_side') or 0))
+        self._color_by_side = bool(int(settings.value("modules/color_by_side") or 0))
 
         if self._color_by_side:
             color_by_side.setChecked(True)
@@ -96,21 +96,21 @@ class RigPanel(QtWidgets.QWidget):
 
         self._refresh_script_job_ids = self._setup_refresh_script_job()
 
-        subscribe('modules-created', self._on_modules_created)
-        subscribe('modules-updated', self._on_modules_updated)
-        subscribe('modules-deleted', self._on_modules_deleted)
+        subscribe("modules-created", self._on_modules_created)
+        subscribe("modules-updated", self._on_modules_updated)
+        subscribe("modules-deleted", self._on_modules_deleted)
 
     def closeEvent(self, event):
         for event, script_job_id in self._refresh_script_job_ids:
             try:
                 cmds.scriptJob(kill=script_job_id)
             except RuntimeError:
-                logger.warning('Refresh script job for %s was already deleted.', event)
+                logger.warning("Refresh script job for %s was already deleted.", event)
 
     def _on_color_by_side_toggled(self, checked):
         self._color_by_side = checked
         settings = get_settings()
-        settings.setValue('modules/color_by_side', 1 if checked else 0)
+        settings.setValue("modules/color_by_side", 1 if checked else 0)
 
         if not self.model:
             return
@@ -138,7 +138,7 @@ class RigPanel(QtWidgets.QWidget):
 
     def _hide_colors_recursively(self, parent):
         for item in self._iter_items_recursively(parent):
-            item.setForeground(self._colors['base'])
+            item.setForeground(self._colors["base"])
 
     def _float_to_256_color(self, color):
         def _float_to_256(value):
@@ -154,17 +154,17 @@ class RigPanel(QtWidgets.QWidget):
         return matching_items[0]
 
     def _joint_parent_module(self, joint):
-        modules = cmds.listConnections(joint + '.module', source=True)
+        modules = cmds.listConnections(joint + ".module", source=True)
         if not modules:
-            raise AttributeError('Joint %s is not connected to a module !' % joint)
+            raise AttributeError("Joint %s is not connected to a module !" % joint)
         module = modules[0]
         return Rig().get_module(module)
 
     def _is_module_item(self, item):
-        return self._is_item_of_type(item, 'transform')
+        return self._is_item_of_type(item, "transform")
 
     def _is_joint_item(self, item):
-        return self._is_item_of_type(item, 'joint')
+        return self._is_item_of_type(item, "joint")
 
     def _is_item_of_type(self, item, node_type):
         if not cmds.objExists(item.text()):
@@ -173,9 +173,9 @@ class RigPanel(QtWidgets.QWidget):
 
     def _setup_refresh_script_job(self):
         ids = []
-        for event in ('Undo', 'Redo'):
+        for event in ("Undo", "Redo"):
             script_job_id = cmds.scriptJob(
-                event=(event, self._update_buttons_enabled), parent='mop_rig_panel'
+                event=(event, self._update_buttons_enabled), parent="mop_rig_panel"
             )
             ids.append((event, script_job_id))
         return ids
@@ -245,16 +245,16 @@ class RigPanel(QtWidgets.QWidget):
         parents_have_changed = False
         sides_have_changed = False
         for module, modified_values in modified_fields.iteritems():
-            if 'node_name' in modified_values:
+            if "node_name" in modified_values:
                 was_renamed = True
-                module_item_name = modified_values['node_name'][0]
+                module_item_name = modified_values["node_name"][0]
                 module_item = self._item_for_name(module_item_name)
                 module_item.setText(module.node_name)
             else:
                 was_renamed = False
                 module_item = self._item_for_name(module.node_name)
 
-            if 'parent_joint' in modified_values:
+            if "parent_joint" in modified_values:
                 parent_has_changed = True
                 self._handle_reparenting(module, module_item)
             else:
@@ -264,9 +264,9 @@ class RigPanel(QtWidgets.QWidget):
 
             joints = module.deform_joints.get()
 
-            if 'joint_count' in modified_values:
-                old_joint_count = modified_values['joint_count'][0]
-                new_joint_count = modified_values['joint_count'][1]
+            if "joint_count" in modified_values:
+                old_joint_count = modified_values["joint_count"][0]
+                new_joint_count = modified_values["joint_count"][1]
                 joint_items = [
                     module_item.child(row)
                     for row in xrange(module_item.rowCount())
@@ -280,7 +280,7 @@ class RigPanel(QtWidgets.QWidget):
             if was_renamed:
                 self._rename_child_joint_items(module_item, joints)
 
-            if 'side' in modified_values:
+            if "side" in modified_values:
                 side_has_changed = True
             else:
                 side_has_changed = False
@@ -305,7 +305,7 @@ class RigPanel(QtWidgets.QWidget):
         try:
             new_parent_item = self._item_for_name(current_parent)
         except ValueError:
-            raise ValueError('New parent %s has no item in the GUI.' % current_parent)
+            raise ValueError("New parent %s has no item in the GUI." % current_parent)
 
         child_items = module_item.parent().takeRow(module_item.row())
         module_item = child_items[0]
@@ -443,7 +443,7 @@ class RigPanel(QtWidgets.QWidget):
         ]
         if joints:
             cmds.select(joints)
-        publish('selected-modules-changed', modules)
+        publish("selected-modules-changed", modules)
 
 
 class ModulesTree(QtWidgets.QTreeView):
@@ -455,4 +455,3 @@ class ModulesTree(QtWidgets.QTreeView):
     def __init__(self, parent=None):
         super(ModulesTree, self).__init__(parent)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-

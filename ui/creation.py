@@ -12,8 +12,8 @@ class CreationPanel(QtWidgets.QDockWidget):
     def __init__(self, parent=None):
         super(CreationPanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setObjectName('mop_creation_panel')
-        self.setWindowTitle('Creation Panel')
+        self.setObjectName("mop_creation_panel")
+        self.setWindowTitle("Creation Panel")
 
         self.setWidget(QtWidgets.QWidget())
 
@@ -42,14 +42,14 @@ class CreationPanel(QtWidgets.QDockWidget):
     def _create_module(self, module_type):
         rig = Rig()
         try:
-            module = rig.add_module(module_type, parent_joint='root_M_000_deform')
+            module = rig.add_module(module_type, parent_joint="root_M_000_deform")
         except RuntimeError as err:
             QtWidgets.QMessageBox.critical(
                 self,
-                'mop - Create Module',
+                "mop - Create Module",
                 str(err),
                 QtWidgets.QMessageBox.Ok,
                 QtWidgets.QMessageBox.Ok,
             )
 
-        publish('modules-created', [module])
+        publish("modules-created", [module])

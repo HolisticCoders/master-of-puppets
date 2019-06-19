@@ -16,13 +16,11 @@ logger = logging.getLogger(__name__)
 
 class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
-    ui_name = 'mop_parent_spaces'
+    ui_name = "mop_parent_spaces"
 
-    space_types = OrderedDict((
-        ('Parent', 'parent'),
-        ('Orient', 'orient'),
-        ('Point', 'point'),
-    ))
+    space_types = OrderedDict(
+        (("Parent", "parent"), ("Orient", "orient"), ("Point", "point"))
+    )
 
     def __init__(self, parent=None):
         super(mopParentSpaces, self).__init__(parent)
@@ -31,25 +29,25 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self._current_driver = None
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('mop - Parent Spaces')
+        self.setWindowTitle("mop - Parent Spaces")
 
         self.content = QtWidgets.QWidget()
 
         self.child_content = QtWidgets.QWidget()
         self.child = QtWidgets.QLineEdit()
-        self.pick_child_button = QtWidgets.QPushButton('Pick Selected')
+        self.pick_child_button = QtWidgets.QPushButton("Pick Selected")
 
         self.space_type = QtWidgets.QComboBox()
 
         self.parents_content = QtWidgets.QWidget()
         self.parents = QtWidgets.QListView()
-        self.add_parent_button = QtWidgets.QPushButton('Add Selected')
-        self.remove_parents_button = QtWidgets.QPushButton('Remove')
+        self.add_parent_button = QtWidgets.QPushButton("Add Selected")
+        self.remove_parents_button = QtWidgets.QPushButton("Remove")
 
         self.nice_name = QtWidgets.QLineEdit()
 
-        self.update_button = QtWidgets.QPushButton('Create')
-        self.delete_button = QtWidgets.QPushButton('Delete All')
+        self.update_button = QtWidgets.QPushButton("Create")
+        self.delete_button = QtWidgets.QPushButton("Delete All")
 
         self.setCentralWidget(self.content)
 
@@ -72,10 +70,10 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         parents_actions_layout.addWidget(self.add_parent_button)
         parents_actions_layout.addWidget(self.remove_parents_button)
 
-        form.addRow('Child Control:', self.child_content)
-        form.addRow('Space Type:', self.space_type)
-        form.addRow('Parent Transforms:', self.parents_content)
-        form.addRow('Nice Name:', self.nice_name)
+        form.addRow("Child Control:", self.child_content)
+        form.addRow("Space Type:", self.space_type)
+        form.addRow("Parent Transforms:", self.parents_content)
+        form.addRow("Nice Name:", self.nice_name)
 
         actions_layout = QtWidgets.QHBoxLayout()
         layout.addLayout(actions_layout)
@@ -104,7 +102,9 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.parents.setModel(self.model)
 
         self.pick_child_button.released.connect(self.pick_child)
-        self.parents.selectionModel().currentChanged.connect(self._on_current_parent_changed)
+        self.parents.selectionModel().currentChanged.connect(
+            self._on_current_parent_changed
+        )
         self.nice_name.textChanged.connect(self._on_nice_name_changed)
         self.add_parent_button.released.connect(self.add_parent)
         self.remove_parents_button.released.connect(self.remove_parents)
@@ -115,7 +115,7 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """Pick the child from Maya's selection."""
         selection = cmds.ls(selection=True)
         if not selection:
-            logger.warning('Please select an mop control to start.')
+            logger.warning("Please select an mop control to start.")
             return
         control = selection[-1]
         self.set_child(control)
@@ -157,11 +157,11 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
     def add_parent(self):
         """Add a parent from Maya's selection."""
         if not self.child.text():
-            logger.warning('Please pick a child control first.')
+            logger.warning("Please pick a child control first.")
             return
         selection = cmds.ls(selection=True)
         if not selection:
-            logger.warning('Please select parent transforms to start.')
+            logger.warning("Please select parent transforms to start.")
             return
 
         parents = self.model.stringList()
@@ -172,10 +172,7 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """Remove parents selected in the GUI."""
         selection = self.parents.selectionModel().selectedRows()
         parents = self.model.stringList()
-        remove = [
-            self.model.data(index, QtCore.Qt.DisplayRole)
-            for index in selection
-        ]
+        remove = [self.model.data(index, QtCore.Qt.DisplayRole) for index in selection]
         self.model.setStringList([p for p in parents if p not in remove])
 
     def update(self):
@@ -187,7 +184,7 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """
         ctl = self.child.text()
         if not ctl:
-            logger.warning('Please pick a child control first.')
+            logger.warning("Please pick a child control first.")
             return
 
         prev_space_type, prev_drivers = self._control_configuration()
@@ -212,10 +209,8 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
             Rig.reset_pose()
             mop.dag.create_space_switching(ctl, drivers, space_type)
 
-        data = json.dumps({
-            space_type: drivers,
-        })
-        cmds.setAttr(ctl + '.parent_space_data', data, type='string')
+        data = json.dumps({space_type: drivers})
+        cmds.setAttr(ctl + ".parent_space_data", data, type="string")
 
         self._update_ui_state()
 
@@ -223,33 +218,31 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """Deletes all parent spaces set on the selected control."""
         ctl = self.child.text()
         if not ctl:
-            logger.warning('Please pick a child control first.')
+            logger.warning("Please pick a child control first.")
             return
 
         button = QtWidgets.QMessageBox.warning(
             self,
-            'mop - Delete Parent Spaces',
-            'You are about to delete all parent spaces '
-            'set on %s, continue ?' % ctl,
-            QtWidgets.QMessageBox.Yes
-            | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.Yes
+            "mop - Delete Parent Spaces",
+            "You are about to delete all parent spaces " "set on %s, continue ?" % ctl,
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
         )
         if button != QtWidgets.QMessageBox.Yes:
             return
 
         mop.dag.remove_parent_spaces(ctl)
         self.model.setStringList([])
-        cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
+        cmds.setAttr(ctl + ".parent_space_data", "{}", type="string")
 
         self._update_ui_state()
 
     def _update_ui_state(self):
         """Update some ui elements depending on the control and parents."""
         if self.model.stringList():
-            self.update_button.setText('Update')
+            self.update_button.setText("Update")
         else:
-            self.update_button.setText('Create')
+            self.update_button.setText("Create")
 
     def _control_configuration(self):
         """Return selected control current spaces data."""
@@ -257,9 +250,9 @@ class mopParentSpaces(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         if not ctl:
             return None, {}
 
-        data = cmds.getAttr(ctl + '.parent_space_data')
+        data = cmds.getAttr(ctl + ".parent_space_data")
         spaces = json.loads(data, object_pairs_hook=OrderedDict)
-        if not hasattr(spaces, 'get'):
+        if not hasattr(spaces, "get"):
             # Data is either corrupt or serialization method has changed.
             return
 

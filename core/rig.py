@@ -153,7 +153,7 @@ class Rig(MopNode):
         :type module_node_name: str
         """
         if self.is_built.get():
-            logger.error('Cannot delete a module if the rig is built.')
+            logger.error("Cannot delete a module if the rig is built.")
             return
 
         module_to_del = self.get_module(module_node_name)
@@ -352,7 +352,7 @@ class Rig(MopNode):
         for module in self.rig_modules:
             for joint in module.deform_joints:
                 plugs = cmds.listConnections(
-                    joint + '.worldMatrix[0]', type='skinCluster', plugs=True
+                    joint + ".worldMatrix[0]", type="skinCluster", plugs=True
                 )
                 if not plugs:
                     continue
@@ -361,14 +361,14 @@ class Rig(MopNode):
                     node, index = regex.groups()
                     cmds.connectAttr(
                         joint + ".worldInverseMatrix[0]",
-                        node + '.bindPreMatrix[{}]'.format(index),
+                        node + ".bindPreMatrix[{}]".format(index),
                     )
 
     def deactivate_move_joints_mode(self):
         for module in self.rig_modules:
             for joint in module.deform_joints:
                 plugs = cmds.listConnections(
-                    joint + '.worldInverseMatrix[0]', type='skinCluster', plugs=True
+                    joint + ".worldInverseMatrix[0]", type="skinCluster", plugs=True
                 )
                 if not plugs:
                     continue

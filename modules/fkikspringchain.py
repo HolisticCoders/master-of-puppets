@@ -5,56 +5,36 @@ import maya.mel as mel
 from mop.modules.abstract.fkikchain import FkIkChain
 import mop.metadata
 
-from mop.core.fields import (
-    StringField,
-    ObjectListField,
-    ObjectField,
-)
+from mop.core.fields import StringField, ObjectListField, ObjectField
 
 
 class FkIkSpringChain(FkIkChain):
-
     def initialize(self):
         super(FkIkSpringChain, self).initialize()
         # make sure the spring solver is loaded
-        mel.eval('ikSpringSolver') 
+        mel.eval("ikSpringSolver")
 
     def _create_ik_handle(self):
         ik_chain = self.chain_b.get()
         ik_handle, effector = cmds.ikHandle(
-            startJoint=ik_chain[0],
-            endEffector=ik_chain[-1],
-            solver='ikSpringSolver'
+            startJoint=ik_chain[0], endEffector=ik_chain[-1], solver="ikSpringSolver"
         )
         self.ik_handle.set(ik_handle)
         cmds.parent(ik_handle, self.extras_group.get())
         cmds.poleVectorConstraint(self.ik_pv_ctl.get(), ik_handle)
         mop.dag.matrix_constraint(
-            self.ik_end_ctl.get(),
-            ik_handle,
-            maintain_offset=True
+            self.ik_end_ctl.get(), ik_handle, maintain_offset=True
         )
 
     def _place_pole_vector(self):
         buffer_group = cmds.listRelatives(self.ik_pv_ctl.get(), parent=True)[0]
         ik_chain = self.chain_b.get()
         start_pos = cmds.xform(
-            ik_chain[0],
-            query=True,
-            worldSpace=True,
-            translation=True
+            ik_chain[0], query=True, worldSpace=True, translation=True
         )
-        mid_pos = cmds.xform(
-            ik_chain[1],
-            query=True,
-            worldSpace=True,
-            translation=True
-        )
+        mid_pos = cmds.xform(ik_chain[1], query=True, worldSpace=True, translation=True)
         end_pos = cmds.xform(
-            ik_chain[-1],
-            query=True,
-            worldSpace=True,
-            translation=True
+            ik_chain[-1], query=True, worldSpace=True, translation=True
         )
 
         start_vec = om2.MVector(*start_pos)

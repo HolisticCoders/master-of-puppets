@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class Root(RigModule):
-
     def create_guide_nodes(self):
         """The root module doesn't need guide joints."""
         pass
@@ -28,4 +27,3 @@ class Root(RigModule):
 
 
 exported_rig_modules = [Root]
-

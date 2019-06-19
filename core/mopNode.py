@@ -15,7 +15,7 @@ class MopNode(object):
     is_published = BoolField(defaultValue=False)
 
     def __new__(cls, *args, **kwargs):
-        if 'instances' not in cls.__dict__:
+        if "instances" not in cls.__dict__:
             cls.instances = weakref.WeakSet()
         if args:
             node_name = args[0]
@@ -32,7 +32,7 @@ class MopNode(object):
         """Create the node if it doesn't already exist."""
         self.node_name = name
         if not cmds.objExists(name):
-            cmds.createNode('transform', name=name)
+            cmds.createNode("transform", name=name)
 
         for field in self.fields:
             field.ensure_maya_attr(self)

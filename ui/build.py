@@ -15,13 +15,13 @@ def show():
     settings = get_settings()
 
     kwargs = {}
-    floating = settings.value('%s/floating' % name)
+    floating = settings.value("%s/floating" % name)
     if floating is not None:
-        kwargs['floating'] = floating
+        kwargs["floating"] = floating
 
-    area = settings.value('%s/area' % name)
+    area = settings.value("%s/area" % name)
     if area is not None:
-        kwargs['area'] = area
+        kwargs["area"] = area
 
     window.show(dockable=True, **kwargs)
 
@@ -46,4 +46,4 @@ def get_workspace():
 
     :rtype: str
     """
-    return mopWindow.ui_name + 'WorkspaceControl'
+    return mopWindow.ui_name + "WorkspaceControl"

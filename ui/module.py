@@ -23,8 +23,8 @@ class ModulePanel(QtWidgets.QDockWidget):
     def __init__(self, parent=None):
         super(ModulePanel, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setObjectName('mop_settings_panel')
-        self.setWindowTitle('Module Panel')
+        self.setObjectName("mop_settings_panel")
+        self.setWindowTitle("Module Panel")
 
         self._module_widgets = WeakValueDictionary()
         self._modified_fields = set()
@@ -32,16 +32,16 @@ class ModulePanel(QtWidgets.QDockWidget):
 
         self.setWidget(QtWidgets.QWidget())
 
-        self.settings_group = QtWidgets.QGroupBox('Settings')
+        self.settings_group = QtWidgets.QGroupBox("Settings")
         self.form = QtWidgets.QFormLayout()
-        self.apply_button = QtWidgets.QPushButton('Apply')
-        self.reset_button = QtWidgets.QPushButton('Reset')
+        self.apply_button = QtWidgets.QPushButton("Apply")
+        self.reset_button = QtWidgets.QPushButton("Reset")
 
-        self.actions_group = QtWidgets.QGroupBox('Actions')
-        self.mirror_button = QtWidgets.QPushButton('Mirror')
-        self.update_mirror_button = QtWidgets.QPushButton('Update Mirror')
-        self.duplicate_button = QtWidgets.QPushButton('Duplicate')
-        self.delete_button = QtWidgets.QPushButton('Delete')
+        self.actions_group = QtWidgets.QGroupBox("Actions")
+        self.mirror_button = QtWidgets.QPushButton("Mirror")
+        self.update_mirror_button = QtWidgets.QPushButton("Update Mirror")
+        self.duplicate_button = QtWidgets.QPushButton("Duplicate")
+        self.delete_button = QtWidgets.QPushButton("Delete")
 
         layout = QtWidgets.QVBoxLayout()
         self.widget().setLayout(layout)
@@ -81,7 +81,7 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.duplicate_button.released.connect(self._duplicate_module)
         self.delete_button.released.connect(self._delete_module)
 
-        subscribe('selected-modules-changed', self._on_selection_changed)
+        subscribe("selected-modules-changed", self._on_selection_changed)
 
     def _on_selection_changed(self, modules):
         """Update the module to edit.
@@ -107,10 +107,10 @@ class ModulePanel(QtWidgets.QDockWidget):
         label = self.form.labelForField(widget)
         if widget.get() != self._initial_values[widget]:
             self._modified_fields.add(widget)
-            label.setStyleSheet('font-weight: bold')
+            label.setStyleSheet("font-weight: bold")
         else:
             self._modified_fields.remove(widget)
-            label.setStyleSheet('')
+            label.setStyleSheet("")
 
         if self._modified_fields:
             self.apply_button.setEnabled(True)
@@ -135,19 +135,19 @@ class ModulePanel(QtWidgets.QDockWidget):
                 value = widget.get()
                 field.set(value)
                 label = self.form.labelForField(widget)
-                label.setStyleSheet('')
+                label.setStyleSheet("")
                 self._initial_values[widget] = value
                 modified_fields[module][name] = (old_value, value)
             module.update()
             new_name = module.node_name
             if new_name != old_name:
-                modified_fields[module]['node_name'] = (old_name, new_name)
+                modified_fields[module]["node_name"] = (old_name, new_name)
 
         self.apply_button.setEnabled(False)
         self.reset_button.setEnabled(False)
         self._modified_fields.clear()
 
-        publish('modules-updated', modified_fields)
+        publish("modules-updated", modified_fields)
 
     def _delete_module(self):
         """Delete the selected module."""
@@ -155,8 +155,8 @@ class ModulePanel(QtWidgets.QDockWidget):
             return
         button = QtWidgets.QMessageBox.warning(
             self,
-            'mop - Delete Module',
-            'You are about to delete %d module(s). Continue ?' % len(self.modules),
+            "mop - Delete Module",
+            "You are about to delete %d module(s). Continue ?" % len(self.modules),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
         )
         if button != QtWidgets.QMessageBox.Yes:
@@ -164,12 +164,12 @@ class ModulePanel(QtWidgets.QDockWidget):
         rig = Rig()
         modules = self.modules[:]
         for module in self.modules:
-            if module.name.get() == 'root':
-                logger.warning('Cannot delete root module.')
+            if module.name.get() == "root":
+                logger.warning("Cannot delete root module.")
                 modules.remove(module)
                 continue
             rig.delete_module(module.node_name)
-        publish('modules-deleted', modules)
+        publish("modules-deleted", modules)
 
     def _duplicate_module(self):
         """Duplicate the selected module."""
@@ -181,7 +181,7 @@ class ModulePanel(QtWidgets.QDockWidget):
             new_module = rig.duplicate_module(module)
             new_modules.append(new_module)
 
-        publish('modules-created', new_modules)
+        publish("modules-created", new_modules)
 
     @undoable
     def _mirror_module(self):
@@ -194,7 +194,7 @@ class ModulePanel(QtWidgets.QDockWidget):
             if new_module is not None:
                 new_modules.append(new_module)
 
-        publish('modules-created', new_modules)
+        publish("modules-created", new_modules)
 
     @undoable
     def _update_mirror(self):
@@ -264,14 +264,14 @@ class ModulePanel(QtWidgets.QDockWidget):
                 field_names.remove(field.name)
 
         fields = [f for f in self.modules[-1].fields if f.name in field_names]
-        ordered_fields = sorted(fields, key=attrgetter('gui_order'))
+        ordered_fields = sorted(fields, key=attrgetter("gui_order"))
         for field in ordered_fields:
             if not field.displayable:
                 continue
 
             class_name = field.__class__.__name__
             widget_data = map_field_to_widget.get(
-                class_name, map_field_to_widget['StringField']
+                class_name, map_field_to_widget["StringField"]
             )
             widget = widget_data(field)
             if field.tooltip:

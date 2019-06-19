@@ -17,7 +17,7 @@ SEPARATORS = re.compile(r'[!"#$%&\'\(\)\*\+\,/:;<=>?@\^_`{|}~\-\s]')
 #: on the case you use.
 #:
 #: :type: re.RegexObject
-STOPCHARS = re.compile(r'[A-Z]')
+STOPCHARS = re.compile(r"[A-Z]")
 
 
 def camel(string):
@@ -28,7 +28,9 @@ def camel(string):
     :rtype: str
     """
     tokens = re.split(SEPARATORS, string)
-    return tokens[0][0].lower() + tokens[0][1:] + ''.join([s.title() for s in tokens[1:]])
+    return (
+        tokens[0][0].lower() + tokens[0][1:] + "".join([s.title() for s in tokens[1:]])
+    )
 
 
 def pascal(string):
@@ -39,7 +41,7 @@ def pascal(string):
     :rtype: str
     """
     tokens = re.split(SEPARATORS, string)
-    return ''.join([s.title() for s in tokens])
+    return "".join([s.title() for s in tokens])
 
 
 def snake(string):
@@ -49,7 +51,7 @@ def snake(string):
     :type string: str
     :rtype: str
     """
-    return _convert_with_stops(string, '_', 'lower')
+    return _convert_with_stops(string, "_", "lower")
 
 
 def kebab(string):
@@ -59,7 +61,7 @@ def kebab(string):
     :type string: str
     :rtype: str
     """
-    return _convert_with_stops(string, '-', 'lower')
+    return _convert_with_stops(string, "-", "lower")
 
 
 def header(string):
@@ -70,7 +72,7 @@ def header(string):
     :rtype: str
     """
     tokens = re.split(SEPARATORS, string)
-    return '-'.join([s.title() for s in tokens])
+    return "-".join([s.title() for s in tokens])
 
 
 def constant(string):
@@ -80,7 +82,7 @@ def constant(string):
     :type string: str
     :rtype: str
     """
-    return _convert_with_stops(string, '_', 'upper')
+    return _convert_with_stops(string, "_", "upper")
 
 
 def sentence(string):
@@ -90,9 +92,9 @@ def sentence(string):
     :type string: str
     :rtype: str
     """
-    string = _convert_with_stops(string, ' ')
+    string = _convert_with_stops(string, " ")
     if not string:
-        return ''
+        return ""
     return string[0].upper() + string[1:]
 
 
@@ -154,7 +156,7 @@ def _convert_with_stops(string, separator, token_method=None):
     res = list(res)
     for index in reversed(indices):
         res.insert(index, separator)
-    tokens = ''.join(res).split(separator)
+    tokens = "".join(res).split(separator)
     if token_method is None:
         return separator.join(tokens)
     return separator.join(map(methodcaller(token_method), tokens))

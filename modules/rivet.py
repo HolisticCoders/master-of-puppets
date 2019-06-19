@@ -20,13 +20,13 @@ class Rivet(Leaf):
     def build(self):
         self._follicles_group.set(
             self.add_node(
-                'transform',
-                'grp',
-                description='follicles',
+                "transform",
+                "grp",
+                description="follicles",
                 parent=self.extras_group.get(),
             )
         )
-        cmds.setAttr(self._follicles_group.get() + '.inheritsTransform', False)
+        cmds.setAttr(self._follicles_group.get() + ".inheritsTransform", False)
 
         for joint in self.deform_joints:
             ctl, parent_group = self.add_control(joint)
@@ -39,46 +39,46 @@ class Rivet(Leaf):
             )
 
     def add_follicle(self, ctl):
-        if cmds.nodeType(self.geometry.get()) == 'transform':
+        if cmds.nodeType(self.geometry.get()) == "transform":
             self.geometry.set(cmds.listRelatives(self.geometry.get(), shapes=True)[0])
         ctl_metadata = metadata_from_name(ctl)
         follicle_transform = self.add_node(
-            'follicle',
-            object_id=ctl_metadata['id'],
-            description=ctl_metadata['description'],
+            "follicle",
+            object_id=ctl_metadata["id"],
+            description=ctl_metadata["description"],
         )
         follicle = cmds.listRelatives(follicle_transform, shapes=True)[0]
         cmds.parent(follicle_transform, self._follicles_group.get())
-        cmds.connectAttr(follicle + '.outTranslate', follicle_transform + '.translate')
-        cmds.connectAttr(follicle + '.outRotate', follicle_transform + '.rotate')
-        if cmds.nodeType(self.geometry.get()) == 'mesh':
-            cmds.connectAttr(self.geometry.get() + '.outMesh', follicle + '.inputMesh')
-            closest_point_node = cmds.createNode('closestPointOnMesh')
+        cmds.connectAttr(follicle + ".outTranslate", follicle_transform + ".translate")
+        cmds.connectAttr(follicle + ".outRotate", follicle_transform + ".rotate")
+        if cmds.nodeType(self.geometry.get()) == "mesh":
+            cmds.connectAttr(self.geometry.get() + ".outMesh", follicle + ".inputMesh")
+            closest_point_node = cmds.createNode("closestPointOnMesh")
             ctl_pos = cmds.xform(ctl, query=True, translation=True, worldSpace=True)
-            cmds.setAttr(closest_point_node + '.inPosition', *ctl_pos)
+            cmds.setAttr(closest_point_node + ".inPosition", *ctl_pos)
             cmds.connectAttr(
-                self.geometry.get() + '.outMesh', closest_point_node + '.inMesh'
+                self.geometry.get() + ".outMesh", closest_point_node + ".inMesh"
             )
-            u_value = cmds.getAttr(closest_point_node + '.result.parameterU')
-            v_value = cmds.getAttr(closest_point_node + '.result.parameterV')
+            u_value = cmds.getAttr(closest_point_node + ".result.parameterU")
+            v_value = cmds.getAttr(closest_point_node + ".result.parameterV")
             cmds.delete(closest_point_node)
-        elif cmds.nodeType(self.geometry.get()) == 'nurbsSurface':
-            cmds.connectAttr(self.geometry.get() + '.local', follicle + '.inputSurface')
-            closest_point_node = cmds.createNode('closestPointOnSurface')
+        elif cmds.nodeType(self.geometry.get()) == "nurbsSurface":
+            cmds.connectAttr(self.geometry.get() + ".local", follicle + ".inputSurface")
+            closest_point_node = cmds.createNode("closestPointOnSurface")
             ctl_pos = cmds.xform(ctl, query=True, translation=True, worldSpace=True)
-            cmds.setAttr(closest_point_node + '.inPosition', *ctl_pos)
+            cmds.setAttr(closest_point_node + ".inPosition", *ctl_pos)
             cmds.connectAttr(
-                self.geometry.get() + '.local', closest_point_node + '.inputSurface'
+                self.geometry.get() + ".local", closest_point_node + ".inputSurface"
             )
-            u_value = cmds.getAttr(closest_point_node + '.result.parameterU')
-            v_value = cmds.getAttr(closest_point_node + '.result.parameterV')
+            u_value = cmds.getAttr(closest_point_node + ".result.parameterU")
+            v_value = cmds.getAttr(closest_point_node + ".result.parameterV")
             cmds.delete(closest_point_node)
 
         cmds.connectAttr(
-            self.geometry.get() + '.worldMatrix[0]', follicle + '.inputWorldMatrix'
+            self.geometry.get() + ".worldMatrix[0]", follicle + ".inputWorldMatrix"
         )
-        cmds.setAttr(follicle + '.parameterU', u_value)
-        cmds.setAttr(follicle + '.parameterV', v_value)
+        cmds.setAttr(follicle + ".parameterU", u_value)
+        cmds.setAttr(follicle + ".parameterV", v_value)
         return [follicle, follicle_transform]
 
 

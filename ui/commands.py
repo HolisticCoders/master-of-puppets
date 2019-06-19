@@ -15,14 +15,11 @@ def reload_mop():
     a change was made.
     """
     import mop.ui
+
     is_running = mop.ui.is_running()
     mop.ui.close()
 
-    search = [
-        'mop',
-        'shapeshifter',
-        'facseditor',
-    ]
+    search = ["mop", "shapeshifter", "facseditor"]
 
     mop_modules = []
     for module in sys.modules:
@@ -32,16 +29,17 @@ def reload_mop():
                 break
 
     for module in mop_modules:
-        del(sys.modules[module])
+        del (sys.modules[module])
 
     if is_running:
         mop.ui.show()
-    logger.info('Reloaded mop modules.')
+    logger.info("Reloaded mop modules.")
 
 
 def open_mop():
     """Open the `mop` GUI."""
     import mop.ui
+
     mop.ui.close()
     mop.ui.show()
 
@@ -49,6 +47,7 @@ def open_mop():
 def open_facs_editor():
     """Open the `mop` GUI."""
     import facseditor
+
     facseditor.close()
     facseditor.show()
 
@@ -56,6 +55,7 @@ def open_facs_editor():
 def open_parent_spaces():
     """Open the `mop` GUI."""
     import mop.ui.parents
+
     win = mop.ui.parents.mopParentSpaces()
     win.show()
 
@@ -64,6 +64,7 @@ def build_rig():
     """Build the current scene rig."""
     from mop.core.rig import Rig
     import mop
+
     mop.incremental_save()
     rig = Rig()
     start_time = time.time()
@@ -78,6 +79,7 @@ def unbuild_rig():
     """Unbuild the current scene rig."""
     from mop.core.rig import Rig
     import mop
+
     mop.incremental_save()
     rig = Rig()
     run_scripts("unbuild_pre")
@@ -89,6 +91,7 @@ def publish_rig():
     """Publish the current scene rig."""
     from mop.core.rig import Rig
     import mop
+
     mop.incremental_save()
     rig = Rig()
     run_scripts("publish_pre")
@@ -96,4 +99,3 @@ def publish_rig():
     run_scripts("publish_post")
     mop.save_publish()
     run_scripts("publish_save_post")
-

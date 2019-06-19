@@ -34,7 +34,7 @@ class RigModule(MopNode):
 
     # The side of this module.
     side = EnumField(
-        choices=['M', 'L', 'R'],
+        choices=["M", "L", "R"],
         displayable=True,
         editable=True,
         gui_order=-2,  # make sure it's always on top
@@ -44,7 +44,7 @@ class RigModule(MopNode):
     # The mirror type of this module.
     # The two modes mimic maya's mirror modes.
     mirror_type = EnumField(
-        choices=['Behavior', 'Orientation'],
+        choices=["Behavior", "Orientation"],
         displayable=True,
         editable=True,
         gui_order=-1,  # make sure it's always on top
@@ -57,7 +57,7 @@ class RigModule(MopNode):
     _module_mirror = ObjectField()
 
     # Side of this module when it's created.
-    default_side = 'M'
+    default_side = "M"
 
     # all the nodes created by this modules `self.add_node`.
     owned_nodes = ObjectListField()
@@ -85,11 +85,11 @@ class RigModule(MopNode):
 
     guide_to_def_constraints = ObjectListField()
 
-    def __init__(self, name, side='M', parent_joint=None, rig=None):
+    def __init__(self, name, side="M", parent_joint=None, rig=None):
         if cmds.objExists(name):
             self.node_name = name
         else:
-            metadata = {'base_name': name, 'side': side, 'role': 'mod'}
+            metadata = {"base_name": name, "side": side, "role": "mod"}
             self.node_name = mop.metadata.name_from_metadata(metadata)
         super(RigModule, self).__init__(self.node_name)
 
@@ -114,10 +114,10 @@ class RigModule(MopNode):
     def parent_module(self):
         parent_joint = self.parent_joint.get()
         if parent_joint:
-            parent_module = cmds.listConnections(parent_joint + '.module', source=True)[
+            parent_module = cmds.listConnections(parent_joint + ".module", source=True)[
                 0
             ]
-            module_type = cmds.getAttr(parent_module + '.module_type')
+            module_type = cmds.getAttr(parent_module + ".module_type")
             parent_module = all_rig_modules[module_type](parent_module, rig=self.rig)
             return parent_module
 
@@ -149,22 +149,22 @@ class RigModule(MopNode):
         """
         self.guide_group.set(
             self.add_node(
-                'transform', 'grp', description='guide', parent=self.node_name
+                "transform", "grp", description="guide", parent=self.node_name
             )
         )
-        cmds.setAttr(self.guide_group.get() + '.inheritsTransform', False)
+        cmds.setAttr(self.guide_group.get() + ".inheritsTransform", False)
         self.controls_group.set(
             self.add_node(
-                'transform', role='grp', description='controls', parent=self.node_name
+                "transform", role="grp", description="controls", parent=self.node_name
             )
         )
 
         self.extras_group.set(
             self.add_node(
-                'transform', role='grp', description='extras', parent=self.node_name
+                "transform", role="grp", description="extras", parent=self.node_name
             )
         )
-        cmds.setAttr(self.extras_group.get() + '.visibility', False)
+        cmds.setAttr(self.extras_group.get() + ".visibility", False)
         self.create_guide_nodes()
         self.create_deform_joints()
         self._constraint_deforms_to_guides()
@@ -199,8 +199,8 @@ class RigModule(MopNode):
         self.update_parent_joint()
 
         scene_metadata = mop.metadata.metadata_from_name(self.node_name)
-        name_changed = self.name.get() != scene_metadata['base_name']
-        side_changed = self.side.get() != scene_metadata['side']
+        name_changed = self.name.get() != scene_metadata["base_name"]
+        side_changed = self.side.get() != scene_metadata["side"]
 
         if name_changed or side_changed:
             # rename the module node
@@ -213,24 +213,24 @@ class RigModule(MopNode):
 
             # rename the persistent attributes
             persistent_attrs = cmds.listAttr(
-                self.node_name, category='persistent_attribute_backup'
+                self.node_name, category="persistent_attribute_backup"
             )
             if persistent_attrs:
                 for attr in persistent_attrs:
-                    old_node, attr_name = attr.split('__')
+                    old_node, attr_name = attr.split("__")
 
                     metadata = mop.metadata.metadata_from_name(old_node)
-                    metadata['base_name'] = self.name.get()
-                    metadata['side'] = self.side.get()
+                    metadata["base_name"] = self.name.get()
+                    metadata["side"] = self.side.get()
                     new_node = mop.metadata.name_from_metadata(metadata)
                     logger.debug(
                         "Renaming persistent attribute from {} to {}".format(
-                            self.node_name + '.' + attr,
-                            self.node_name + '.' + new_node + '__' + attr_name,
+                            self.node_name + "." + attr,
+                            self.node_name + "." + new_node + "__" + attr_name,
                         )
                     )
                     cmds.renameAttr(
-                        self.node_name + '.' + attr, new_node + '__' + attr_name
+                        self.node_name + "." + attr, new_node + "__" + attr_name
                     )
         if side_changed:
             new_color = mop.config.side_color[self.side.get()]
@@ -249,13 +249,13 @@ class RigModule(MopNode):
         old_constraint_nodes = []
 
         first_level_nodes = (
-            cmds.listConnections(self.node_name + '.translate', source=True) or []
+            cmds.listConnections(self.node_name + ".translate", source=True) or []
         )
         old_constraint_nodes.extend(first_level_nodes)
 
         for node in first_level_nodes:
             second_level_nodes = (
-                cmds.listConnections(node + '.inputMatrix', source=True) or []
+                cmds.listConnections(node + ".inputMatrix", source=True) or []
             )
             old_constraint_nodes.extend(second_level_nodes)
 
@@ -268,8 +268,8 @@ class RigModule(MopNode):
 
     def _update_node_name(self, node):
         metadata = mop.metadata.metadata_from_name(node)
-        metadata['base_name'] = self.name.get()
-        metadata['side'] = self.side.get()
+        metadata["base_name"] = self.name.get()
+        metadata["side"] = self.side.get()
         new_name = mop.metadata.name_from_metadata(metadata)
         cmds.rename(node, new_name)
         return new_name
@@ -299,7 +299,7 @@ class RigModule(MopNode):
         It's meant to hide some stuff that the rigger would need after the build
         maybe lock some attributes, set some default values, etc.
         """
-        cmds.setAttr(self.extras_group.get() + '.visibility', False)
+        cmds.setAttr(self.extras_group.get() + ".visibility", False)
 
     def add_node(
         self, node_type, role=None, object_id=None, description=None, *args, **kwargs
@@ -320,11 +320,11 @@ class RigModule(MopNode):
         if not role:
             role = node_type
         metadata = {
-            'base_name': self.name.get(),
-            'side': self.side.get(),
-            'role': role,
-            'description': description,
-            'id': object_id,
+            "base_name": self.name.get(),
+            "side": self.side.get(),
+            "role": role,
+            "description": description,
+            "id": object_id,
         }
         name = mop.metadata.name_from_metadata(metadata)
 
@@ -332,14 +332,14 @@ class RigModule(MopNode):
             raise ValueError("A node with the name `{}` already exists".format(name))
 
         node = cmds.createNode(node_type, name=name, *args, **kwargs)
-        if node_type == 'locator' or node_type == 'follicle':
-            shape = node + 'Shape'
+        if node_type == "locator" or node_type == "follicle":
+            shape = node + "Shape"
             cmds.rename(node, shape)
             node = cmds.listRelatives(shape, parent=True)[0]
             node = cmds.rename(node, name)
 
-        cmds.addAttr(node, longName='module', attributeType='message')
-        cmds.connectAttr(self.node_name + '.message', node + '.module')
+        cmds.addAttr(node, longName="module", attributeType="message")
+        cmds.connectAttr(self.node_name + ".message", node + ".module")
         self.owned_nodes.append(node)
 
         return node
@@ -354,7 +354,7 @@ class RigModule(MopNode):
             object_id = len(self.deform_joints)
 
         new_joint = self.add_node(
-            'joint', role='deform', object_id=object_id, description=description
+            "joint", role="deform", object_id=object_id, description=description
         )
 
         if not parent and self.parent_joint:
@@ -364,17 +364,17 @@ class RigModule(MopNode):
 
         cmds.parent(new_joint, parent)
 
-        for transform in ['translate', 'rotate', 'scale', 'jointOrient']:
-            if transform == 'scale':
+        for transform in ["translate", "rotate", "scale", "jointOrient"]:
+            if transform == "scale":
                 value = 1
             else:
                 value = 0
-            for axis in 'XYZ':
+            for axis in "XYZ":
                 attr = transform + axis
-                cmds.setAttr(new_joint + '.' + attr, value)
+                cmds.setAttr(new_joint + "." + attr, value)
 
         # prevent maya from messing with the joint orient when parenting the joint
-        cmds.setAttr(new_joint + '.jointOrient', lock=True)
+        cmds.setAttr(new_joint + ".jointOrient", lock=True)
 
         self.deform_joints.append(new_joint)
         return new_joint
@@ -385,7 +385,7 @@ class RigModule(MopNode):
         object_id=None,
         skip_id=False,
         description=None,
-        shape_type='circle',
+        shape_type="circle",
     ):
         """Creates a new guide node for this module."""
         print(description, skip_id, object_id)
@@ -394,12 +394,12 @@ class RigModule(MopNode):
 
         module_matadata = mop.metadata.metadata_from_name(self.node_name)
         metadata = {}
-        metadata['base_name'] = module_matadata['base_name']
-        metadata['side'] = module_matadata['side']
-        metadata['id'] = object_id
+        metadata["base_name"] = module_matadata["base_name"]
+        metadata["side"] = module_matadata["side"]
+        metadata["id"] = object_id
         if description is not None:
-            metadata['description'] = description
-        metadata['role'] = 'guide'
+            metadata["description"] = description
+        metadata["role"] = "guide"
         guide_name = mop.metadata.name_from_metadata(metadata)
 
         guide = shapeshifter.create_controller_from_name(shape_type)
@@ -417,14 +417,14 @@ class RigModule(MopNode):
         return guide
 
     def add_control(
-        self, dag_node, object_id=None, description=None, shape_type='circle'
+        self, dag_node, object_id=None, description=None, shape_type="circle"
     ):
         metadata = mop.metadata.metadata_from_name(dag_node)
         if object_id is not None:
-            metadata['id'] = object_id
+            metadata["id"] = object_id
         if description is not None:
-            metadata['description'] = description
-        metadata['role'] = 'ctl'
+            metadata["description"] = description
+        metadata["role"] = "ctl"
         ctl_name = mop.metadata.name_from_metadata(metadata)
 
         ctl = shapeshifter.create_controller_from_name(shape_type)
@@ -434,19 +434,19 @@ class RigModule(MopNode):
 
         # get the existing shape data if it exists
         mop.attributes.create_persistent_attribute(
-            ctl, self.node_name, longName='shape_data', dataType='string'
+            ctl, self.node_name, longName="shape_data", dataType="string"
         )
-        ctl_data = cmds.getAttr(ctl + '.shape_data')
+        ctl_data = cmds.getAttr(ctl + ".shape_data")
         if ctl_data:
             ctl_data = json.loads(ctl_data)
             shapeshifter.change_controller_shape(ctl, ctl_data)
 
         mop.attributes.create_persistent_attribute(
-            ctl, self.node_name, longName='attributes_state', dataType='string'
+            ctl, self.node_name, longName="attributes_state", dataType="string"
         )
 
         mop.attributes.create_persistent_attribute(
-            ctl, self.node_name, longName='parent_space_data', dataType='string'
+            ctl, self.node_name, longName="parent_space_data", dataType="string"
         )
 
         # We cannot set a default value on strings, so set the persistent
@@ -454,11 +454,11 @@ class RigModule(MopNode):
         # It is mandatory to set a default value here, without a value
         # the attribute returns `None` when rebuilt and this crashes
         # the `setAttr` command.
-        if not cmds.getAttr(ctl + '.parent_space_data'):
-            cmds.setAttr(ctl + '.parent_space_data', '{}', type='string')
+        if not cmds.getAttr(ctl + ".parent_space_data"):
+            cmds.setAttr(ctl + ".parent_space_data", "{}", type="string")
 
         mop.dag.snap_first_to_last(ctl, dag_node)
-        parent_group = mop.dag.add_parent_group(ctl, 'buffer')
+        parent_group = mop.dag.add_parent_group(ctl, "buffer")
         self.controllers.append(ctl)
         return ctl, parent_group
 
@@ -484,7 +484,7 @@ class RigModule(MopNode):
 
         parent = self.parent_module
 
-        if not parent.module_mirror and parent.side.get() != 'M':
+        if not parent.module_mirror and parent.side.get() != "M":
             non_mirrored_parents.append(parent)
             RigModule.find_non_mirrored_parents(parent, non_mirrored_parents)
 
@@ -494,7 +494,7 @@ class RigModule(MopNode):
 
         # update all the fields to match the mirror module
         for field in self.module_mirror.fields:
-            if field.name in ['name', 'side']:
+            if field.name in ["name", "side"]:
                 continue
             if field.editable:
                 value = None
@@ -517,7 +517,7 @@ class RigModule(MopNode):
         for orig_node, new_node in zip(
             self.module_mirror.guide_nodes, self.guide_nodes
         ):
-            if mirror_type.lower() == 'behavior':
+            if mirror_type.lower() == "behavior":
                 # disable black formatting to keep the matrices 4x4
                 # fmt: off
                 world_reflexion_mat = om2.MMatrix(
@@ -537,11 +537,11 @@ class RigModule(MopNode):
                     ]
                 )
                 # fmt: on
-                orig_node_mat = om2.MMatrix(cmds.getAttr(orig_node + '.worldMatrix'))
+                orig_node_mat = om2.MMatrix(cmds.getAttr(orig_node + ".worldMatrix"))
                 new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
                 cmds.xform(new_node, matrix=new_mat, worldSpace=True)
-                cmds.setAttr(new_node + '.scale', 1, 1, 1)
-            if mirror_type.lower() == 'orientation':
+                cmds.setAttr(new_node + ".scale", 1, 1, 1)
+            if mirror_type.lower() == "orientation":
                 # disable black formatting to keep the matrices 4x4
                 # fmt: off
                 world_reflexion_mat = om2.MMatrix(
@@ -553,10 +553,9 @@ class RigModule(MopNode):
                     ]
                 )
                 # fmt: on
-                orig_node_mat = om2.MMatrix(cmds.getAttr(orig_node + '.worldMatrix'))
+                orig_node_mat = om2.MMatrix(cmds.getAttr(orig_node + ".worldMatrix"))
                 new_mat = orig_node_mat * world_reflexion_mat
                 cmds.xform(new_node, matrix=new_mat, worldSpace=True)
-                cmds.setAttr(new_node + '.scale', 1, 1, 1)
+                cmds.setAttr(new_node + ".scale", 1, 1, 1)
                 orig_orient = cmds.xform(orig_node, q=True, rotation=True, ws=True)
                 cmds.xform(new_node, rotation=orig_orient, ws=True)
-

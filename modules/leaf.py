@@ -66,7 +66,7 @@ class Leaf(RigModule):
 
     def build(self):
         for joint in self.deform_joints:
-            ctl, parent_group = self.add_control(joint, shape_type='sphere')
+            ctl, parent_group = self.add_control(joint, shape_type="sphere")
             cmds.parent(parent_group, self.controls_group.get())
             mop.dag.matrix_constraint(ctl, joint)
 
@@ -82,4 +82,3 @@ class Leaf(RigModule):
 
 
 exported_rig_modules = [Leaf]
-

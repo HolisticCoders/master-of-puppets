@@ -22,7 +22,7 @@ class Spine(Chain):
     def build(self):
         parent = self.controls_group.get()
         for i, joint in enumerate(self.deform_joints):
-            fk_ctl, parent_group = self.add_control(joint, description='fk')
+            fk_ctl, parent_group = self.add_control(joint, description="fk")
             cmds.parent(parent_group, parent)
             parent = fk_ctl
             if i == 0:
@@ -30,12 +30,12 @@ class Spine(Chain):
                 # but first, rename the FK control to avoid conflicts later on.
                 next_joint = self.deform_joints[i + 1]
                 reverse_pelvis_ctl, reverse_pelvis_grp = self.add_control(
-                    next_joint, description='reverse_pelvis', shape_type='cube'
+                    next_joint, description="reverse_pelvis", shape_type="cube"
                 )
                 cmds.parent(reverse_pelvis_grp, fk_ctl)
 
                 pelvis_ctl, pelvis_grp = self.add_control(
-                    joint, description='pelvis', shape_type='cube'
+                    joint, description="pelvis", shape_type="cube"
                 )
                 cmds.parent(pelvis_grp, reverse_pelvis_ctl)
                 mop.dag.matrix_constraint(pelvis_ctl, joint)

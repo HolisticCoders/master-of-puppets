@@ -82,7 +82,7 @@ class ObjectPicker(QtWidgets.QWidget):
 
         self.setLayout(QtWidgets.QHBoxLayout())
         self._name = QtWidgets.QLineEdit()
-        self._picker = QtWidgets.QPushButton('<<')
+        self._picker = QtWidgets.QPushButton("<<")
         self.layout().addWidget(self._name)
         self.layout().addWidget(self._picker)
 
@@ -105,9 +105,9 @@ class ObjectPicker(QtWidgets.QWidget):
 
 
 map_field_to_widget = {
-    'BoolField': CheckBox,
-    'IntField': SpinBox,
-    'StringField': LineEdit,
-    'ObjectField': ObjectPicker,
-    'EnumField': ComboBox,
+    "BoolField": CheckBox,
+    "IntField": SpinBox,
+    "StringField": LineEdit,
+    "ObjectField": ObjectPicker,
+    "EnumField": ComboBox,
 }

@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 class mopWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
     """The main window of the mop GUI."""
 
-    ui_name = 'mop_main_window'
+    ui_name = "mop_main_window"
 
     def __init__(self, parent=None):
         super(mopWindow, self).__init__(parent)
         self.setObjectName(self.ui_name)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle('MOP')
+        self.setWindowTitle("MOP")
 
         self.setDockNestingEnabled(True)
 
@@ -41,7 +41,7 @@ class mopWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.creation_panel)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.module_panel)
 
-        subscribe('workspace-closed', self.close)
+        subscribe("workspace-closed", self.close)
 
         self.load_settings()
 
@@ -49,28 +49,28 @@ class mopWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         name = self.objectName()
         settings = get_settings()
 
-        settings.setValue('%s/state' % name, self.saveState())
-        settings.setValue('%s/floating' % name, self.isFloating())
-        settings.setValue('%s/area' % name, self.dockArea())
-        settings.setValue('%s/geometry' % name, self.saveGeometry())
+        settings.setValue("%s/state" % name, self.saveState())
+        settings.setValue("%s/floating" % name, self.isFloating())
+        settings.setValue("%s/area" % name, self.dockArea())
+        settings.setValue("%s/geometry" % name, self.saveGeometry())
 
-        publish('save-settings')
-        logger.info('Saved mop settings.')
+        publish("save-settings")
+        logger.info("Saved mop settings.")
 
     def load_settings(self):
         name = self.objectName()
         settings = get_settings()
 
-        state = settings.value('%s/state' % name)
+        state = settings.value("%s/state" % name)
         if state:
             self.restoreState(state)
 
-        geometry = settings.value('%s/geometry' % name)
+        geometry = settings.value("%s/geometry" % name)
         if geometry:
             self.restoreGeometry(geometry)
 
-        publish('load-settings')
-        logger.info('Loaded mop settings.')
+        publish("load-settings")
+        logger.info("Loaded mop settings.")
 
     def floatingChanged(self, floating):
         self.save_settings()
@@ -83,4 +83,3 @@ class mopWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         self.save_settings()
         clear_all_signals()
         super(mopWindow, self).close()
-

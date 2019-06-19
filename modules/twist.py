@@ -35,19 +35,19 @@ class Twist(Leaf):
             0
         ]
 
-        mult_mat = self.add_node('multMatrix', description='relative_space')
-        decomp_mat = self.add_node('decomposeMatrix')
-        quat_to_euler = self.add_node('quatToEuler')
+        mult_mat = self.add_node("multMatrix", description="relative_space")
+        decomp_mat = self.add_node("decomposeMatrix")
+        quat_to_euler = self.add_node("quatToEuler")
 
-        cmds.connectAttr(twist_driver + '.matrix', mult_mat + '.matrixIn[0]')
+        cmds.connectAttr(twist_driver + ".matrix", mult_mat + ".matrixIn[0]")
         cmds.setAttr(
-            mult_mat + '.matrixIn[1]',
-            cmds.getAttr(twist_driver + '.inverseMatrix'),
-            type='matrix',
+            mult_mat + ".matrixIn[1]",
+            cmds.getAttr(twist_driver + ".inverseMatrix"),
+            type="matrix",
         )
-        cmds.connectAttr(mult_mat + '.matrixSum', decomp_mat + '.inputMatrix')
-        cmds.connectAttr(decomp_mat + '.outputQuatX', quat_to_euler + '.inputQuatX')
-        cmds.connectAttr(decomp_mat + '.outputQuatW', quat_to_euler + '.inputQuatW')
+        cmds.connectAttr(mult_mat + ".matrixSum", decomp_mat + ".inputMatrix")
+        cmds.connectAttr(decomp_mat + ".outputQuatX", quat_to_euler + ".inputQuatX")
+        cmds.connectAttr(decomp_mat + ".outputQuatW", quat_to_euler + ".inputQuatW")
 
         deform_joints = self.deform_joints.get()
         if not self.reverse.get():
@@ -63,15 +63,14 @@ class Twist(Leaf):
 
             metadata = mop.metadata.metadata_from_name(joint)
             anim_blend = self.add_node(
-                'animBlendNodeAdditiveRotation',
-                role='twistAmount',
-                object_id=metadata['id'],
+                "animBlendNodeAdditiveRotation",
+                role="twistAmount",
+                object_id=metadata["id"],
             )
-            cmds.setAttr(anim_blend + '.weightA', current_factor)
-            cmds.setAttr(anim_blend + '.weightB', current_factor_reverse)
-            cmds.connectAttr(quat_to_euler + '.outputRotate', anim_blend + '.inputA')
-            cmds.connectAttr(anim_blend + '.output', joint + '.rotate')
+            cmds.setAttr(anim_blend + ".weightA", current_factor)
+            cmds.setAttr(anim_blend + ".weightB", current_factor_reverse)
+            cmds.connectAttr(quat_to_euler + ".outputRotate", anim_blend + ".inputA")
+            cmds.connectAttr(anim_blend + ".output", joint + ".rotate")
 
 
 exported_rig_modules = [Twist]
-

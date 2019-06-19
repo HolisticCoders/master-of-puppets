@@ -39,8 +39,8 @@ class Corrective(Leaf):
             ctl = noca.Node(self._add_control(joint))
             condition_nodes = []
             metadata = mop.metadata.metadata_from_name(joint)
-            for angle_axis in 'YZ':
-                axis_range = value_range.attr('output' + angle_axis)
+            for angle_axis in "YZ":
+                axis_range = value_range.attr("output" + angle_axis)
                 value_opposite = axis_range * -1
                 positive_offset = value_range * [
                     ctl.offsetPositiveX,
@@ -63,23 +63,23 @@ class Corrective(Leaf):
             )
 
     def create_locators(self):
-        locator_space_group = self.add_node('transform', role='vectorsLocalSpace')
+        locator_space_group = self.add_node("transform", role="vectorsLocalSpace")
         cmds.parent(locator_space_group, self.extras_group.get())
-        cmds.setAttr(locator_space_group + '.inheritsTransform', False)
+        cmds.setAttr(locator_space_group + ".inheritsTransform", False)
         mop.dag.snap_first_to_last(locator_space_group, self.vector_base.get())
         cmds.pointConstraint(self.vector_base.get(), locator_space_group)
 
-        vector_base_loc = self.add_node('locator', description='vector_base')
+        vector_base_loc = self.add_node("locator", description="vector_base")
         vector_base_loc = cmds.rename(
-            vector_base_loc, self.vector_base.get() + '_vectorBase'
+            vector_base_loc, self.vector_base.get() + "_vectorBase"
         )
         cmds.parent(vector_base_loc, locator_space_group)
         mop.dag.snap_first_to_last(vector_base_loc, self.vector_base.get())
         cmds.parentConstraint(self.vector_base.get(), vector_base_loc)
         self.vector_base_loc.set(vector_base_loc)
 
-        vector_tip = self.add_node('locator', description='vector_tip')
-        vector_tip = cmds.rename(vector_tip, self.vector_base.get() + '_vectorTip')
+        vector_tip = self.add_node("locator", description="vector_tip")
+        vector_tip = cmds.rename(vector_tip, self.vector_base.get() + "_vectorTip")
 
         # give a magnitude to the vector
         if self.vector_tip.get():
@@ -90,23 +90,23 @@ class Corrective(Leaf):
             )
         else:
             mop.dag.reset_node(vector_tip)
-            cmds.setAttr(vector_tip + '.translateX', 1)
+            cmds.setAttr(vector_tip + ".translateX", 1)
             cmds.parent(vector_tip, vector_base_loc)
             cmds.parent(vector_tip, locator_space_group)
             mop.dag.matrix_constraint(vector_base_loc, vector_tip, maintain_offset=True)
         self.vector_tip_loc.set(vector_tip)
 
         orig_pose_vector_tip = self.add_node(
-            'locator', description='orig_pose_vector_tip'
+            "locator", description="orig_pose_vector_tip"
         )
         orig_pose_vector_tip = cmds.rename(
-            orig_pose_vector_tip, self.vector_base.get() + '_vectorTipOrig'
+            orig_pose_vector_tip, self.vector_base.get() + "_vectorTipOrig"
         )
 
         # give a magnitude to the vector
         cmds.parent(orig_pose_vector_tip, vector_base_loc)
         mop.dag.reset_node(orig_pose_vector_tip)
-        cmds.setAttr(orig_pose_vector_tip + '.translateX', 1)
+        cmds.setAttr(orig_pose_vector_tip + ".translateX", 1)
 
         cmds.parent(orig_pose_vector_tip, locator_space_group)
         self.orig_pose_vector_tip_loc.set(orig_pose_vector_tip)
@@ -135,47 +135,47 @@ class Corrective(Leaf):
         mop.dag.snap_first_to_last(parent_group, joint)
         cmds.parent(parent_group, self.controls_group.get())
 
-        offset_group = mop.dag.add_parent_group(ctl, 'offset')
+        offset_group = mop.dag.add_parent_group(ctl, "offset")
         mop.dag.matrix_constraint(ctl, joint)
 
         mop.attributes.create_persistent_attribute(
             ctl,
             self.node_name,
-            ln='affectedBy',
-            attributeType='enum',
-            enumName='Y:Z:',
+            ln="affectedBy",
+            attributeType="enum",
+            enumName="Y:Z:",
             keyable=True,
         )
 
         # this attributes are there to ease the setup of the corrective for the rigger
-        cmds.addAttr(ctl, longName='angle', attributeType='double')
-        cmds.setAttr(ctl + '.angle', channelBox=True)
-        cmds.connectAttr(self.angle_result_node + '.input2X', ctl + '.angle')
-        cmds.addAttr(ctl, longName='xValue', attributeType='double')
-        cmds.setAttr(ctl + '.xValue', channelBox=True)
-        cmds.connectAttr(self.angle_result_node + '.input1X', ctl + '.xValue')
-        cmds.addAttr(ctl, longName='yValue', attributeType='double')
-        cmds.setAttr(ctl + '.yValue', channelBox=True)
-        cmds.connectAttr(self.angle_result_node + '.input1Y', ctl + '.yValue')
-        cmds.addAttr(ctl, longName='zValue', attributeType='double')
-        cmds.setAttr(ctl + '.zValue', channelBox=True)
-        cmds.connectAttr(self.angle_result_node + '.input1Z', ctl + '.zValue')
+        cmds.addAttr(ctl, longName="angle", attributeType="double")
+        cmds.setAttr(ctl + ".angle", channelBox=True)
+        cmds.connectAttr(self.angle_result_node + ".input2X", ctl + ".angle")
+        cmds.addAttr(ctl, longName="xValue", attributeType="double")
+        cmds.setAttr(ctl + ".xValue", channelBox=True)
+        cmds.connectAttr(self.angle_result_node + ".input1X", ctl + ".xValue")
+        cmds.addAttr(ctl, longName="yValue", attributeType="double")
+        cmds.setAttr(ctl + ".yValue", channelBox=True)
+        cmds.connectAttr(self.angle_result_node + ".input1Y", ctl + ".yValue")
+        cmds.addAttr(ctl, longName="zValue", attributeType="double")
+        cmds.setAttr(ctl + ".zValue", channelBox=True)
+        cmds.connectAttr(self.angle_result_node + ".input1Z", ctl + ".zValue")
 
-        for axis in 'XYZ':
-            for transform in ['translate', 'rotate', 'scale']:
-                cmds.setAttr(ctl + '.' + transform + axis, lock=True)
+        for axis in "XYZ":
+            for transform in ["translate", "rotate", "scale"]:
+                cmds.setAttr(ctl + "." + transform + axis, lock=True)
             mop.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
-                ln='offsetPositive' + axis,
-                attributeType='double',
+                ln="offsetPositive" + axis,
+                attributeType="double",
                 keyable=True,
             )
             mop.attributes.create_persistent_attribute(
                 ctl,
                 self.node_name,
-                ln='offsetNegative' + axis,
-                attributeType='double',
+                ln="offsetNegative" + axis,
+                attributeType="double",
                 keyable=True,
             )
 
@@ -183,4 +183,3 @@ class Corrective(Leaf):
 
 
 exported_rig_modules = [Corrective]
-

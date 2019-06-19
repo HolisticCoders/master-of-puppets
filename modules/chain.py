@@ -23,7 +23,7 @@ class Chain(RigModule):
         for i in range(self.joint_count.get()):
             guide = self.add_guide_node()
             if i > 0:
-                cmds.setAttr(guide + '.translateX', 5)
+                cmds.setAttr(guide + ".translateX", 5)
 
     def create_deform_joints(self):
         for i in range(self.joint_count.get()):
@@ -38,7 +38,7 @@ class Chain(RigModule):
         if diff > 0:
             for index in range(diff):
                 guide = self.add_guide_node()
-                cmds.setAttr(guide + '.translateX', 5)
+                cmds.setAttr(guide + ".translateX", 5)
         elif diff < 0:
             guides = self.guide_nodes.get()
             guides_to_delete = guides[diff:]
@@ -51,7 +51,7 @@ class Chain(RigModule):
         if diff > 0:
             for index in range(diff):
                 new_joint = self.add_deform_joint()
-                cmds.setAttr(new_joint + '.translateX', 5)
+                cmds.setAttr(new_joint + ".translateX", 5)
 
         elif diff < 0:
             joints = self.deform_joints.get()
@@ -83,7 +83,7 @@ class Chain(RigModule):
         object_id=None,
         skip_id=False,
         description=None,
-        shape_type='circle',
+        shape_type="circle",
     ):
         """Parent the new deform joint to the last one."""
         guide_nodes = self.guide_nodes.get()
