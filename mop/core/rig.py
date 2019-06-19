@@ -14,7 +14,7 @@ from mop.core.fields import ObjectField, ObjectListField
 from mop.utils.undo import undoable
 from mop.utils.dg import find_mirror_node
 import mop.dag
-from shapeshifter import shapeshifter
+from mop.vendor.shapeshifter import shapeshifter
 
 logger = logging.getLogger(__name__)
 

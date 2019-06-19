@@ -25,7 +25,7 @@ from maya import cmds
 from maya.api import OpenMaya
 
 # Local imports
-from node_calculator import logger
+from mop.vendor.node_calculator import logger
 
 
 # PYTHON 2.7 & 3 COMPATIBILITY ---

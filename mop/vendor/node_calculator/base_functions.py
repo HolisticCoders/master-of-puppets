@@ -4,8 +4,8 @@
 # The main difference to the base_operators is that functions rely on operators!
 # They combine existing operators to create more complex setups.
 
-from node_calculator.core import noca_op
-from node_calculator.core import Op
+from mop.vendor.node_calculator.core import noca_op
+from mop.vendor.node_calculator.core import Op
 
 # Any Maya plugin that should be loaded for the NodeCalculator
 REQUIRED_EXTENSION_PLUGINS = []
@@ -49,15 +49,11 @@ def soft_approach(in_value, fade_in_range=0.5, target_value=1):
     soft_approach_value = target_value - fade_in_range * Op.exp(exponent)
 
     is_range_valid_condition = Op.condition(
-        fade_in_range > 0,
-        soft_approach_value,
-        target_value
+        fade_in_range > 0, soft_approach_value, target_value
     )
 
     is_in_range_condition = Op.condition(
-        in_value > start_val,
-        is_range_valid_condition,
-        in_value
+        in_value > start_val, is_range_valid_condition, in_value
     )
 
     return is_in_range_condition

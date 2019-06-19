@@ -7,11 +7,11 @@ Note:
     decorator inside core.py and how it's used! An example is in this extension.
 """
 
-# DON'T import node_calculator.core as noca! It's a cyclical import that fails!
+# DON'T import mop.vendor.node_calculator.core as noca! It's a cyclical import that fails!
 # Most likely the only two things needed from the node_calculator:
-from node_calculator.core import noca_op
-from node_calculator.core import _create_operation_node
-from node_calculator.core import _format_docstring
+from mop.vendor.node_calculator.core import noca_op
+from mop.vendor.node_calculator.core import _create_operation_node
+from mop.vendor.node_calculator.core import _format_docstring
 
 
 REQUIRED_EXTENSION_PLUGINS = ["myMathNodePlugin"]
@@ -22,24 +22,15 @@ EXTENSION_OPERATORS = {}
 
 # These are the available operations in our fictional math node.
 # (The order is important; it is used for the operation-attribute)
-MATH_NODE_OPERATORS = [
-    "pow", "sqrt",
-    "sin", "cos", "tan",
-    "mod",
-    "abs"
-]
+MATH_NODE_OPERATORS = ["pow", "sqrt", "sin", "cos", "tan", "mod", "abs"]
 
 
 # Fill EXTENSION_OPERATORS with our math operations
 for index, math_operator in enumerate(MATH_NODE_OPERATORS):
     EXTENSION_OPERATORS[math_operator] = {
         "node": "myMathNode",
-        "inputs": [
-            ["inFloatX", "inFloatY", "inFloatZ"],
-        ],
-        "outputs": [
-            ["outFloatX", "outFloatY", "outFloatZ"],
-        ],
+        "inputs": [["inFloatX", "inFloatY", "inFloatZ"]],
+        "outputs": [["outFloatX", "outFloatY", "outFloatZ"]],
         "operation": index,
     }
 

@@ -13,16 +13,16 @@ Note:
 :author: You ;)
 """
 
-# DON'T import node_calculator.core as noca! It's a cyclical import that fails!
+# DON'T import mop.vendor.node_calculator.core as noca! It's a cyclical import that fails!
 # Most likely the only two things needed from the node_calculator:
-from node_calculator.core import noca_op
-from node_calculator.core import _create_operation_node
+from mop.vendor.node_calculator.core import noca_op
+from mop.vendor.node_calculator.core import _create_operation_node
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~ STEP 1: REQUIRED PLUGINS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
+"""
 If your operators require certain Maya plugins to be loaded: Add the name(s) of
 those plugin(s) to this list.
 
@@ -34,14 +34,14 @@ for plugin in cmds.pluginInfo(query=True, listPlugins=True):
     for plugin_type in plugin_types:
         if plugin_type == node_type:
             print "\n>>> {} is part of the plugin {}".format(node_type, plugin)
-'''
+"""
 REQUIRED_EXTENSION_PLUGINS = []
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~ STEP 2: OPERATORS DICTIONARY ~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
+"""
 EXTENSION_OPERATORS holds the data for each available operation:
 the necessary node-type, its inputs, outputs, etc.
 This unified data enables to abstract node creation, connection, etc.
@@ -60,7 +60,7 @@ Optional flags:
 
 Check here to see lots of examples for the EXTENSION_OPERATORS-dictionary:
 _operator_lookup_table_init (in lookup_table.py)
-'''
+"""
 EXTENSION_OPERATORS = {
     # "example_operation": {
     #     "node": "mayaNodeForThisOperation",
@@ -82,7 +82,7 @@ EXTENSION_OPERATORS = {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~ STEP 3: OPERATOR FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
+"""
 Add a function for every operation that should be accessible via noca.Op!
 
 Let's look at this example:
@@ -125,4 +125,4 @@ Check here to see lots of examples for the operator functions:
 OperatorMetaClass (in core.py)
 (Again: the @noca_op decorator takes care of integrating your functions into
 this class. No need to add the argument "self".
-'''
+"""

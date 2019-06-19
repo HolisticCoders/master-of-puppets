@@ -8,15 +8,15 @@ import math
 
 from maya import cmds
 
-from node_calculator.core import noca_op
-from node_calculator.core import _create_operation_node
-from node_calculator.core import NcNode
-from node_calculator.core import Node
-from node_calculator.core import NcBaseNode
-from node_calculator.core import _unravel_item_as_list
-from node_calculator.core import _unravel_and_set_or_connect_a_to_b
-from node_calculator.core import _traced_set_attr
-from node_calculator.core import LOG
+from mop.vendor.node_calculator.core import noca_op
+from mop.vendor.node_calculator.core import _create_operation_node
+from mop.vendor.node_calculator.core import NcNode
+from mop.vendor.node_calculator.core import Node
+from mop.vendor.node_calculator.core import NcBaseNode
+from mop.vendor.node_calculator.core import _unravel_item_as_list
+from mop.vendor.node_calculator.core import _unravel_and_set_or_connect_a_to_b
+from mop.vendor.node_calculator.core import _traced_set_attr
+from mop.vendor.node_calculator.core import LOG
 
 # Any Maya plugin that should be loaded for the NodeCalculator
 REQUIRED_EXTENSION_PLUGINS = ["matrixNodes", "quatNodes"]

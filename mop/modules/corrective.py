@@ -1,5 +1,5 @@
 import maya.cmds as cmds
-import node_calculator.core as noca
+import mop.vendor.node_calculator.core as noca
 
 from mop.modules.leaf import Leaf
 from mop.core.fields import IntField, ObjectField

@@ -14,7 +14,7 @@ MENU_ITEMS = [
     {
         "name": "mop_open_menu_item",
         "command": "from mop.ui.commands import open_mop;open_mop()",
-        "label": "Open MOP",
+        "label": "Open Master Of Puppets",
     },
     {
         "name": "mop_open_parent_spaces_menu_item",
@@ -39,7 +39,7 @@ MENU_ITEMS = [
     {
         "name": "mop_reload_menu_item",
         "command": "from mop.ui.commands import reload_mop;reload_mop()",
-        "label": "Reload MOP",
+        "label": "Reload Master Of Puppets",
     },
 ]
 
@@ -55,7 +55,9 @@ def build_menu():
         * Unbuild Rig: Unbuilds the rig contained in the scene.
     """
     if not cmds.menu(mop_MENU, query=True, exists=True):
-        cmds.menu(mop_MENU, label="MOP", parent="MayaWindow", tearOff=False)
+        cmds.menu(
+            mop_MENU, label="Master Of Puppets", parent="MayaWindow", tearOff=False
+        )
 
     for data in MENU_ITEMS:
         name = data.pop("name")

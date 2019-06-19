@@ -40,7 +40,7 @@ Supported operations:
 Example:
     ::
 
-        import node_calculator.core as noca
+        import mop.vendor.node_calculator.core as noca
 
         a = noca.Node("pCube1")
         b = noca.Node("pCube2")
@@ -66,12 +66,12 @@ from maya import cmds
 from maya.api import OpenMaya
 
 # Local imports
-from node_calculator import config
-from node_calculator import logger
-from node_calculator import lookup_table
-from node_calculator import nc_value
-from node_calculator import om_util
-from node_calculator import tracer
+from mop.vendor.node_calculator import config
+from mop.vendor.node_calculator import logger
+from mop.vendor.node_calculator import lookup_table
+from mop.vendor.node_calculator import nc_value
+from mop.vendor.node_calculator import om_util
+from mop.vendor.node_calculator import tracer
 
 
 # PYTHON 2.7 & 3 COMPATIBILITY ---
@@ -3540,8 +3540,8 @@ def _format_docstring(*args, **kwargs):
 
 
 # These imports must be at the end, to prevent import errors from extensions.
-from node_calculator import base_functions
-from node_calculator import base_operators
+from mop.vendor.node_calculator import base_functions
+from mop.vendor.node_calculator import base_operators
 
 
 # NodeCalculator Extensions ---

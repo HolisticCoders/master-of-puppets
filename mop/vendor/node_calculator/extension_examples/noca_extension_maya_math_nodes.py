@@ -13,8 +13,8 @@ Note:
 
 from maya import cmds
 
-from node_calculator.core import noca_op
-from node_calculator.core import _create_operation_node, _unravel_item_as_list
+from mop.vendor.node_calculator.core import noca_op
+from mop.vendor.node_calculator.core import _create_operation_node, _unravel_item_as_list
 
 
 REQUIRED_EXTENSION_PLUGINS = ["mayaMathNodes"]

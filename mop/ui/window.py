@@ -21,7 +21,7 @@ class mopWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         super(mopWindow, self).__init__(parent)
         self.setObjectName(self.ui_name)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle("MOP")
+        self.setWindowTitle("Master Of Puppets")
 
         self.setDockNestingEnabled(True)
 

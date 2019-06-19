@@ -14,7 +14,7 @@ import mop.utils.dg as _dgutils
 import mop.metadata
 import mop.config
 
-from shapeshifter import shapeshifter
+from mop.vendor.shapeshifter import shapeshifter
 
 
 logger = logging.getLogger(__name__)

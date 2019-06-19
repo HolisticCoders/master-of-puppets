@@ -76,8 +76,8 @@ import re
 # Third party imports
 
 # Local imports
-from node_calculator import logger
-from node_calculator import lookup_table
+from mop.vendor.node_calculator import logger
+from mop.vendor.node_calculator import lookup_table
 
 
 # SETUP LOGGER ---
