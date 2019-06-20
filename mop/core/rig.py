@@ -168,6 +168,7 @@ class Rig(MopNode):
 
     @undoable
     def build(self):
+        self.fix_object_list_fields()
         self.deactivate_move_joints_mode()
         nodes_before_build = set(cmds.ls("*"))
         for module in self.rig_modules:
@@ -387,3 +388,17 @@ class Rig(MopNode):
                 bind_poses = cmds.dagPose(joint, bindPose=True, q=True)
                 for bind_pose in bind_poses:
                     cmds.dagPose(joint, reset=True, n=bind_pose)
+
+    def fix_object_list_fields(self):
+        for module in self.self_modules:
+            for field in module.fields:
+                if field.__class__.__name__ == 'ObjectListField':
+                    values = getattr(module, field.name).get()
+                    cmds.deleteAttr(module.node_name, attribute=field.name)
+                    cmds.addAttr(module.node_name, longName=field.name, attributeType='message', multi=True)
+                    for i, val in enumerate(values):
+                        cmds.connectAttr(
+                            val + '.message',
+                            '{}.{}[{}]'.format(module.node_name, field.name, i)
+                        )
+
