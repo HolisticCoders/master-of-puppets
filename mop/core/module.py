@@ -414,6 +414,7 @@ class RigModule(MopNode):
         mop.dag.reset_node(guide)
 
         self.guide_nodes.append(guide)
+        self.owned_nodes.append(guide)
         return guide
 
     def add_control(
