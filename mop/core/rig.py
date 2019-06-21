@@ -390,7 +390,7 @@ class Rig(MopNode):
                     cmds.dagPose(joint, reset=True, n=bind_pose)
 
     def fix_object_list_fields(self):
-        for module in self.self_modules:
+        for module in self.rig_modules:
             for field in module.fields:
                 if field.__class__.__name__ == 'ObjectListField':
                     values = getattr(module, field.name).get()
