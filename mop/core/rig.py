@@ -313,7 +313,7 @@ class Rig(MopNode):
             orig_type, name=orig_name, side=new_side, parent_joint=new_parent_joint
         )
 
-        module.module_mirror = self.node_name
+        module.module_mirror = new_module.node_name
         new_module.module_mirror = module.node_name
 
         new_module.update_mirror()
