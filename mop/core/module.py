@@ -405,6 +405,7 @@ class RigModule(MopNode):
         color = mop.config.side_color[self.side.get()]
         shapeshifter.change_controller_color(guide, color)
         guide = cmds.rename(guide, guide_name)
+        cmds.setAttr(guide + ".scale", lock=True)
 
         if not parent:
             parent = self.guide_group.get()

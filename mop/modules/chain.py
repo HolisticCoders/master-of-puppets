@@ -31,7 +31,7 @@ class Chain(RigModule):
 
     def constraint_deforms_to_guides(self):
         for guide, deform in zip(self.guide_nodes, self.deform_joints):
-            mop.dag.matrix_constraint(guide, deform)
+            mop.dag.matrix_constraint(guide, deform, scale=False)
 
     def update_guide_nodes(self):
         diff = self.joint_count.get() - len(self.guide_nodes)
