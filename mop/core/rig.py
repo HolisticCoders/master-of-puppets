@@ -358,7 +358,7 @@ class Rig(MopNode):
                 if not plugs:
                     continue
                 for plug in plugs:
-                    regex = re.match("(.*).matrix\[([0-9])\]", plug)
+                    regex = re.match("(.*)\.matrix\[([0-9]*)\]", plug)
                     node, index = regex.groups()
                     cmds.connectAttr(
                         joint + ".worldInverseMatrix[0]",
@@ -374,7 +374,7 @@ class Rig(MopNode):
                 if not plugs:
                     continue
                 for plug in plugs:
-                    regex = re.match("(.*).bindPreMatrix\[([0-9])\]", plug)
+                    regex = re.match("(.*)\.bindPreMatrix\[([0-9]*)\]", plug)
                     node, index = regex.groups()
                     cmds.disconnectAttr(
                         joint + ".worldInverseMatrix[0]",
