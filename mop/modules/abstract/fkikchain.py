@@ -49,9 +49,11 @@ class FkIkChain(ChainSwitcher):
             cmds.rename(fk, mop.metadata.name_from_metadata(metadata))
 
         for ik in self.chain_b:
+            cmds.setAttr(ik + ".jointOrient", lock=False)
             metadata = mop.metadata.metadata_from_name(ik)
             metadata["role"] = "ik"
             cmds.rename(ik, mop.metadata.name_from_metadata(metadata))
+        cmds.makeIdentity(self.chain_b[0], apply=True, rotate=True)
 
     def build(self):
         super(FkIkChain, self).build()
