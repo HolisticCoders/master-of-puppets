@@ -22,6 +22,15 @@ class RigPanel(QtWidgets.QWidget):
         self.actions_group = QtWidgets.QGroupBox("Actions")
 
         color_by_side = QtWidgets.QCheckBox("Colors by Side")
+
+        self.joints_mode_label = QtWidgets.QLabel("Joints Mode:")
+        self.joints_mode_none = QtWidgets.QRadioButton("None")
+        self.joints_mode_guide = QtWidgets.QRadioButton("Guide Joints")
+        self.joints_mode_control = QtWidgets.QRadioButton("Controls")
+
+        self.search_label = QtWidgets.QLabel("Search")
+        self.search_bar = QtWidgets.QLineEdit()
+
         self.tree_view = ModulesTree()
         self.build_button = QtWidgets.QPushButton("Build Rig")
         self.unbuild_button = QtWidgets.QPushButton("Unbuild Rig")
@@ -35,6 +44,7 @@ class RigPanel(QtWidgets.QWidget):
 
         modules_layout = QtWidgets.QVBoxLayout()
         options_layout = QtWidgets.QHBoxLayout()
+        search_layout = QtWidgets.QHBoxLayout()
         actions_layout = QtWidgets.QHBoxLayout()
 
         self.modules_group.setLayout(modules_layout)
@@ -42,6 +52,17 @@ class RigPanel(QtWidgets.QWidget):
 
         modules_layout.addLayout(options_layout)
         options_layout.addWidget(color_by_side)
+
+        options_layout.addWidget(self.joints_mode_label)
+        options_layout.addWidget(self.joints_mode_none)
+        options_layout.addWidget(self.joints_mode_guide)
+        options_layout.addWidget(self.joints_mode_control)
+
+        options_layout.addStretch()
+
+        modules_layout.addLayout(search_layout)
+        search_layout.addWidget(self.search_label)
+        search_layout.addWidget(self.search_bar)
 
         modules_layout.addWidget(self.tree_view)
 
@@ -80,16 +101,22 @@ class RigPanel(QtWidgets.QWidget):
             color_by_side.setChecked(True)
 
         self.model = QtGui.QStandardItemModel()
+        self.proxy = ModulesFilter()
+        self.proxy.setSourceModel(self.model)
+
         self._populate_model(Rig().rig_modules, expand_new_modules=False)
-        self.tree_view.setModel(self.model)
+
+        self.tree_view.setModel(self.proxy)
         self.tree_view.header().hide()
         self.tree_view.expandAll()
+
         selection_model = self.tree_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_changed)
 
         self._update_buttons_enabled()
 
         color_by_side.toggled.connect(self._on_color_by_side_toggled)
+        self.search_bar.textEdited.connect(self._on_search_changed)
         self.build_button.released.connect(self._on_build_rig)
         self.unbuild_button.released.connect(self._on_unbuild_rig)
         self.publish_button.released.connect(self._on_publish_rig)
@@ -120,6 +147,9 @@ class RigPanel(QtWidgets.QWidget):
             self._show_colors_recursively(root)
         else:
             self._hide_colors_recursively(root)
+
+    def _on_search_changed(self, search):
+        self.proxy.setFilterRegExp(search)
 
     def _iter_items_recursively(self, parent):
         for row in xrange(parent.rowCount()):
@@ -195,7 +225,9 @@ class RigPanel(QtWidgets.QWidget):
         for module, item in new_module_items:
             self._auto_parent_module_item(module, item, root)
             if expand_new_modules:
-                self.tree_view.setExpanded(self.model.indexFromItem(item), True)
+                source_index = self.model.indexFromItem(item)
+                index = self.proxy.mapFromSource(source_index)
+                self.tree_view.setExpanded(index, True)
 
         for joint, item in new_joint_items:
             self._auto_parent_joint_item(joint, item)
@@ -321,7 +353,9 @@ class RigPanel(QtWidgets.QWidget):
         for item in self._iter_items_recursively(self.model.invisibleRootItem()):
             if not self._is_module_item(item):
                 continue
-            if self.tree_view.isExpanded(self.model.indexFromItem(item)):
+            source_index = self.model.indexFromItem(item)
+            index = self.proxy.mapFromSource(source_index)
+            if self.tree_view.isExpanded(index):
                 module = Rig().get_module(item.text())
                 modules.append(module)
 
@@ -332,23 +366,28 @@ class RigPanel(QtWidgets.QWidget):
             return
         for module in modules:
             item = self._item_for_name(module.node_name)
-            self.tree_view.setExpanded(self.model.indexFromItem(item), True)
+            source_index = self.model.indexFromItem(item)
+            index = self.proxy.mapFromSource(source_index)
+            self.tree_view.setExpanded(index, True)
 
     def _save_selection(self):
         selection_model = self.tree_view.selectionModel()
         selection = selection_model.selectedRows()
-        selected_items = map(self.model.itemFromIndex, selection)
+        source_indices = map(self.proxy.mapToSource, selection)
+        selected_items = map(self.model.itemFromIndex, source_indices)
         current_index = selection_model.currentIndex()
-        current_item = self.model.itemFromIndex(current_index)
+        current_item = self.model.itemFromIndex(self.proxy.mapToSource(current_index))
         return selected_items, current_item
 
     def _restore_selection(self, selected_items, current_item):
         selection_model = self.tree_view.selectionModel()
         selection_model.clear()
         for item in selected_items:
-            index = self.model.indexFromItem(item)
+            source_index = self.model.indexFromItem(item)
+            index = self.proxy.mapFromSource(source_index)
             selection_model.select(index, QtCore.QItemSelectionModel.Select)
-        current_index = self.model.indexFromItem(current_item)
+        source_current_index = self.model.indexFromItem(current_item)
+        current_index = self.proxy.mapFromSource(source_current_index)
         selection_model.setCurrentIndex(
             current_index, QtCore.QItemSelectionModel.Current
         )
@@ -434,7 +473,8 @@ class RigPanel(QtWidgets.QWidget):
     def _on_selection_changed(self, selected, deselected):
         selection = self.tree_view.selectionModel()
         selected = selection.selectedRows()
-        items = [self.model.itemFromIndex(index) for index in selected]
+        source_indices = map(self.proxy.mapToSource, selected)
+        items = [self.model.itemFromIndex(index) for index in source_indices]
         joints = [item.text() for item in items if self._is_joint_item(item)]
         modules = [
             Rig().get_module(item.text())
@@ -455,3 +495,91 @@ class ModulesTree(QtWidgets.QTreeView):
     def __init__(self, parent=None):
         super(ModulesTree, self).__init__(parent)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+
+
+class ModulesFilter(QtCore.QSortFilterProxyModel):
+    """A custom filter taking tree children into account.
+
+    Reimplemented in Python from
+    https://github.com/pasnox/fresh/blob/master/src/core/pRecursiveSortFilterProxyModel.h
+    """
+
+    def __init__(self, recursiveFilter=True, invertedFilter=False, parent=None):
+        super(ModulesFilter, self).__init__(parent)
+        self._recursiveFilter = recursiveFilter
+        self._invertedFilter = invertedFilter
+        self._sourceRootIndex = QtCore.QModelIndex()
+
+    def data(self, index, role):
+        if self._sourceRootIndex.isValid():
+            if index == QtCore.QModelIndex():
+                return None
+        return super(ModulesFilter, self).data(index, role)
+
+    def mapFromSource(self, sourceIndex):
+        if self._sourceRootIndex.isValid():
+            if sourceIndex == self._sourceRootIndex:
+                return QtCore.QModelIndex()
+        return super(ModulesFilter, self).mapFromSource(sourceIndex)
+
+    def mapToSource(self, proxyIndex):
+        if self._sourceRootIndex.isValid():
+            if proxyIndex == QtCore.QModelIndex():
+                return self._sourceRootIndex
+        return super(ModulesFilter, self).mapToSource(proxyIndex)
+
+    def setRecursiveFilter(self, recursive):
+        self._recursiveFilter = recursive
+
+    def isRecursiveFilter(self):
+        return self._recursiveFilter
+
+    def setInvertedFilter(self, inverted):
+        self._invertedFilter = inverted
+
+    def isInvertedFilter(self):
+        return self._invertedFilter
+
+    def setSourceRootModelIndex(self, index):
+        self.beginResetModel()
+        self._sourceRootIndex = index
+        self.endResetModel()
+
+    def sourceRootIndex(self):
+        return self._sourceRootIndex
+
+    def filterAcceptsRowImplementation(self, source_row, source_parent):
+        return super(ModulesFilter, self).filterAcceptsRow(source_row, source_parent)
+
+    def filterAcceptsRow(self, source_row, source_parent):
+        """Display parent item which at least one child matches.
+
+        :param source_row: Row of the source index to check.
+        :param source_parent: Parent of the source index to check.
+        :type source_row: int
+        :type source_parent: controllers.gui.Qt.QtCore.QModelIndex
+        :rtype: bool
+        """
+        res = super(ModulesFilter, self).filterAcceptsRow(source_row, source_parent)
+        # If the item is already valid, do not make any
+        # additional checks.
+        if res:
+            return res
+
+        # Now recursively check all children to see if one matches.
+        model = self.sourceModel()
+
+        # For lists and tables, skip this test has their items
+        # cannot have children. We are only looking for trees here.
+        skip = (QtCore.QAbstractListModel, QtCore.QAbstractTableModel)
+        if isinstance(model, skip):
+            return res
+
+        index = model.index(source_row, 0, source_parent)
+        if model.hasChildren(index):
+            for i in xrange(model.rowCount(index)):
+                res = res | self.filterAcceptsRow(i, index)
+                if res:
+                    return res
+
+        return res
