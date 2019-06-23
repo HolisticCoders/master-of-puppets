@@ -4,7 +4,13 @@ import logging
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-from mop.core.fields import EnumField, ObjectField, StringField, ObjectListField
+from mop.core.fields import (
+    EnumField,
+    ObjectField,
+    StringField,
+    ObjectListField,
+    BoolField,
+)
 from mop.core.mopNode import MopNode
 from mop.modules import all_rig_modules
 from mop.utils.dg import find_mirror_node
@@ -152,7 +158,6 @@ class RigModule(MopNode):
                 "transform", "grp", description="guide", parent=self.node_name
             )
         )
-        cmds.setAttr(self.guide_group.get() + ".inheritsTransform", False)
         self.controls_group.set(
             self.add_node(
                 "transform", role="grp", description="controls", parent=self.node_name
@@ -262,9 +267,17 @@ class RigModule(MopNode):
         if old_constraint_nodes:
             cmds.delete(old_constraint_nodes)
 
+        guide_matrices = []
+        for guide in self.guide_nodes:
+            mat = cmds.xform(guide, query=True, matrix=True, worldSpace=True)
+            guide_matrices.append(mat)
+
         parent = self.parent_joint.get()
         if parent:
             mop.dag.matrix_constraint(parent, self.node_name)
+
+        for guide, matrix in zip(self.guide_nodes, guide_matrices):
+            cmds.xform(guide, matrix=matrix, worldSpace=True)
 
     def _update_node_name(self, node):
         metadata = mop.metadata.metadata_from_name(node)
