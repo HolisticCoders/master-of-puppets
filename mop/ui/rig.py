@@ -74,6 +74,7 @@ class RigPanel(QtWidgets.QWidget):
         # Icons
         self._module_icon = QtGui.QIcon(":QR_settings.png")
         self._joint_icon = QtGui.QIcon(":kinJoint.png")
+        self._control_icon = QtGui.QIcon(":nurbsCurve.svg")
 
         # GUI colors
         raw_left = side_color["L"]
@@ -114,16 +115,8 @@ class RigPanel(QtWidgets.QWidget):
         elif display_mode == 2:
             self.joints_mode_control.setChecked(True)
 
-        self.model = ModulesModel()
-        self.proxy = ModulesFilter()
-        self.proxy.setSourceModel(self.model)
-        self.proxy.setDisplayMode(display_mode)
-
-        self._populate_model(Rig().rig_modules, expand_new_modules=False)
-
-        self.tree_view.setModel(self.proxy)
         self.tree_view.header().hide()
-        self.tree_view.expandAll()
+        self._generate_model()
 
         selection_model = self.tree_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_changed)
@@ -153,6 +146,26 @@ class RigPanel(QtWidgets.QWidget):
                 cmds.scriptJob(kill=script_job_id)
             except RuntimeError:
                 logger.warning("Refresh script job for %s was already deleted.", event)
+
+    @property
+    def _display_mode(self):
+        settings = get_settings()
+        display_mode = settings.value("modules/joints_display_mode")
+        if display_mode is None:
+            return 1
+        else:
+            return int(display_mode)
+
+    def _generate_model(self):
+        self.model = ModulesModel()
+        self.proxy = ModulesFilter()
+        self.proxy.setSourceModel(self.model)
+        self.proxy.setDisplayMode(self._display_mode)
+
+        self._populate_model(Rig().rig_modules, expand_new_modules=False)
+
+        self.tree_view.setModel(self.proxy)
+        self.tree_view.expandAll()
 
     def _on_color_by_side_toggled(self, checked):
         self._color_by_side = checked
@@ -237,6 +250,14 @@ class RigPanel(QtWidgets.QWidget):
             for joint in module.deform_joints:
                 joint_item = self._create_joint_item(module, joint)
                 new_joint_items.append((joint, joint_item))
+            if not Rig().is_built.get():
+                for guide in module.guide_nodes:
+                    guide_item = self._create_control_item(module, guide)
+                    new_joint_items.append((guide, guide_item))
+            else:
+                for control in module.controllers:
+                    control_item = self._create_control_item(module, control)
+                    new_joint_items.append((control, control_item))
 
         root = self.model.invisibleRootItem()
 
@@ -251,16 +272,22 @@ class RigPanel(QtWidgets.QWidget):
             self._auto_parent_joint_item(joint, item)
 
     def _create_module_item(self, module):
-        item = QtGui.QStandardItem(module.node_name)
+        item = self._create_item(module, module.node_name)
         item.setIcon(self._module_icon)
-        item.setEditable(False)
-        if self._color_by_side:
-            item.setForeground(self._colors[module.side.get()])
         return item
 
     def _create_joint_item(self, module, joint):
-        item = QtGui.QStandardItem(joint)
+        item = self._create_item(module, joint)
         item.setIcon(self._joint_icon)
+        return item
+
+    def _create_control_item(self, module, control):
+        item = self._create_item(module, control)
+        item.setIcon(self._control_icon)
+        return item
+
+    def _create_item(self, module, name):
+        item = QtGui.QStandardItem(name)
         item.setEditable(False)
         if self._color_by_side:
             item.setForeground(self._colors[module.side.get()])
@@ -320,10 +347,25 @@ class RigPanel(QtWidgets.QWidget):
                 joint_items = [
                     module_item.child(row)
                     for row in xrange(module_item.rowCount())
-                    if not self.model.is_module_item(module_item.child(row))
+                    if self.model.is_joint_item(module_item.child(row))
                 ]
                 if new_joint_count > old_joint_count:
                     self._fill_missing_joint_items(module, joints, joint_items)
+                    if Rig().is_built.get():
+                        controls = module.controllers.get()
+                        control_items = [
+                            module_item.child(row)
+                            for row in xrange(module_item.rowCount())
+                            if self.model.is_control_item(module_item.child(row))
+                        ]
+                    else:
+                        controls = module.guide_nodes.get()
+                        control_items = [
+                            module_item.child(row)
+                            for row in xrange(module_item.rowCount())
+                            if self.model.is_guide_item(module_item.child(row))
+                        ]
+                    self._fill_missing_control_items(module, controls, control_items)
                 else:
                     self._remove_unused_items(module_item)
 
@@ -416,8 +458,14 @@ class RigPanel(QtWidgets.QWidget):
             joint_item = self._create_joint_item(module, joint)
             self._auto_parent_joint_item(joint, joint_item)
 
+    def _fill_missing_control_items(self, module, controls, control_items):
+        added_controls = controls[len(control_items) :]
+        for control in added_controls:
+            control_item = self._create_control_item(module, control)
+            self._auto_parent_joint_item(control, control_item)
+
     def _remove_unused_items(self, parent_item):
-        for row in xrange(parent_item.rowCount()):
+        for row in reversed(xrange(parent_item.rowCount())):
             child = parent_item.child(row)
             if not cmds.objExists(child.text()):
                 parent_item.removeRow(row)
@@ -468,10 +516,12 @@ class RigPanel(QtWidgets.QWidget):
 
     def _on_build_rig(self):
         build_rig()
+        self._generate_model()
         self._update_buttons_enabled()
 
     def _on_unbuild_rig(self):
         unbuild_rig()
+        self._generate_model()
         self._update_buttons_enabled()
 
     def _on_publish_rig(self):
@@ -493,7 +543,7 @@ class RigPanel(QtWidgets.QWidget):
         selected = selection.selectedRows()
         source_indices = map(self.proxy.mapToSource, selected)
         items = [self.model.itemFromIndex(index) for index in source_indices]
-        joints = [item.text() for item in items if self.model.is_joint_item(item)]
+        joints = [item.text() for item in items if not self.model.is_module_item(item)]
         modules = [
             Rig().get_module(item.text())
             for item in items
@@ -531,6 +581,12 @@ class ModulesModel(QtGui.QStandardItemModel):
     @staticmethod
     def is_control_item(item):
         if item.text().endswith("mod"):
+            return False
+        return ModulesModel.is_item_of_type(item, "transform")
+
+    @staticmethod
+    def is_guide_item(item):
+        if not item.text().endswith("guide"):
             return False
         return ModulesModel.is_item_of_type(item, "transform")
 
@@ -620,9 +676,11 @@ class ModulesFilter(QtCore.QSortFilterProxyModel):
 
         if self._display_mode == 0 and not model.is_module_item(item):
             return False
-        if self._display_mode == 1 and model.is_control_item(item):
+        elif self._display_mode == 1 and model.is_control_item(item):
             return False
-        if self._display_mode == 2 and model.is_joint_item(item):
+        elif self._display_mode == 1 and model.is_guide_item(item):
+            return False
+        elif self._display_mode == 2 and model.is_joint_item(item):
             return False
 
         res = super(ModulesFilter, self).filterAcceptsRow(source_row, source_parent)
