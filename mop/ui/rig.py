@@ -315,7 +315,7 @@ class RigPanel(QtWidgets.QWidget):
             child = item.child(row)
             if self.model.is_module_item(child):
                 return row
-        return 0
+        return item.rowCount()
 
     def _on_modules_created(self, modules):
         self._populate_model(modules)
