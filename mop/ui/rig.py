@@ -118,9 +118,6 @@ class RigPanel(QtWidgets.QWidget):
         self.tree_view.header().hide()
         self._generate_model()
 
-        selection_model = self.tree_view.selectionModel()
-        selection_model.selectionChanged.connect(self._on_selection_changed)
-
         self._update_buttons_enabled()
 
         self.joints_mode_group.addButton(self.joints_mode_none)
@@ -157,6 +154,10 @@ class RigPanel(QtWidgets.QWidget):
             return int(display_mode)
 
     def _generate_model(self):
+        selection_model = self.tree_view.selectionModel()
+        if selection_model:
+            selection_model.selectionChanged.disconnect(self._on_selection_changed)
+
         self.model = ModulesModel()
         self.proxy = ModulesFilter()
         self.proxy.setSourceModel(self.model)
@@ -166,6 +167,9 @@ class RigPanel(QtWidgets.QWidget):
 
         self.tree_view.setModel(self.proxy)
         self.tree_view.expandAll()
+
+        selection_model = self.tree_view.selectionModel()
+        selection_model.selectionChanged.connect(self._on_selection_changed)
 
     def _on_color_by_side_toggled(self, checked):
         self._color_by_side = checked
