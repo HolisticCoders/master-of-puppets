@@ -426,6 +426,9 @@ class RigModule(MopNode):
 
         mop.dag.reset_node(guide)
 
+        cmds.addAttr(guide, longName="module", attributeType="message")
+        cmds.connectAttr(self.node_name + ".message", guide + ".module")
+
         self.guide_nodes.append(guide)
         self.owned_nodes.append(guide)
         return guide
@@ -473,6 +476,10 @@ class RigModule(MopNode):
 
         mop.dag.snap_first_to_last(ctl, dag_node)
         parent_group = mop.dag.add_parent_group(ctl, "buffer")
+
+        cmds.addAttr(ctl, longName="module", attributeType="message")
+        cmds.connectAttr(self.node_name + ".message", ctl + ".module")
+
         self.controllers.append(ctl)
         return ctl, parent_group
 
