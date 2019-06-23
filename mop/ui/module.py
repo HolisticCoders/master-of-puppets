@@ -94,13 +94,9 @@ class ModulePanel(QtWidgets.QDockWidget):
                         It is a list of modules and/or joints.
         :type pointer: list
         """
-
-        def is_module(module):
-            return not isinstance(module, basestring) and cmds.objExists(
-                module.node_name
-            )
-
-        self.modules = filter(is_module, modules)
+        if not modules:
+            return
+        self.modules = modules
         self._update_ui()
 
     def _on_field_edited(self, widget, *args):
