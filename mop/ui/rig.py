@@ -23,9 +23,10 @@ class RigPanel(QtWidgets.QWidget):
 
         color_by_side = QtWidgets.QCheckBox("Colors by Side")
 
+        self.joints_mode_group = QtWidgets.QButtonGroup()
         self.joints_mode_label = QtWidgets.QLabel("Joints Mode:")
         self.joints_mode_none = QtWidgets.QRadioButton("None")
-        self.joints_mode_guide = QtWidgets.QRadioButton("Guide Joints")
+        self.joints_mode_deform = QtWidgets.QRadioButton("Deform Joints")
         self.joints_mode_control = QtWidgets.QRadioButton("Controls")
 
         self.search_label = QtWidgets.QLabel("Search")
@@ -55,7 +56,7 @@ class RigPanel(QtWidgets.QWidget):
 
         options_layout.addWidget(self.joints_mode_label)
         options_layout.addWidget(self.joints_mode_none)
-        options_layout.addWidget(self.joints_mode_guide)
+        options_layout.addWidget(self.joints_mode_deform)
         options_layout.addWidget(self.joints_mode_control)
 
         options_layout.addStretch()
@@ -100,9 +101,23 @@ class RigPanel(QtWidgets.QWidget):
         if self._color_by_side:
             color_by_side.setChecked(True)
 
-        self.model = QtGui.QStandardItemModel()
+        display_mode = settings.value("modules/joints_display_mode")
+        if display_mode is None:
+            display_mode = 1
+        else:
+            display_mode = int(display_mode)
+
+        if display_mode == 0:
+            self.joints_mode_none.setChecked(True)
+        elif display_mode == 1:
+            self.joints_mode_deform.setChecked(True)
+        elif display_mode == 2:
+            self.joints_mode_control.setChecked(True)
+
+        self.model = ModulesModel()
         self.proxy = ModulesFilter()
         self.proxy.setSourceModel(self.model)
+        self.proxy.setDisplayMode(display_mode)
 
         self._populate_model(Rig().rig_modules, expand_new_modules=False)
 
@@ -115,7 +130,12 @@ class RigPanel(QtWidgets.QWidget):
 
         self._update_buttons_enabled()
 
+        self.joints_mode_group.addButton(self.joints_mode_none)
+        self.joints_mode_group.addButton(self.joints_mode_deform)
+        self.joints_mode_group.addButton(self.joints_mode_control)
+
         color_by_side.toggled.connect(self._on_color_by_side_toggled)
+        self.joints_mode_group.buttonClicked.connect(self._on_joints_mode_clicked)
         self.search_bar.textEdited.connect(self._on_search_changed)
         self.build_button.released.connect(self._on_build_rig)
         self.unbuild_button.released.connect(self._on_unbuild_rig)
@@ -148,6 +168,15 @@ class RigPanel(QtWidgets.QWidget):
         else:
             self._hide_colors_recursively(root)
 
+    @QtCore.Slot(QtWidgets.QAbstractButton)
+    def _on_joints_mode_clicked(self, button):
+        if button == self.joints_mode_deform:
+            self.proxy.setDisplayMode(1)
+        elif button == self.joints_mode_control:
+            self.proxy.setDisplayMode(2)
+        else:
+            self.proxy.setDisplayMode(0)
+
     def _on_search_changed(self, search):
         self.proxy.setFilterRegExp(search)
 
@@ -160,7 +189,7 @@ class RigPanel(QtWidgets.QWidget):
 
     def _show_colors_recursively(self, parent):
         for item in self._iter_items_recursively(parent):
-            if self._is_module_item(item):
+            if self.model.is_module_item(item):
                 module = Rig().get_module(item.text())
             else:
                 module = self._joint_parent_module(item.text())
@@ -189,17 +218,6 @@ class RigPanel(QtWidgets.QWidget):
             raise AttributeError("Joint %s is not connected to a module !" % joint)
         module = modules[0]
         return Rig().get_module(module)
-
-    def _is_module_item(self, item):
-        return self._is_item_of_type(item, "transform")
-
-    def _is_joint_item(self, item):
-        return self._is_item_of_type(item, "joint")
-
-    def _is_item_of_type(self, item, node_type):
-        if not cmds.objExists(item.text()):
-            return False
-        return cmds.objectType(item.text()) == node_type
 
     def _setup_refresh_script_job(self):
         ids = []
@@ -264,7 +282,7 @@ class RigPanel(QtWidgets.QWidget):
     def _child_index_before_modules(self, item):
         for row in xrange(item.rowCount()):
             child = item.child(row)
-            if self._is_module_item(child):
+            if self.model.is_module_item(child):
                 return row
         return 0
 
@@ -302,7 +320,7 @@ class RigPanel(QtWidgets.QWidget):
                 joint_items = [
                     module_item.child(row)
                     for row in xrange(module_item.rowCount())
-                    if not self._is_module_item(module_item.child(row))
+                    if not self.model.is_module_item(module_item.child(row))
                 ]
                 if new_joint_count > old_joint_count:
                     self._fill_missing_joint_items(module, joints, joint_items)
@@ -351,7 +369,7 @@ class RigPanel(QtWidgets.QWidget):
             return modules
 
         for item in self._iter_items_recursively(self.model.invisibleRootItem()):
-            if not self._is_module_item(item):
+            if not self.model.is_module_item(item):
                 continue
             source_index = self.model.indexFromItem(item)
             index = self.proxy.mapFromSource(source_index)
@@ -475,11 +493,11 @@ class RigPanel(QtWidgets.QWidget):
         selected = selection.selectedRows()
         source_indices = map(self.proxy.mapToSource, selected)
         items = [self.model.itemFromIndex(index) for index in source_indices]
-        joints = [item.text() for item in items if self._is_joint_item(item)]
+        joints = [item.text() for item in items if self.model.is_joint_item(item)]
         modules = [
             Rig().get_module(item.text())
             for item in items
-            if self._is_module_item(item)
+            if self.model.is_module_item(item)
         ]
         if joints:
             cmds.select(joints)
@@ -497,6 +515,30 @@ class ModulesTree(QtWidgets.QTreeView):
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
 
+class ModulesModel(QtGui.QStandardItemModel):
+    @staticmethod
+    def is_item_of_type(item, node_type):
+        if not cmds.objExists(item.text()):
+            return False
+        return cmds.objectType(item.text()) == node_type
+
+    @staticmethod
+    def is_module_item(item):
+        if not item.text().endswith("mod"):
+            return False
+        return ModulesModel.is_item_of_type(item, "transform")
+
+    @staticmethod
+    def is_control_item(item):
+        if item.text().endswith("mod"):
+            return False
+        return ModulesModel.is_item_of_type(item, "transform")
+
+    @staticmethod
+    def is_joint_item(item):
+        return ModulesModel.is_item_of_type(item, "joint")
+
+
 class ModulesFilter(QtCore.QSortFilterProxyModel):
     """A custom filter taking tree children into account.
 
@@ -509,6 +551,18 @@ class ModulesFilter(QtCore.QSortFilterProxyModel):
         self._recursiveFilter = recursiveFilter
         self._invertedFilter = invertedFilter
         self._sourceRootIndex = QtCore.QModelIndex()
+
+        self._display_mode = 1
+
+    def setDisplayMode(self, mode):
+        self._display_mode = mode
+        self.invalidateFilter()
+
+        settings = get_settings()
+        settings.setValue("modules/joints_display_mode", mode)
+
+    def displayMode(self):
+        return self._display_mode
 
     def data(self, index, role):
         if self._sourceRootIndex.isValid():
@@ -560,6 +614,17 @@ class ModulesFilter(QtCore.QSortFilterProxyModel):
         :type source_parent: controllers.gui.Qt.QtCore.QModelIndex
         :rtype: bool
         """
+        model = self.sourceModel()
+        index = model.index(source_row, 0, source_parent)
+        item = model.itemFromIndex(index)
+
+        if self._display_mode == 0 and not model.is_module_item(item):
+            return False
+        if self._display_mode == 1 and model.is_control_item(item):
+            return False
+        if self._display_mode == 2 and model.is_joint_item(item):
+            return False
+
         res = super(ModulesFilter, self).filterAcceptsRow(source_row, source_parent)
         # If the item is already valid, do not make any
         # additional checks.
@@ -567,15 +632,6 @@ class ModulesFilter(QtCore.QSortFilterProxyModel):
             return res
 
         # Now recursively check all children to see if one matches.
-        model = self.sourceModel()
-
-        # For lists and tables, skip this test has their items
-        # cannot have children. We are only looking for trees here.
-        skip = (QtCore.QAbstractListModel, QtCore.QAbstractTableModel)
-        if isinstance(model, skip):
-            return res
-
-        index = model.index(source_row, 0, source_parent)
         if model.hasChildren(index):
             for i in xrange(model.rowCount(index)):
                 res = res | self.filterAcceptsRow(i, index)
