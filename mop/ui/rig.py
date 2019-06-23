@@ -54,12 +54,12 @@ class RigPanel(QtWidgets.QWidget):
         modules_layout.addLayout(options_layout)
         options_layout.addWidget(color_by_side)
 
+        options_layout.addStretch()
+
         options_layout.addWidget(self.joints_mode_label)
         options_layout.addWidget(self.joints_mode_none)
         options_layout.addWidget(self.joints_mode_deform)
         options_layout.addWidget(self.joints_mode_control)
-
-        options_layout.addStretch()
 
         modules_layout.addLayout(search_layout)
         search_layout.addWidget(self.search_label)
