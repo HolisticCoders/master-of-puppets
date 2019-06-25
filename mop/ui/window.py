@@ -41,8 +41,6 @@ class mopWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.creation_panel)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.module_panel)
 
-        subscribe("workspace-closed", self.close)
-
         self.load_settings()
 
     def save_settings(self):
