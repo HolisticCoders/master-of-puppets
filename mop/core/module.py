@@ -561,7 +561,6 @@ class RigModule(MopNode):
                 orig_node_mat = om2.MMatrix(cmds.getAttr(orig_node + ".worldMatrix"))
                 new_mat = local_reflexion_mat * orig_node_mat * world_reflexion_mat
                 cmds.xform(new_node, matrix=new_mat, worldSpace=True)
-                cmds.setAttr(new_node + ".scale", 1, 1, 1)
             if mirror_type.lower() == "orientation":
                 # disable black formatting to keep the matrices 4x4
                 # fmt: off
