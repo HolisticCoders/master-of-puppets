@@ -43,7 +43,7 @@ class Rig(MopNode):
 
         sorted_modules = []
         while modules:
-            module = modules.pop()
+            module = modules.pop(0)
             self.sort_parent_module(module, modules, sorted_modules)
 
         return sorted_modules
@@ -337,10 +337,8 @@ class Rig(MopNode):
                 getattr(new_module, field.name).set(value)
         new_module.update()
 
-        # orig_nodes = module.deform_joints.get() + module.guide_nodes.get()
-        # new_nodes = new_module.deform_joints.get() + new_module.guide_nodes.get()
         for orig_node, new_node in zip(module.guide_nodes, new_module.guide_nodes):
-            for attr in ["translate", "rotate", "scale", "jointOrient"]:
+            for attr in ["translate", "rotate"]:
                 for axis in "XYZ":
                     attr_name = attr + axis
                     if not cmds.attributeQuery(attr_name, node=orig_node, exists=True):
