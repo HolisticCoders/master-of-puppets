@@ -138,6 +138,9 @@ class RigPanel(QtWidgets.QWidget):
         subscribe("modules-updated", self._on_modules_updated)
         subscribe("modules-deleted", self._on_modules_deleted)
 
+    def showEvent(self, event):
+        self.tree_view.setFocus(QtCore.Qt.ActiveWindowFocusReason)
+
     def closeEvent(self, event):
         for event, script_job_id in self._refresh_script_job_ids:
             try:
