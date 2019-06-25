@@ -348,6 +348,10 @@ class RigPanel(QtWidgets.QWidget):
             parents_have_changed = parents_have_changed or parent_has_changed
 
             joints = module.deform_joints.get()
+            if Rig().is_built.get():
+                controls = module.controllers.get()
+            else:
+                controls = module.guide_nodes.get()
 
             if "joint_count" in modified_values:
                 old_joint_count = modified_values["joint_count"][0]
@@ -378,7 +382,7 @@ class RigPanel(QtWidgets.QWidget):
                     self._remove_unused_items(module_item)
 
             if was_renamed:
-                self._rename_child_joint_items(module_item, joints)
+                self._rename_child_joint_items(module_item, joints, controls)
 
             if "side" in modified_values:
                 side_has_changed = True
@@ -478,9 +482,9 @@ class RigPanel(QtWidgets.QWidget):
             if not cmds.objExists(child.text()):
                 parent_item.removeRow(row)
 
-    def _rename_child_joint_items(self, module_item, joint_names):
+    def _rename_child_joint_items(self, module_item, joint_names, control_names):
         joint_items = [module_item.child(row) for row in xrange(module_item.rowCount())]
-        for name, joint_item in zip(joint_names, joint_items):
+        for name, joint_item in zip(joint_names + control_names, joint_items):
             joint_item.setText(name)
 
     def _on_modules_deleted(self, modules):
