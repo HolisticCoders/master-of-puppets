@@ -8,7 +8,7 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
 from mop.vendor.Qt import QtCore, QtWidgets
-from mop.ui.signals import publish, subscribe
+from mop.ui.signals import publish, subscribe, unsubscribe
 from mop.ui.utils import clear_layout
 from mop.utils.undo import undoable
 from mop.ui.fieldwidgets import map_field_to_widget
@@ -82,6 +82,9 @@ class ModulePanel(QtWidgets.QDockWidget):
         self.delete_button.released.connect(self._delete_module)
 
         subscribe("selected-modules-changed", self._on_selection_changed)
+
+    def closeEvent(self, event):
+        unsubscribe("selected-modules-changed", self._on_selection_changed)
 
     def _on_selection_changed(self, modules):
         """Update the module to edit.

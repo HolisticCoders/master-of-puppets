@@ -6,7 +6,7 @@ from mop.config.default_config import side_color
 from mop.core.rig import Rig
 from mop.ui.commands import build_rig, unbuild_rig, publish_rig
 from mop.ui.settings import get_settings
-from mop.ui.signals import publish, subscribe
+from mop.ui.signals import publish, subscribe, unsubscribe
 from mop.utils.colorspace import linear_to_srgb
 from mop.vendor.Qt import QtCore, QtGui, QtWidgets
 
@@ -142,6 +142,9 @@ class RigPanel(QtWidgets.QWidget):
         self.tree_view.setFocus(QtCore.Qt.ActiveWindowFocusReason)
 
     def closeEvent(self, event):
+        unsubscribe("modules-created", self._on_modules_created)
+        unsubscribe("modules-updated", self._on_modules_updated)
+        unsubscribe("modules-deleted", self._on_modules_deleted)
         for event, script_job_id in self._refresh_script_job_ids:
             try:
                 cmds.scriptJob(kill=script_job_id)
