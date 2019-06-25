@@ -24,10 +24,11 @@ class RigPanel(QtWidgets.QWidget):
         color_by_side = QtWidgets.QCheckBox("Colors by Side")
 
         self.joints_mode_group = QtWidgets.QButtonGroup()
-        self.joints_mode_label = QtWidgets.QLabel("Joints Mode:")
+        self.joints_mode_label = QtWidgets.QLabel("Display Children:")
         self.joints_mode_none = QtWidgets.QRadioButton("None")
         self.joints_mode_deform = QtWidgets.QRadioButton("Deform Joints")
-        self.joints_mode_control = QtWidgets.QRadioButton("Controls")
+        self.joints_mode_control = QtWidgets.QRadioButton()
+        self._update_display_names()
 
         self.search_label = QtWidgets.QLabel("Search")
         self.search_bar = QtWidgets.QLineEdit()
@@ -240,7 +241,7 @@ class RigPanel(QtWidgets.QWidget):
         ids = []
         for event in ("Undo", "Redo"):
             script_job_id = cmds.scriptJob(
-                event=(event, self._update_buttons_enabled), parent="mop_rig_panel"
+                event=(event, self._update_ui_state), parent="mop_rig_panel"
             )
             ids.append((event, script_job_id))
         return ids
@@ -521,19 +522,29 @@ class RigPanel(QtWidgets.QWidget):
     def _on_build_rig(self):
         build_rig()
         self._generate_model()
-        self._update_buttons_enabled()
+        self._update_ui_state()
 
     def _on_unbuild_rig(self):
         unbuild_rig()
         self._generate_model()
-        self._update_buttons_enabled()
+        self._update_ui_state()
 
     def _on_publish_rig(self):
         publish_rig()
         self._update_buttons_enabled()
 
+    def _update_ui_state(self):
+        self._update_buttons_enabled()
+        self._update_display_names()
+
     def _update_buttons_enabled(self):
-        if Rig().is_built.get():
+        rig = Rig()
+        if rig.is_published.get():
+            self.build_button.setEnabled(False)
+            self.unbuild_button.setEnabled(False)
+            self.publish_button.setEnabled(False)
+            return
+        elif rig.is_built.get():
             self.build_button.setEnabled(False)
             self.unbuild_button.setEnabled(True)
             self.publish_button.setEnabled(True)
@@ -541,6 +552,12 @@ class RigPanel(QtWidgets.QWidget):
             self.build_button.setEnabled(True)
             self.unbuild_button.setEnabled(False)
             self.publish_button.setEnabled(False)
+
+    def _update_display_names(self):
+        if Rig().is_built.get():
+            self.joints_mode_control.setText("Controls")
+        else:
+            self.joints_mode_control.setText("Guides")
 
     def _on_selection_changed(self, selected, deselected):
         selection = self.tree_view.selectionModel()
