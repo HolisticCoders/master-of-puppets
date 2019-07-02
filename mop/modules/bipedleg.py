@@ -10,9 +10,11 @@ class BipedLeg(FkIkRotatePlaneChain):
 
     default_side = "L"
 
-    joint_count = IntField(
-        defaultValue=5, hasMinValue=True, minValue=5, hasMaxValue=True, maxValue=5
-    )
+    joint_count = IntField(defaultValue=5,
+                           hasMinValue=True,
+                           minValue=5,
+                           hasMaxValue=True,
+                           maxValue=5)
 
     twist_guide = ObjectField()
     heel_guide = ObjectField()
@@ -58,8 +60,7 @@ class BipedLeg(FkIkRotatePlaneChain):
                 description="foot_ball_pivot",
                 shape_type="sphere",
                 skip_id=True,
-            )
-        )
+            ))
 
         self.twist_guide.set(
             self.add_guide_node(
@@ -67,8 +68,7 @@ class BipedLeg(FkIkRotatePlaneChain):
                 skip_id=True,
                 description="foot_twist_pivot",
                 shape_type="sphere",
-            )
-        )
+            ))
 
         self.tip_guide.set(
             self.add_guide_node(
@@ -76,8 +76,7 @@ class BipedLeg(FkIkRotatePlaneChain):
                 skip_id=True,
                 description="foot_tip_pivot",
                 shape_type="sphere",
-            )
-        )
+            ))
 
         self.heel_guide.set(
             self.add_guide_node(
@@ -85,8 +84,7 @@ class BipedLeg(FkIkRotatePlaneChain):
                 skip_id=True,
                 description="foot_heel_pivot",
                 shape_type="sphere",
-            )
-        )
+            ))
 
         self.bank_ext_guide.set(
             self.add_guide_node(
@@ -94,8 +92,7 @@ class BipedLeg(FkIkRotatePlaneChain):
                 skip_id=True,
                 description="foot_bank_ext_pivot",
                 shape_type="sphere",
-            )
-        )
+            ))
 
         self.bank_int_guide.set(
             self.add_guide_node(
@@ -103,8 +100,7 @@ class BipedLeg(FkIkRotatePlaneChain):
                 skip_id=True,
                 description="foot_bank_int_pivot",
                 shape_type="sphere",
-            )
-        )
+            ))
 
     def create_deform_joints(self):
         super(BipedLeg, self).create_deform_joints()
@@ -126,7 +122,8 @@ class BipedLeg(FkIkRotatePlaneChain):
     def build(self):
         super(BipedLeg, self).build()
         self.build_foot()
-        cmds.setAttr(self.settings_ctl.get() + "." + self.switch_long_name.get(), 1)
+        cmds.setAttr(
+            self.settings_ctl.get() + "." + self.switch_long_name.get(), 1)
         cmds.addAttr(
             self.settings_ctl.get() + "." + self.switch_long_name.get(),
             edit=True,
@@ -141,8 +138,7 @@ class BipedLeg(FkIkRotatePlaneChain):
         """
         ik_chain = self.chain_b.get()
         ik_handle, effector = cmds.ikHandle(
-            startJoint=ik_chain[0], endEffector=self.ik_chain_end_joint.get()
-        )
+            startJoint=ik_chain[0], endEffector=self.ik_chain_end_joint.get())
         self.ik_handle.set(ik_handle)
         cmds.parent(ik_handle, self.extras_group.get())
         cmds.poleVectorConstraint(self.ik_pv_ctl.get(), ik_handle)
@@ -153,31 +149,39 @@ class BipedLeg(FkIkRotatePlaneChain):
         self.create_attributes()
 
         # twist setup
-        cmds.connectAttr(
-            self.ik_end_ctl.get() + ".footTwist", self.twist_pivot.get() + ".rotateY"
-        )
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footTwist",
+                         self.twist_pivot.get() + ".rotateY")
 
         # bank setup
-        clamp_int = self.add_node("clamp", role="clamp", description="bank_int")
-        cmds.connectAttr(self.ik_end_ctl.get() + ".footBank", clamp_int + ".inputR")
+        clamp_int = self.add_node("clamp",
+                                  role="clamp",
+                                  description="bank_int")
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footBank",
+                         clamp_int + ".inputR")
         cmds.setAttr(clamp_int + ".maxR", 180)
-        cmds.connectAttr(clamp_int + ".outputR", self.bank_int_pivot.get() + ".rotateZ")
+        cmds.connectAttr(clamp_int + ".outputR",
+                         self.bank_int_pivot.get() + ".rotateZ")
 
-        clamp_ext = self.add_node("clamp", role="clamp", description="bank_ext")
-        cmds.connectAttr(self.ik_end_ctl.get() + ".footBank", clamp_ext + ".inputR")
+        clamp_ext = self.add_node("clamp",
+                                  role="clamp",
+                                  description="bank_ext")
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footBank",
+                         clamp_ext + ".inputR")
         cmds.setAttr(clamp_ext + ".minR", -180)
-        cmds.connectAttr(clamp_ext + ".outputR", self.bank_ext_pivot.get() + ".rotateZ")
+        cmds.connectAttr(clamp_ext + ".outputR",
+                         self.bank_ext_pivot.get() + ".rotateZ")
 
         # heel setup
         clamp = self.add_node("clamp", role="clamp", description="0_to_neg_90")
-        cmds.connectAttr(self.ik_end_ctl.get() + ".footRoll", clamp + ".inputR")
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footRoll",
+                         clamp + ".inputR")
         cmds.setAttr(clamp + ".minR", -90)
-        cmds.connectAttr(clamp + ".outputR", self.heel_pivot.get() + ".rotateX")
+        cmds.connectAttr(clamp + ".outputR",
+                         self.heel_pivot.get() + ".rotateX")
 
         # tip setup
         bend_to_straight_percent = self.add_node(
-            "setRange", role="percent", description="bend_to_straight"
-        )
+            "setRange", role="percent", description="bend_to_straight")
         cmds.connectAttr(
             self.ik_end_ctl.get() + ".bendLimitAngle",
             bend_to_straight_percent + ".oldMinX",
@@ -186,65 +190,61 @@ class BipedLeg(FkIkRotatePlaneChain):
             self.ik_end_ctl.get() + ".toeStraightAngle",
             bend_to_straight_percent + ".oldMaxX",
         )
-        cmds.connectAttr(
-            self.ik_end_ctl.get() + ".footRoll", bend_to_straight_percent + ".valueX"
-        )
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footRoll",
+                         bend_to_straight_percent + ".valueX")
         cmds.setAttr(bend_to_straight_percent + ".maxX", 1)
 
-        tip_roll_mult = self.add_node(
-            "multDoubleLinear", role="mult", description="tip_roll"
-        )
-        cmds.connectAttr(
-            bend_to_straight_percent + ".outValueX", tip_roll_mult + ".input1"
-        )
-        cmds.connectAttr(self.ik_end_ctl.get() + ".footRoll", tip_roll_mult + ".input2")
-        cmds.connectAttr(tip_roll_mult + ".output", self.tip_pivot.get() + ".rotateX")
+        tip_roll_mult = self.add_node("multDoubleLinear",
+                                      role="mult",
+                                      description="tip_roll")
+        cmds.connectAttr(bend_to_straight_percent + ".outValueX",
+                         tip_roll_mult + ".input1")
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footRoll",
+                         tip_roll_mult + ".input2")
+        cmds.connectAttr(tip_roll_mult + ".output",
+                         self.tip_pivot.get() + ".rotateX")
 
         # ball setup
-        zero_to_bend_percent = self.add_node(
-            "setRange", role="percent", description="zero_to_bend"
-        )
-        cmds.connectAttr(
-            self.ik_end_ctl.get() + ".bendLimitAngle", zero_to_bend_percent + ".oldMaxX"
-        )
-        cmds.connectAttr(
-            self.ik_end_ctl.get() + ".footRoll", zero_to_bend_percent + ".valueX"
-        )
+        zero_to_bend_percent = self.add_node("setRange",
+                                             role="percent",
+                                             description="zero_to_bend")
+        cmds.connectAttr(self.ik_end_ctl.get() + ".bendLimitAngle",
+                         zero_to_bend_percent + ".oldMaxX")
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footRoll",
+                         zero_to_bend_percent + ".valueX")
         cmds.setAttr(zero_to_bend_percent + ".maxX", 1)
         bend_to_straight_reverse = self.add_node(
-            "reverse", role="reverse", description="bend_to_straight"
-        )
+            "reverse", role="reverse", description="bend_to_straight")
         cmds.connectAttr(
             bend_to_straight_percent + ".outValueX",
             bend_to_straight_reverse + ".inputX",
         )
-        ball_percent_mult = self.add_node(
-            "multDoubleLinear", role="mult", description="ball_percent"
-        )
-        cmds.connectAttr(
-            bend_to_straight_reverse + ".outputX", ball_percent_mult + ".input1"
-        )
-        cmds.connectAttr(
-            zero_to_bend_percent + ".outValueX", ball_percent_mult + ".input2"
-        )
-        ball_roll_mult = self.add_node(
-            "multDoubleLinear", role="mult", description="ball_roll"
-        )
-        cmds.connectAttr(ball_percent_mult + ".output", ball_roll_mult + ".input1")
-        cmds.connectAttr(
-            self.ik_end_ctl.get() + ".footRoll", ball_roll_mult + ".input2"
-        )
-        cmds.connectAttr(ball_roll_mult + ".output", self.ball_pivot.get() + ".rotateX")
+        ball_percent_mult = self.add_node("multDoubleLinear",
+                                          role="mult",
+                                          description="ball_percent")
+        cmds.connectAttr(bend_to_straight_reverse + ".outputX",
+                         ball_percent_mult + ".input1")
+        cmds.connectAttr(zero_to_bend_percent + ".outValueX",
+                         ball_percent_mult + ".input2")
+        ball_roll_mult = self.add_node("multDoubleLinear",
+                                       role="mult",
+                                       description="ball_roll")
+        cmds.connectAttr(ball_percent_mult + ".output",
+                         ball_roll_mult + ".input1")
+        cmds.connectAttr(self.ik_end_ctl.get() + ".footRoll",
+                         ball_roll_mult + ".input2")
+        cmds.connectAttr(ball_roll_mult + ".output",
+                         self.ball_pivot.get() + ".rotateX")
 
     def create_foot_pivots(self):
-        pivots_grp = self.add_node(
-            "transform", role="grp", description="foot_roll_pivots"
-        )
+        pivots_grp = self.add_node("transform",
+                                   role="grp",
+                                   description="foot_roll_pivots")
         mop.dag.snap_first_to_last(pivots_grp, self.extras_group.get())
         cmds.parent(pivots_grp, self.extras_group.get())
-        mop.dag.matrix_constraint(
-            self.ik_end_ctl.get(), pivots_grp, maintain_offset=True
-        )
+        mop.dag.matrix_constraint(self.ik_end_ctl.get(),
+                                  pivots_grp,
+                                  maintain_offset=True)
 
         metadata = {
             "base_name": self.name.get(),
@@ -254,7 +254,8 @@ class BipedLeg(FkIkRotatePlaneChain):
         }
         name = mop.metadata.name_from_metadata(metadata)
         self.twist_pivot.set(cmds.spaceLocator(name=name)[0])
-        mop.dag.snap_first_to_last(self.twist_pivot.get(), self.twist_guide.get())
+        mop.dag.snap_first_to_last(self.twist_pivot.get(),
+                                   self.twist_guide.get())
 
         metadata = {
             "base_name": self.name.get(),
@@ -264,7 +265,8 @@ class BipedLeg(FkIkRotatePlaneChain):
         }
         name = mop.metadata.name_from_metadata(metadata)
         self.heel_pivot.set(cmds.spaceLocator(name=name)[0])
-        mop.dag.snap_first_to_last(self.heel_pivot.get(), self.heel_guide.get())
+        mop.dag.snap_first_to_last(self.heel_pivot.get(),
+                                   self.heel_guide.get())
 
         metadata = {
             "base_name": self.name.get(),
@@ -274,7 +276,8 @@ class BipedLeg(FkIkRotatePlaneChain):
         }
         name = mop.metadata.name_from_metadata(metadata)
         self.ball_pivot.set(cmds.spaceLocator(name=name)[0])
-        mop.dag.snap_first_to_last(self.ball_pivot.get(), self.ball_guide.get())
+        mop.dag.snap_first_to_last(self.ball_pivot.get(),
+                                   self.ball_guide.get())
 
         metadata = {
             "base_name": self.name.get(),
@@ -294,7 +297,8 @@ class BipedLeg(FkIkRotatePlaneChain):
         }
         name = mop.metadata.name_from_metadata(metadata)
         self.bank_ext_pivot.set(cmds.spaceLocator(name=name)[0])
-        mop.dag.snap_first_to_last(self.bank_ext_pivot.get(), self.bank_ext_guide.get())
+        mop.dag.snap_first_to_last(self.bank_ext_pivot.get(),
+                                   self.bank_ext_guide.get())
 
         metadata = {
             "base_name": self.name.get(),
@@ -304,7 +308,8 @@ class BipedLeg(FkIkRotatePlaneChain):
         }
         name = mop.metadata.name_from_metadata(metadata)
         self.bank_int_pivot.set(cmds.spaceLocator(name=name)[0])
-        mop.dag.snap_first_to_last(self.bank_int_pivot.get(), self.bank_int_guide.get())
+        mop.dag.snap_first_to_last(self.bank_int_pivot.get(),
+                                   self.bank_int_guide.get())
 
         cmds.parent(self.ball_pivot.get(), self.tip_pivot.get())
         cmds.parent(self.tip_pivot.get(), self.heel_pivot.get())
@@ -380,6 +385,14 @@ class BipedLeg(FkIkRotatePlaneChain):
             maxValue=180,
             keyable=True,
         )
+
+    def update_guide_nodes(self):
+        """Don't update as the leg has a fixed number of guides"""
+        return
+
+    def update_deform_joints(self):
+        """Don't update as the leg has a fixed number of joints"""
+        return
 
 
 exported_rig_modules = [BipedLeg]

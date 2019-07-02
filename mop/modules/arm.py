@@ -36,5 +36,13 @@ class Arm(FkIkRotatePlaneChain):
             defaultValue=1,
         )
 
+    def update_guide_nodes(self):
+        """Don't update as the leg has a fixed number of guides"""
+        return
+
+    def update_deform_joints(self):
+        """Don't update as the leg has a fixed number of joints"""
+        return
+
 
 exported_rig_modules = [Arm]
