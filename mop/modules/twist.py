@@ -50,7 +50,7 @@ class Twist(Leaf):
         cmds.connectAttr(decomp_mat + ".outputQuatW", quat_to_euler + ".inputQuatW")
 
         deform_joints = self.deform_joints.get()
-        if not self.reverse.get():
+        if self.reverse.get():
             deform_joints.reverse()
         factor = 1.0 / self.joint_count.get()
 
