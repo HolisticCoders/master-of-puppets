@@ -46,7 +46,7 @@ def open_mop():
 
 def open_facs_editor():
     """Open the `mop` GUI."""
-    import facseditor
+    import mop.vendor.facseditor as facseditor
 
     facseditor.close()
     facseditor.show()

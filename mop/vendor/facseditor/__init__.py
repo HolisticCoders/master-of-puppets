@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 
-from facseditor.window import FACSWindow
+from .window import FACSWindow
 
 
 def show():

@@ -7,7 +7,7 @@ from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 import maya.cmds as cmds
 
 from mop.vendor.Qt import QtWidgets, QtCore, QtGui
-import facseditor.core
+from . import core as facs_core
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         self.action_units_list = QtWidgets.QListView()
         self.action_units_model = ActionUnitsModel()
         self.action_units_list.setModel(self.action_units_model)
-        self.action_units_model.setStringList(facseditor.core.get_action_units())
+        self.action_units_model.setStringList(facs_core.get_action_units())
         self.action_units_model.dataChanged.connect(self.action_units_data_changed)
         self.action_units_list.selectionModel().selectionChanged.connect(
             self.facs_selection_changed
@@ -116,10 +116,10 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         select_facs_button.released.connect(self._select_facs_control)
         main_layout.addWidget(select_facs_button)
 
-        facseditor.core.ensure_facs_node_exists()
+        facs_core.ensure_facs_node_exists()
 
     def update_edit_buttons(self):
-        if facseditor.core.is_editing():
+        if facs_core.is_editing():
             self.facs_edit_button.setEnabled(False)
             self.facs_finish_edit_button.setEnabled(True)
         else:
@@ -134,12 +134,12 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
             controllers = []
         else:
             current_action_unit = self.action_units_list.selectionModel().currentIndex().data()
-            action_units_dict = facseditor.core.get_action_units_dict()
+            action_units_dict = facs_core.get_action_units_dict()
             controllers = action_units_dict[current_action_unit]
         self.controllers_model.setStringList(controllers)
 
     def update_action_units_model(self):
-        self.action_units_model.setStringList(facseditor.core.get_action_units())
+        self.action_units_model.setStringList(facs_core.get_action_units())
 
     def controllers_selection_changed(self):
         controllers_names = [c.data() for c in self.controllers_list.selectionModel().selectedIndexes()]
@@ -147,18 +147,18 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
 
     @undoable
     def add_action_unit(self):
-        facseditor.core.add_action_unit()
+        facs_core.add_action_unit()
         self.update_action_units_model()
 
     @undoable
     def remove_action_units(self):
         action_units = [a.data() for a in self.action_units_list.selectionModel().selectedIndexes()]
-        facseditor.core.remove_action_units(action_units)
+        facs_core.remove_action_units(action_units)
         self.update_action_units_model()
 
     @undoable
     def move_action_unit(self, new_key, new_index):
-        return facseditor.core.move_action_unit(new_key, new_index)
+        return facs_core.move_action_unit(new_key, new_index)
 
     def action_units_data_changed(self, topLeft, bottomRight, roles):
         new_index = topLeft.row()
@@ -168,8 +168,8 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
             new_dict = self.move_action_unit(new_key, new_index)
 
         elif roles[0] == QtCore.Qt.EditRole:
-            new_dict = facseditor.core.rename_action_unit(new_index, new_key)
-        facs_node = facseditor.core.ensure_facs_node_exists()
+            new_dict = facs_core.rename_action_unit(new_index, new_key)
+        facs_node = facs_core.ensure_facs_node_exists()
         cmds.setAttr(
             facs_node + '.actionUnits',
             json.dumps(new_dict),
@@ -183,13 +183,13 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
             return
         cmds.playbackOptions(min=0, max=10)
         last_action_unit = self.action_units_list.selectionModel().currentIndex().data()
-        facseditor.core.edit_action_unit(last_action_unit)
+        facs_core.edit_action_unit(last_action_unit)
         self.update_edit_buttons()
         self.update_action_units_model()
 
     @undoable
     def finish_edit_action_unit(self):
-        facseditor.core.finish_edit()
+        facs_core.finish_edit()
         self.update_edit_buttons()
         self.update_action_units_model()
 
@@ -198,28 +198,28 @@ class FACSWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
         if not self.action_units_list.selectionModel().selectedIndexes():
             return
         last_action_unit = self.action_units_list.selectionModel().currentIndex().data()
-        facseditor.core.add_controllers_to_action_unit(last_action_unit)
+        facs_core.add_controllers_to_action_unit(last_action_unit)
         self.update_controllers_model()
 
     @undoable
     def remove_controllers_from_action_unit(self):
         last_action_unit = self.action_units_list.selectionModel().currentIndex().data()
         selected_controllers = [c.data() for c in self.controllers_list.selectionModel().selectedIndexes()]
-        facseditor.core.remove_controllers_from_action_unit(last_action_unit, selected_controllers)
+        facs_core.remove_controllers_from_action_unit(last_action_unit, selected_controllers)
         self.update_controllers_model()
 
     def _select_facs_control(self):
-        cmds.select(facseditor.core.ensure_facs_node_exists(), replace=True)
+        cmds.select(facs_core.ensure_facs_node_exists(), replace=True)
 
 
 class ActionUnitsModel(QtCore.QStringListModel):
     def data(self, index, role):
         """Color the Action unit that's being edited."""
         if role == QtCore.Qt.BackgroundRole:
-            if index.data() == facseditor.core.get_editing_action_unit():
+            if index.data() == facs_core.get_editing_action_unit():
                 return QtGui.QBrush(QtGui.QColor(152, 195, 121))
         elif role == QtCore.Qt.ForegroundRole:
-            if index.data() == facseditor.core.get_editing_action_unit():
+            if index.data() == facs_core.get_editing_action_unit():
                 return QtGui.QBrush(QtGui.QColor(43, 43, 43))
         else:
             return super(ActionUnitsModel, self).data(index, role)
