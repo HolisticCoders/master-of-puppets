@@ -250,6 +250,13 @@ class RigPanel(QtWidgets.QWidget):
                 event=(event, self._update_ui_state), parent="mop_rig_panel"
             )
             ids.append((event, script_job_id))
+
+        event = "SceneOpened"
+        script_job_id = cmds.scriptJob(
+            event=(event, self._generate_model), parent="mop_rig_panel"
+        )
+        ids.append((event, script_job_id))
+
         return ids
 
     def _populate_model(self, modules, expand_new_modules=True):
