@@ -32,8 +32,8 @@ class QuadrupedLeg(FkIkSpringChain):
 
     def initialize(self):
         super(QuadrupedLeg, self).initialize()
-        self.ik_start_description.set("IK_ankle")
-        self.ik_end_description.set("IK_hip")
+        self.ik_start_description.set("IK_hip")
+        self.ik_end_description.set("IK_ankle")
 
     def create_guide_nodes(self):
         super(QuadrupedLeg, self).create_guide_nodes()
@@ -216,7 +216,7 @@ class QuadrupedLeg(FkIkSpringChain):
         mop.dag.snap_first_to_last(pivots_grp, self.extras_group.get())
         cmds.parent(pivots_grp, self.extras_group.get())
         mop.dag.matrix_constraint(
-            self.ik_end_ctl.get(), pivots_grp, maintain_offset=True
+            self.ik_end_ctl.get(), pivots_grp
         )
 
         metadata = {

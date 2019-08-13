@@ -46,7 +46,7 @@ class FkIkRotatePlaneChain(FkIkChain):
         projection_vec = start_end_vec_norm * proj
 
         pole_vec = start_mid_vec - projection_vec
-        pole_vec *= 25
+        pole_vec *= self.pole_vector_distance.get()
         pv_control_vec = pole_vec + mid_vec
         cmds.xform(buffer_group, worldSpace=1, translation=pv_control_vec)
 

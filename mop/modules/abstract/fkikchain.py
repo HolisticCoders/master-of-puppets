@@ -30,6 +30,16 @@ class FkIkChain(ChainSwitcher):
     ik_end_description = StringField()
     ik_chain_end_joint = ObjectField()
 
+    pole_vector_distance = IntField(
+        displayable=True,
+        editable=True,
+        unique=True,
+        defaultValue=10,
+        tooltip="How far the pole vector control spawns from the IK chain.\n"
+        "This just multiplies the original distance by the value so there's no real word unit there.\n"
+        "Note that this is also tied to the distance between the first and last joint of the IK chain so the value will vary from character to character.",
+    )
+
     def initialize(self):
         super(FkIkChain, self).initialize()
 
